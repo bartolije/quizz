@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+packages/*/dist/
+.vite/
+*.tsbuildinfo
+
+# Local SQLite database (S2+)
+*.sqlite
+*.sqlite3
+*.db
+
+# Secrets / env — never commit (public repo)
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
