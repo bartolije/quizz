@@ -3,9 +3,10 @@ import { Server } from 'socket.io'
 import type { ClientToServerEvents, ServerToClientEvents } from '@lya-quiz/shared'
 import { SOCKET_SERVER_CONFIG, EVENTS } from '@lya-quiz/shared'
 import { handleJoinSession, handleRejoinSession } from './handlers/join.js'
-import { handleHostJoin } from './handlers/host.js'
+import { handleHostJoin, handleHostStartQuiz } from './handlers/host.js'
 import { handleDisconnect } from './handlers/disconnect.js'
-import { getAllSessions, createSession } from './state.js'
+import { getAllSessions, createSession, getSessionById } from './state.js'
+import { getParticipantList } from './session-helpers.js'
 
 const app = Fastify({ logger: true })
 
@@ -31,6 +32,10 @@ io.on('connection', (socket) => {
     handleHostJoin(socket, payload)
   })
 
+  socket.on(EVENTS.HOST_START_QUIZ, () => {
+    handleHostStartQuiz(socket)
+  })
+
   socket.on('disconnect', () => {
     console.log('[disconnect]', socket.id)
     handleDisconnect(socket.id, io, getAllSessions)
@@ -41,6 +46,23 @@ io.on('connection', (socket) => {
 app.post('/api/sessions', async () => {
   const session = createSession()
   return { pin: session.pin, sessionId: session.id }
+})
+
+// Résolution d'une session par id — sert à /host/display ouvert via ?session=XXXX
+// (autre navigateur/machine, sans le PIN en localStorage). Bootstrap one-shot,
+// la synchro temps réel reste 100% Socket.io.
+app.get<{ Params: { id: string } }>('/api/sessions/:id', async (req, reply) => {
+  const session = getSessionById(req.params.id)
+  if (!session) {
+    reply.code(404)
+    return { error: 'not_found' }
+  }
+  return {
+    pin: session.pin,
+    sessionId: session.id,
+    status: session.status,
+    participants: getParticipantList(session),
+  }
 })
 
 app.get('/health', async () => ({ status: 'ok', sessions: getAllSessions().length }))

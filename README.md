@@ -49,7 +49,22 @@ npm run dev:client # http://localhost:5173
 - **S2 ✅** — sessions en mémoire + PIN, rooms Socket.io, flow join/rejoin,
   lobby temps réel, **reconnexion transparente par token** (re-identification
   automatique sur `connect`). Pages participant (join + lobby), store Zustand.
-- S3 — questions, DB (Drizzle + better-sqlite3), UI host réelle, timer, QR code.
+- **S3 ✅** — vues host `/host/control` (création session + PIN + QR code +
+  participants temps réel + bouton Démarrer) et `/host/display` (TV, synchro
+  via la même room). Routing react-router, QR code (`qrcode`), bouton Démarrer
+  → `host_start_quiz` (statut `running`). `GET /api/sessions/:id` pour résoudre
+  une session depuis `/host/display?session=XXXX`.
+- S4 — questions, timer, affichage des réponses (toujours en mémoire).
+- S8 — DB (Drizzle + better-sqlite3), éditeur de quiz.
+
+### Routes client
+
+| Route            | Vue                                                  |
+| ---------------- | ---------------------------------------------------- |
+| `/` `/join`      | Join participant (PIN pré-rempli via `?pin=`)        |
+| `/lobby`         | Lobby participant (temps réel)                       |
+| `/host/control`  | Écran de contrôle host (Mac)                         |
+| `/host/display`  | Écran TV (passif, lisible à distance)                |
 
 ### Flow temps réel (S2)
 

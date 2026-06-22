@@ -1,34 +1,20 @@
-import { useQuizStore } from './store/quiz-store'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { JoinPage } from './pages/JoinPage'
 import { LobbyPage } from './pages/LobbyPage'
+import { HostControlPage } from './pages/HostControlPage'
+import { HostDisplayPage } from './pages/HostDisplayPage'
 
-// Routing ultra-simple : on switche la vue selon l'URL path et l'état.
 export function App() {
-  const currentView = useQuizStore((s) => s.currentView)
-  const path = window.location.pathname
-
-  // Pages host — indépendantes du store participant
-  if (path.startsWith('/host/control')) return <HostControlPage />
-  if (path.startsWith('/host/display')) return <HostDisplayPage />
-
-  // Pages participant
-  if (currentView === 'join') return <JoinPage />
-  return <LobbyPage />
-}
-
-// Stubs host pour S2 (seront implémentés en S3)
-function HostControlPage() {
   return (
-    <div style={{ padding: '2rem', fontFamily: 'sans-serif' }}>
-      <h1>Host Control — S3</h1>
-    </div>
-  )
-}
-
-function HostDisplayPage() {
-  return (
-    <div style={{ padding: '2rem', fontFamily: 'sans-serif' }}>
-      <h1>Host Display — S3</h1>
-    </div>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<JoinPage />} />
+        <Route path="/join" element={<JoinPage />} />
+        <Route path="/lobby" element={<LobbyPage />} />
+        <Route path="/host/control" element={<HostControlPage />} />
+        <Route path="/host/display" element={<HostDisplayPage />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
   )
 }

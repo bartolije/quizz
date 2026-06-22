@@ -1,10 +1,17 @@
 import { useRef, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { socket } from '../socket'
 import { useQuizStore } from '../store/quiz-store'
 import { EVENTS } from '@lya-quiz/shared'
 
 export function JoinPage() {
-  const [pin, setPin]         = useState('')
+  const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
+
+  // PIN pré-rempli depuis le QR code (/join?pin=XXXX)
+  const [pin, setPin] = useState(
+    () => (searchParams.get('pin') ?? '').replace(/\D/g, '').slice(0, 4),
+  )
   const [pseudo, setPseudo]   = useState('')
   const [error, setError]     = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -50,6 +57,8 @@ export function JoinPage() {
       // Brancher les listeners permanents
       socket.on(EVENTS.PARTICIPANT_JOINED, (p) => setParticipantJoined(p.participant))
       socket.on(EVENTS.PARTICIPANT_LEFT,   (p) => setParticipantLeft(p.participantId))
+
+      navigate('/lobby')
     })
 
     socket.once(EVENTS.QUIZ_ERROR, (err) => {

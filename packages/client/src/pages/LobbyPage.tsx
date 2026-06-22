@@ -1,10 +1,15 @@
+import { Navigate } from 'react-router-dom'
 import { useQuizStore } from '../store/quiz-store'
 import { ParticipantList } from '../components/ParticipantList'
 
 export function LobbyPage() {
+  const myId         = useQuizStore((s) => s.myId)
   const sessionPin   = useQuizStore((s) => s.sessionPin)
   const myPseudo     = useQuizStore((s) => s.myPseudo)
   const participants = useQuizStore((s) => s.participants)
+
+  // Pas encore rejoint (refresh direct sur /lobby) → retour au join
+  if (!myId) return <Navigate to="/join" replace />
 
   const connected = participants.filter((p) => p.connected)
 

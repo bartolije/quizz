@@ -1,7 +1,7 @@
 import type { Socket } from 'socket.io'
 import type { ClientToServerEvents, ServerToClientEvents } from '@lya-quiz/shared'
 import { EVENTS } from '@lya-quiz/shared'
-import { getSessionByPin, createSession, type SessionState } from '../state.js'
+import { getSessionByPin, createSession, getAllSessions, type SessionState } from '../state.js'
 import { getParticipantList } from '../session-helpers.js'
 
 type QuizSocket = Socket<ClientToServerEvents, ServerToClientEvents>
@@ -42,5 +42,16 @@ export function handleHostDisconnect(
   const session = sessions.get(sessionId)
   if (session) {
     session.hostSocketIds.delete(socketId)
+  }
+}
+
+// Le host lance le quiz : on passe la session en 'running'.
+// (les questions arrivent en S4 — ici on ne fait que changer le statut)
+export function handleHostStartQuiz(socket: QuizSocket): void {
+  for (const session of getAllSessions()) {
+    if (session.hostSocketIds.has(socket.id)) {
+      session.status = 'running'
+      return
+    }
   }
 }

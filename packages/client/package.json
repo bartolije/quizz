@@ -10,12 +10,15 @@
   },
   "dependencies": {
     "@lya-quiz/shared": "*",
+    "qrcode": "^1.5.3",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-router-dom": "^6.22.0",
     "socket.io-client": "^4.7.0",
     "zustand": "^4.5.0"
   },
   "devDependencies": {
+    "@types/qrcode": "^1.5.5",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
     "@vitejs/plugin-react": "^4.2.0",
