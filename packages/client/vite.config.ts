@@ -5,7 +5,18 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   server: {
+    host: true,          // expose sur le réseau local (pour tester sur téléphone)
     port: 5173,
-    host: true, // expose sur le réseau local (tests depuis téléphone en S2+)
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+      },
+      '/socket.io': {
+        target: 'http://localhost:3001',
+        ws: true,         // proxyer les WebSockets
+        changeOrigin: true,
+      },
+    },
   },
 })

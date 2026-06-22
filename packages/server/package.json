@@ -12,10 +12,12 @@
   "dependencies": {
     "@lya-quiz/shared": "*",
     "fastify": "^4.26.0",
-    "socket.io": "^4.7.0"
+    "socket.io": "^4.7.0",
+    "uuid": "^9.0.0"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
+    "@types/uuid": "^9.0.0",
     "tsx": "^4.7.0"
   }
 }

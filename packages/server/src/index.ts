@@ -1,7 +1,11 @@
 import Fastify from 'fastify'
 import { Server } from 'socket.io'
 import type { ClientToServerEvents, ServerToClientEvents } from '@lya-quiz/shared'
-import { SOCKET_SERVER_CONFIG } from '@lya-quiz/shared'
+import { SOCKET_SERVER_CONFIG, EVENTS } from '@lya-quiz/shared'
+import { handleJoinSession, handleRejoinSession } from './handlers/join.js'
+import { handleHostJoin } from './handlers/host.js'
+import { handleDisconnect } from './handlers/disconnect.js'
+import { getAllSessions, createSession } from './state.js'
 
 const app = Fastify({ logger: true })
 
@@ -13,14 +17,36 @@ const io = new Server<ClientToServerEvents, ServerToClientEvents>(
 )
 
 io.on('connection', (socket) => {
-  console.log('Client connecté :', socket.id)
+  console.log('[connect]', socket.id)
+
+  socket.on(EVENTS.JOIN_SESSION, (payload) => {
+    handleJoinSession(socket, payload, io)
+  })
+
+  socket.on(EVENTS.REJOIN_SESSION, (payload) => {
+    handleRejoinSession(socket, payload, io)
+  })
+
+  socket.on(EVENTS.HOST_JOIN, (payload) => {
+    handleHostJoin(socket, payload)
+  })
 
   socket.on('disconnect', () => {
-    console.log('Client déconnecté :', socket.id)
+    console.log('[disconnect]', socket.id)
+    handleDisconnect(socket.id, io, getAllSessions)
   })
 })
 
-app.get('/health', async () => ({ status: 'ok' }))
+// Création d'une session (appelée par le host au chargement de /host/control)
+app.post('/api/sessions', async () => {
+  const session = createSession()
+  return { pin: session.pin, sessionId: session.id }
+})
+
+app.get('/health', async () => ({ status: 'ok', sessions: getAllSessions().length }))
+
+// En prod : servir le build client React
+// app.register(import('@fastify/static'), { root: '../client/dist', prefix: '/' })
 
 const PORT = Number(process.env['PORT'] ?? 3001)
 app.listen({ port: PORT, host: '0.0.0.0' }, (err, address) => {
@@ -28,5 +54,5 @@ app.listen({ port: PORT, host: '0.0.0.0' }, (err, address) => {
     app.log.error(err)
     process.exit(1)
   }
-  console.log(`LYA QUIZ server running on ${address}`)
+  console.log(`LYA QUIZ server — ${address}`)
 })

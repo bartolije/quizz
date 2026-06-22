@@ -46,7 +46,18 @@ npm run dev:client # http://localhost:5173
 
 - **S1 ✅** — monorepo qui compile, contrat d'events TypeScript complet,
   utilitaires de scoring/normalisation, stubs serveur & client.
-- S2 — sessions/rooms, logique host, UI participant, persistance.
+- **S2 ✅** — sessions en mémoire + PIN, rooms Socket.io, flow join/rejoin,
+  lobby temps réel, **reconnexion transparente par token** (re-identification
+  automatique sur `connect`). Pages participant (join + lobby), store Zustand.
+- S3 — questions, DB (Drizzle + better-sqlite3), UI host réelle, timer, QR code.
+
+### Flow temps réel (S2)
+
+- `POST /api/sessions` → crée une session, renvoie `{ pin, sessionId }`.
+- Participant : `join_session` (PIN + pseudo) → `session_joined` (+ token localStorage).
+- Reconnexion : sur chaque `connect`, le client ré-émet `rejoin_session` avec son
+  token → `session_restored` (même `participantId`, score conservé).
+- Lobby : `participant_joined` / `participant_left` diffusés à toute la room.
 
 ## Scripts
 
