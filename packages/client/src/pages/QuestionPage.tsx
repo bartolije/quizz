@@ -4,6 +4,7 @@ import { EVENTS } from '@lya-quiz/shared'
 import { useQuizStore } from '../store/quiz-store'
 import { useRemaining } from '../hooks/useRemaining'
 import { choiceStyle } from '../mcq'
+import { TimePressure } from '../components/TimePressure'
 
 // Vue participant pendant une question (mobile). Le rendu dépend du type :
 // - mcq      : boutons couleur (énoncé sur la TV)
@@ -19,6 +20,7 @@ export function QuestionPage() {
   const [order, setOrder] = useState<string[]>(() => [...(question?.choices ?? [])])
 
   const remaining = useRemaining(startedAt, question?.timeLimit ?? 0)
+  const lowTime = remaining > 0 && remaining <= 5
 
   if (!question) return null
 
@@ -40,11 +42,18 @@ export function QuestionPage() {
 
   return (
     <div className="min-h-screen bg-gray-950 text-white flex flex-col p-4">
+      <TimePressure active={lowTime && !hasAnswered} />
       <header className="flex items-center justify-between mb-4">
         <span className="text-gray-400 text-sm">
           Question {question.index + 1} / {question.total}
         </span>
-        <span className="text-2xl font-bold tabular-nums">{Math.ceil(remaining)}s</span>
+        <span
+          className={`tabular-nums font-bold ${
+            lowTime ? 'text-3xl text-red-500 animate-pulse' : 'text-2xl'
+          }`}
+        >
+          {Math.ceil(remaining)}s
+        </span>
       </header>
 
       {hasAnswered ? (

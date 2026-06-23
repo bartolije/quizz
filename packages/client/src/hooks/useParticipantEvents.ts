@@ -3,6 +3,7 @@ import type { ServerToClientEvents } from '@lya-quiz/shared'
 import { EVENTS } from '@lya-quiz/shared'
 import { socket } from '../socket'
 import { useQuizStore } from '../store/quiz-store'
+import { vibrate } from '../haptics'
 
 type QStarted = Parameters<ServerToClientEvents['question_started']>[0]
 type QEnded = Parameters<ServerToClientEvents['question_ended']>[0]
@@ -21,8 +22,14 @@ type Restored = Parameters<ServerToClientEvents['session_restored']>[0]
 export function useParticipantEvents(): void {
   useEffect(() => {
     const store = useQuizStore.getState
-    const onStarted = (p: QStarted) => store().onQuestionStarted(p.question)
-    const onEnded = (p: QEnded) => store().onQuestionEnded(p)
+    const onStarted = (p: QStarted) => {
+      vibrate(80) // nouvelle question (Android ; no-op iOS)
+      store().onQuestionStarted(p.question)
+    }
+    const onEnded = (p: QEnded) => {
+      vibrate([60, 40, 60]) // fin de question
+      store().onQuestionEnded(p)
+    }
     const onJoin = (p: PJoin) => store().setParticipantJoined(p.participant)
     const onLeft = (p: PLeft) => store().setParticipantLeft(p.participantId)
     const onStatus = (p: Status) => {

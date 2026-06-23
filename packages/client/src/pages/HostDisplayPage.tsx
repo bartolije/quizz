@@ -3,6 +3,7 @@ import { useRemaining } from '../hooks/useRemaining'
 import { QrCode } from '../components/QrCode'
 import { choiceStyle } from '../mcq'
 import { rankMovement, movementMark } from '../rank-movement'
+import { TimePressure } from '../components/TimePressure'
 
 // Vue TV : passive, lisible à distance. Énoncé + choix pendant la question
 // (le téléphone ne montre que les boutons), puis révélation, puis classement.
@@ -11,6 +12,7 @@ export function HostDisplayPage() {
   const connected = s.participants.filter((p) => p.connected)
   const joinUrl = s.pin ? `${window.location.origin}/join?pin=${s.pin}` : ''
   const remaining = useRemaining(s.questionStartedAt, s.currentQuestion?.timeLimit ?? 0)
+  const lowTime = remaining > 0 && remaining <= 5
 
   if (s.error) {
     return (
@@ -126,12 +128,19 @@ export function HostDisplayPage() {
 
   return (
     <div className="min-h-screen bg-gray-950 text-white flex flex-col p-10">
+      <TimePressure active={phase === 'question' && lowTime} />
       <div className="flex items-center justify-between mb-6">
         <span className="text-2xl text-gray-400">
           Question {q!.index + 1} / {q!.total}
         </span>
         {phase === 'question' ? (
-          <span className="text-6xl font-black tabular-nums">{Math.ceil(remaining)}</span>
+          <span
+            className={`font-black tabular-nums ${
+              lowTime ? 'text-7xl text-red-500 animate-pulse' : 'text-6xl'
+            }`}
+          >
+            {Math.ceil(remaining)}
+          </span>
         ) : (
           <span className="text-3xl text-emerald-400 font-bold">Réponse</span>
         )}

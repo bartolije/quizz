@@ -1,12 +1,21 @@
+import { useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useQuizStore } from '../store/quiz-store'
 import { ParticipantList } from '../components/ParticipantList'
+import {
+  isVibrationEnabled,
+  setVibrationEnabled,
+  vibrationSupported,
+  vibrateTest,
+} from '../haptics'
 
 export function LobbyPage() {
   const myId         = useQuizStore((s) => s.myId)
   const sessionPin   = useQuizStore((s) => s.sessionPin)
   const myPseudo     = useQuizStore((s) => s.myPseudo)
   const participants = useQuizStore((s) => s.participants)
+
+  const [vib, setVib] = useState(isVibrationEnabled())
 
   // Pas encore rejoint (refresh direct sur /lobby) → retour au join
   if (!myId) return <Navigate to="/join" replace />
@@ -28,6 +37,39 @@ export function LobbyPage() {
           {connected.length} participant{connected.length > 1 ? 's' : ''} connecté{connected.length > 1 ? 's' : ''}
         </p>
         <ParticipantList participants={participants} />
+      </div>
+
+      {/* Réglage vibrations (testable). Android : OK · iPhone : non supporté. */}
+      <div className="w-full max-w-sm mt-8">
+        <div className="flex items-center justify-between gap-3 bg-gray-900 rounded-xl px-4 py-3">
+          <span className="text-sm text-gray-300">📳 Vibrations</span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                const n = !vib
+                setVib(n)
+                setVibrationEnabled(n)
+                if (n) vibrateTest(60)
+              }}
+              className={`px-3 py-1.5 rounded-lg text-sm font-bold ${
+                vib ? 'bg-indigo-600 text-white' : 'bg-gray-700 text-gray-300'
+              }`}
+            >
+              {vib ? 'On' : 'Off'}
+            </button>
+            <button
+              onClick={() => vibrateTest()}
+              className="px-3 py-1.5 rounded-lg text-sm bg-gray-700 hover:bg-gray-600 text-gray-200"
+            >
+              Tester
+            </button>
+          </div>
+        </div>
+        {!vibrationSupported() && (
+          <p className="text-gray-600 text-xs mt-2 text-center">
+            Vibration non supportée sur cet appareil (ex. iPhone).
+          </p>
+        )}
       </div>
 
       <p className="text-gray-600 text-sm mt-10">En attente du host…</p>
