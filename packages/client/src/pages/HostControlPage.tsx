@@ -182,7 +182,18 @@ export function HostControlPage() {
         )}
       </div>
 
-      <footer className="px-8 py-6 border-t border-gray-800 flex items-center justify-end gap-6">
+      <footer className="px-8 py-6 border-t border-gray-800 flex items-center justify-between gap-6">
+        <div>
+          {phase !== 'waiting' && phase !== 'ended' && (
+            <button
+              onClick={s.endQuiz}
+              className="px-5 py-3 rounded-xl text-rose-400 hover:bg-rose-500/10 font-medium transition-colors"
+            >
+              Terminer le quiz
+            </button>
+          )}
+        </div>
+        <div className="flex items-center gap-6">
         {phase === 'waiting' && (
           <button
             onClick={s.start}
@@ -224,6 +235,7 @@ export function HostControlPage() {
             {isLastQuestion ? 'Voir le podium →' : 'Question suivante →'}
           </button>
         )}
+        </div>
       </footer>
     </div>
   )

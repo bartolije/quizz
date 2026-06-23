@@ -71,6 +71,7 @@ export interface ServerToClientEvents {
     participants: Participant[]
     currentQuestion: QuestionPublic | null   // null si entre questions
     timeElapsed: number                       // secondes écoulées sur la question
+    alreadyAnswered: boolean                  // le participant a-t-il déjà répondu à la question en cours
     myScore: number
     myRank: number
     session: Pick<Session, 'status' | 'pin'>

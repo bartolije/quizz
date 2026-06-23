@@ -2,7 +2,7 @@ import type { Server, Socket } from 'socket.io'
 import type { ClientToServerEvents, ServerToClientEvents } from '@lya-quiz/shared'
 import { EVENTS } from '@lya-quiz/shared'
 import { getSessionByPin, createSession, getAllSessions, type SessionState } from '../state.js'
-import { getParticipantList } from '../session-helpers.js'
+import { getParticipantList, toPublicQuestion, getLeaderboard } from '../session-helpers.js'
 
 type QuizSocket = Socket<ClientToServerEvents, ServerToClientEvents>
 type QuizServer = Server<ClientToServerEvents, ServerToClientEvents>
@@ -33,6 +33,18 @@ export function handleHostJoin(
     participants: getParticipantList(session),
     session: { status: session.status, pin: session.pin },
   })
+
+  // Reprise host (S7) : si une question est ouverte (le host a rafraîchi en
+  // pleine partie), la lui renvoyer pour qu'il retrouve l'écran question.
+  if (session.questionStartedAt !== null && session.quiz) {
+    const q = session.quiz.questions[session.currentQuestionIndex]
+    if (q) {
+      socket.emit(EVENTS.QUESTION_STARTED, {
+        question: toPublicQuestion(q, session.currentQuestionIndex, session.quiz.questions.length),
+        startedAt: session.questionStartedAt,
+      })
+    }
+  }
 }
 
 export function handleHostDisconnect(
@@ -57,4 +69,24 @@ export function handleHostStartQuiz(socket: QuizSocket, io: QuizServer): void {
       return
     }
   }
+}
+
+// Le host termine le quiz manuellement (S7) : ferme toute question ouverte,
+// passe en 'ended' et diffuse le classement final.
+export function handleHostEndQuiz(socket: QuizSocket, io: QuizServer): void {
+  const session = getAllSessions().find((s) => s.hostSocketIds.has(socket.id))
+  if (!session) return
+
+  if (session.questionTimer) {
+    clearTimeout(session.questionTimer)
+    session.questionTimer = null
+  }
+  session.questionStartedAt = null
+  session.status = 'ended'
+
+  io.to(session.id).emit(EVENTS.SESSION_STATUS_CHANGED, { status: 'ended' })
+  io.to(session.id).emit(EVENTS.LEADERBOARD_UPDATE, {
+    scores: getLeaderboard(session),
+    final: true,
+  })
 }

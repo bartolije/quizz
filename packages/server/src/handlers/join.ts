@@ -8,7 +8,13 @@ import {
   type SessionState,
   type ParticipantState,
 } from '../state.js'
-import { toParticipant, getParticipantList, isPseudoTaken } from '../session-helpers.js'
+import {
+  toParticipant,
+  getParticipantList,
+  isPseudoTaken,
+  toPublicQuestion,
+  getLeaderboard,
+} from '../session-helpers.js'
 
 type QuizSocket = Socket<ClientToServerEvents, ServerToClientEvents>
 type QuizServer = Server<ClientToServerEvents, ServerToClientEvents>
@@ -118,19 +124,30 @@ function handleRejoinWithParticipant(
 
   void socket.join(session.id)
 
-  // Calculer le temps écoulé sur la question en cours
+  // Restaurer l'état de la question en cours (S7) : si une question est ouverte,
+  // on renvoie son énoncé public + le temps déjà écoulé + si le participant a
+  // déjà répondu → le client reprend exactement là où il en était.
+  const quiz = session.quiz
+  const openQuestion =
+    session.questionStartedAt !== null ? quiz?.questions[session.currentQuestionIndex] : undefined
+  const currentQuestion =
+    session.questionStartedAt !== null && quiz && openQuestion
+      ? toPublicQuestion(openQuestion, session.currentQuestionIndex, quiz.questions.length)
+      : null
   const timeElapsed = session.questionStartedAt
     ? (Date.now() - session.questionStartedAt) / 1000
     : 0
+  const myRank =
+    getLeaderboard(session).find((s) => s.participantId === participant.id)?.rank ?? 1
 
-  // Restaurer l'état complet du participant
   socket.emit(EVENTS.SESSION_RESTORED, {
     participant: toParticipant(participant),
     participants: getParticipantList(session),
-    currentQuestion: null,   // sera rempli en S3 quand on a les questions
+    currentQuestion,
     timeElapsed,
+    alreadyAnswered: session.answers.has(participant.id),
     myScore: participant.score,
-    myRank: 1,   // sera calculé proprement en S5
+    myRank,
     session: { status: session.status, pin: session.pin },
   })
 

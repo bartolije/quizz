@@ -21,6 +21,15 @@ interface QuestionEndedPayload {
   myDelta: number
 }
 
+// Sous-ensemble de session_restored utilisé par le store (reconnexion S7)
+interface SessionRestoredPayload {
+  participants: Participant[]
+  currentQuestion: QuestionPublic | null
+  timeElapsed: number
+  alreadyAnswered: boolean
+  myScore: number
+}
+
 interface QuizStore {
   // Identité
   myId: string | null
@@ -57,6 +66,7 @@ interface QuizStore {
   markAnswered: () => void
   onQuestionEnded: (payload: QuestionEndedPayload) => void
   onLeaderboard: (scores: ParticipantScore[], final: boolean) => void
+  onSessionRestored: (payload: SessionRestoredPayload) => void
   onQuizEnded: () => void
   setView: (view: AppView) => void
   reset: () => void
@@ -138,6 +148,26 @@ export const useQuizStore = create<QuizStore>()((set) => ({
       prevRanks: ranksOf(state.leaderboard),
       currentView: final ? 'ended' : 'leaderboard',
     })),
+
+  // Reconnexion (S7) : on resynchronise participants + score, et si une question
+  // est en cours on y revient avec le bon temps restant et l'état "déjà répondu".
+  onSessionRestored: (payload) =>
+    set(() => {
+      if (payload.currentQuestion) {
+        return {
+          participants: payload.participants,
+          myScore: payload.myScore,
+          currentView: 'question' as AppView,
+          currentQuestion: payload.currentQuestion,
+          // ancre le timer pour refléter le temps déjà écoulé côté serveur
+          questionStartedAt: Date.now() - payload.timeElapsed * 1000,
+          hasAnswered: payload.alreadyAnswered,
+          lastResult: null,
+        }
+      }
+      // pas de question ouverte : on ne perturbe pas la vue courante
+      return { participants: payload.participants, myScore: payload.myScore }
+    }),
 
   onQuizEnded: () => set({ currentView: 'ended', questionStartedAt: null }),
 

@@ -43,6 +43,7 @@ interface HostSessionView {
   start: () => void
   next: () => void
   showLeaderboard: () => void
+  endQuiz: () => void
 }
 
 const ranksOf = (lb: ParticipantScore[]): Record<string, number> =>
@@ -215,6 +216,7 @@ export function useHostSession(mode: HostMode): HostSessionView {
   const start = () => socket.emit(EVENTS.HOST_START_QUIZ, {})
   const next = () => socket.emit(EVENTS.HOST_NEXT_QUESTION, {})
   const showLeaderboard = () => socket.emit(EVENTS.HOST_SHOW_LEADERBOARD, {})
+  const endQuiz = () => socket.emit(EVENTS.HOST_END_QUIZ, {})
 
   return {
     pin,
@@ -234,5 +236,6 @@ export function useHostSession(mode: HostMode): HostSessionView {
     start,
     next,
     showLeaderboard,
+    endQuiz,
   }
 }

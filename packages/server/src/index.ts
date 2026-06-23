@@ -3,7 +3,7 @@ import { Server } from 'socket.io'
 import type { ClientToServerEvents, ServerToClientEvents } from '@lya-quiz/shared'
 import { SOCKET_SERVER_CONFIG, EVENTS } from '@lya-quiz/shared'
 import { handleJoinSession, handleRejoinSession } from './handlers/join.js'
-import { handleHostJoin, handleHostStartQuiz } from './handlers/host.js'
+import { handleHostJoin, handleHostStartQuiz, handleHostEndQuiz } from './handlers/host.js'
 import {
   handleNextQuestion,
   handleSubmitAnswer,
@@ -47,6 +47,10 @@ io.on('connection', (socket) => {
 
   socket.on(EVENTS.HOST_SHOW_LEADERBOARD, () => {
     handleShowLeaderboard(socket, io)
+  })
+
+  socket.on(EVENTS.HOST_END_QUIZ, () => {
+    handleHostEndQuiz(socket, io)
   })
 
   socket.on(EVENTS.SUBMIT_ANSWER, (payload) => {
