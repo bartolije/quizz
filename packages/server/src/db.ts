@@ -5,12 +5,17 @@ import { mkdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-// Chemin du fichier SQLite :
-// - PROD (Railway) : DATABASE_PATH pointe vers le Volume persistant (ex. /data/lya-quiz.db).
-// - DEV : ./data/lya-quiz.db à la racine du repo (gitignoré).
+// Chemin du fichier SQLite, par ordre de priorité :
+// 1. DATABASE_PATH si défini explicitement (override manuel) ;
+// 2. RAILWAY_VOLUME_MOUNT_PATH : Railway crée cette variable AUTOMATIQUEMENT dès
+//    qu'un Volume est attaché au service → le fichier vit sur le disque persistant
+//    sans aucune config (il suffit d'ajouter un Volume dans Railway) ;
+// 3. sinon ./data/lya-quiz.db à la racine du repo (dev local, gitignoré).
 const DB_PATH =
   process.env['DATABASE_PATH'] ??
-  join(dirname(fileURLToPath(import.meta.url)), '../../../data/lya-quiz.db')
+  (process.env['RAILWAY_VOLUME_MOUNT_PATH']
+    ? join(process.env['RAILWAY_VOLUME_MOUNT_PATH'], 'lya-quiz.db')
+    : join(dirname(fileURLToPath(import.meta.url)), '../../../data/lya-quiz.db'))
 
 mkdirSync(dirname(DB_PATH), { recursive: true })
 
