@@ -1,9 +1,44 @@
 import { useHostSession } from '../hooks/useHostSession'
 import { useRemaining } from '../hooks/useRemaining'
+import { useHostSound } from '../hooks/useHostSound'
 import { QrCode } from '../components/QrCode'
 import { choiceStyle } from '../mcq'
 import { rankMovement, movementMark } from '../rank-movement'
 import { TimePressure } from '../components/TimePressure'
+
+// Contrôle audio (fixe, coin haut-droit). Visible sur tous les écrans TV.
+function SoundControl({
+  on,
+  muted,
+  enable,
+  toggleMute,
+}: {
+  on: boolean
+  muted: boolean
+  enable: () => void
+  toggleMute: () => void
+}) {
+  return (
+    <div className="fixed top-4 right-4 z-40">
+      {!on ? (
+        <button
+          onClick={enable}
+          className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 font-bold text-white"
+        >
+          🔊 Activer le son
+        </button>
+      ) : (
+        <button
+          onClick={toggleMute}
+          className="px-3 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-2xl"
+          title={muted ? 'Activer' : 'Couper'}
+        >
+          {muted ? '🔇' : '🔊'}
+        </button>
+      )}
+    </div>
+  )
+}
 
 // Vue TV : passive, lisible à distance. Énoncé + choix pendant la question
 // (le téléphone ne montre que les boutons), puis révélation, puis classement.
@@ -13,6 +48,19 @@ export function HostDisplayPage() {
   const joinUrl = s.pin ? `${window.location.origin}/join?pin=${s.pin}` : ''
   const remaining = useRemaining(s.questionStartedAt, s.currentQuestion?.timeLimit ?? 0)
   const lowTime = remaining > 0 && remaining <= 5
+
+  const phase =
+    s.status === 'ended' || s.leaderboardFinal
+      ? 'ended'
+      : s.showingLeaderboard
+        ? 'leaderboard'
+        : s.reveal
+          ? 'reveal'
+          : s.currentQuestion && s.questionStartedAt
+            ? 'question'
+            : 'lobby'
+
+  const sound = useHostSound(phase)
 
   if (s.error) {
     return (
@@ -29,24 +77,15 @@ export function HostDisplayPage() {
     )
   }
 
-  const phase =
-    s.status === 'ended' || s.leaderboardFinal
-      ? 'ended'
-      : s.showingLeaderboard
-        ? 'leaderboard'
-        : s.reveal
-          ? 'reveal'
-          : s.currentQuestion && s.questionStartedAt
-            ? 'question'
-            : 'lobby'
-
   const q = s.currentQuestion
   const total = s.totalCount || connected.length
+  const soundCtl = <SoundControl {...sound} />
 
   // ── Lobby (avant le démarrage) ───────────────────────────────
   if (phase === 'lobby') {
     return (
       <div className="min-h-screen bg-gray-950 text-white flex flex-col items-center justify-center p-10 gap-8">
+        {soundCtl}
         <h1 className="text-5xl font-black tracking-tight">LYA QUIZ</h1>
         <div className="bg-white p-5 rounded-3xl">
           <QrCode value={joinUrl} size={300} />
@@ -78,6 +117,7 @@ export function HostDisplayPage() {
   if (phase === 'leaderboard') {
     return (
       <div className="min-h-screen bg-gray-950 text-white flex flex-col items-center justify-center p-10 gap-8">
+        {soundCtl}
         <h1 className="text-5xl font-black">Classement</h1>
         <ol className="w-full max-w-3xl space-y-3">
           {s.leaderboard.slice(0, 5).map((sc) => {
@@ -104,6 +144,7 @@ export function HostDisplayPage() {
   if (phase === 'ended') {
     return (
       <div className="min-h-screen bg-gray-950 text-white flex flex-col items-center justify-center p-10 gap-8">
+        {soundCtl}
         <div className="text-7xl">🏆</div>
         <h1 className="text-6xl font-black">Classement final</h1>
         <ol className="w-full max-w-3xl space-y-3">
@@ -135,6 +176,7 @@ export function HostDisplayPage() {
   return (
     <div className="min-h-screen bg-gray-950 text-white flex flex-col p-10">
       <TimePressure active={phase === 'question' && lowTime} />
+      {soundCtl}
       <div className="flex items-center justify-between mb-6">
         <span className="text-2xl text-gray-400">
           Question {q!.index + 1} / {q!.total}
