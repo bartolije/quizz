@@ -11,6 +11,9 @@ packages/*/dist/
 *.sqlite
 *.sqlite3
 *.db
+*.db-wal
+*.db-shm
+data/
 
 # Secrets / env — never commit (public repo)
 .env
@@ -25,3 +28,4 @@ npm-debug.log*
 .DS_Store
 .idea/
 .vscode/
+.gstack/

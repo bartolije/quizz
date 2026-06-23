@@ -1,4 +1,5 @@
 import Fastify from 'fastify'
+import type { FastifyRequest, FastifyReply } from 'fastify'
 import fastifyStatic from '@fastify/static'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
@@ -15,6 +16,26 @@ import {
 import { handleDisconnect } from './handlers/disconnect.js'
 import { getAllSessions, createSession, getSessionById } from './state.js'
 import { getParticipantList } from './session-helpers.js'
+import {
+  seedIfEmpty,
+  listQuizzes,
+  getQuiz,
+  createQuiz,
+  replaceQuiz,
+  deleteQuiz,
+  type QuizInput,
+} from './quiz-repo.js'
+
+// Au démarrage : crée les tables (import de db via quiz-repo) + seed si DB vide.
+seedIfEmpty()
+
+// Mot de passe de l'éditeur admin (à définir dans Railway via ADMIN_PASSWORD).
+const ADMIN_PASSWORD = process.env['ADMIN_PASSWORD'] ?? 'lyaquiz'
+async function requireAdmin(req: FastifyRequest, reply: FastifyReply): Promise<void> {
+  if (req.headers['x-admin-password'] !== ADMIN_PASSWORD) {
+    await reply.code(401).send({ error: 'unauthorized' })
+  }
+}
 
 const app = Fastify({ logger: true })
 
@@ -66,11 +87,57 @@ io.on('connection', (socket) => {
   })
 })
 
-// Création d'une session (appelée par le host au chargement de /host/control)
-app.post('/api/sessions', async () => {
-  const session = createSession()
+// Création d'une session (host au chargement de /host/control, ou "Lancer" depuis
+// l'éditeur avec un quizId). Sans quizId → quiz par défaut.
+app.post<{ Body: { quizId?: string } }>('/api/sessions', async (req) => {
+  const session = createSession(req.body?.quizId)
   return { pin: session.pin, sessionId: session.id }
 })
+
+// ── Éditeur admin (protégé par mot de passe via header x-admin-password) ──
+app.post('/api/admin/check', { preHandler: requireAdmin }, async () => ({ ok: true }))
+
+app.get('/api/admin/quizzes', { preHandler: requireAdmin }, async () => listQuizzes())
+
+app.get<{ Params: { id: string } }>(
+  '/api/admin/quizzes/:id',
+  { preHandler: requireAdmin },
+  async (req, reply) => {
+    const quiz = getQuiz(req.params.id)
+    if (!quiz) {
+      reply.code(404)
+      return { error: 'not_found' }
+    }
+    return quiz
+  },
+)
+
+app.post<{ Body: QuizInput }>(
+  '/api/admin/quizzes',
+  { preHandler: requireAdmin },
+  async (req) => ({ id: createQuiz(req.body) }),
+)
+
+app.put<{ Params: { id: string }; Body: QuizInput }>(
+  '/api/admin/quizzes/:id',
+  { preHandler: requireAdmin },
+  async (req, reply) => {
+    if (!replaceQuiz(req.params.id, req.body)) {
+      reply.code(404)
+      return { error: 'not_found' }
+    }
+    return { ok: true }
+  },
+)
+
+app.delete<{ Params: { id: string } }>(
+  '/api/admin/quizzes/:id',
+  { preHandler: requireAdmin },
+  async (req) => {
+    deleteQuiz(req.params.id)
+    return { ok: true }
+  },
+)
 
 // Résolution d'une session par id — sert à /host/display ouvert via ?session=XXXX
 // (autre navigateur/machine, sans le PIN en localStorage). Bootstrap one-shot,

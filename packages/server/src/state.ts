@@ -1,7 +1,7 @@
 import { v4 as uuid } from 'uuid'
 import type { Quiz } from '@lya-quiz/shared'
 import { SESSION_TOKEN_TTL_MS } from '@lya-quiz/shared'
-import { SEED_QUIZ } from './seed-quiz.js'
+import { getDefaultQuiz, getQuiz } from './quiz-repo.js'
 
 export interface ParticipantState {
   id: string                // uuid stable, identifie le participant
@@ -49,7 +49,7 @@ export function generatePin(): string {
   return pin
 }
 
-export function createSession(): SessionState {
+export function createSession(quizId?: string): SessionState {
   const id = uuid()
   const pin = generatePin()
   const session: SessionState = {
@@ -63,7 +63,8 @@ export function createSession(): SessionState {
     questionStartedAt: null,
     answers: new Map(),
     questionTimer: null,
-    quiz: SEED_QUIZ,   // S4 : quiz de démo en mémoire (remplacé par la DB en S8)
+    // S8 : le quiz vient de la DB (quizId explicite, sinon le quiz par défaut).
+    quiz: quizId ? getQuiz(quizId) : getDefaultQuiz(),
   }
   sessions.set(id, session)
   pinIndex.set(pin, id)
