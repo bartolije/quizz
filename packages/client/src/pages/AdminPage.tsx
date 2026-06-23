@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { Quiz, Question, QuestionType } from '@lya-quiz/shared'
+import { QuestionImage } from '../components/QuestionImage'
 import {
   checkPw,
   setPw,
@@ -22,6 +23,7 @@ interface EQ {
   correctIndex: number // mcq
   freeAnswers: string // free, une réponse par ligne
   closestValue: string // closest
+  mediaUrl: string // image optionnelle (URL)
   timeLimit: number
 }
 interface EditDraft {
@@ -38,6 +40,7 @@ const newEQ = (timeLimit: number): EQ => ({
   correctIndex: 0,
   freeAnswers: '',
   closestValue: '',
+  mediaUrl: '',
   timeLimit,
 })
 
@@ -52,6 +55,7 @@ function fromQuestion(q: Question): EQ {
     freeAnswers:
       q.type === 'free' || q.type === 'ordering' ? q.correctAnswers.join('\n') : '',
     closestValue: q.type === 'closest' ? (q.correctAnswers[0] ?? '') : '',
+    mediaUrl: q.mediaUrl ?? '',
     timeLimit: q.timeLimit,
   }
 }
@@ -72,23 +76,24 @@ function toInput(d: EditDraft): { input: QuizInput; error: string | null } {
   for (let i = 0; i < d.questions.length; i++) {
     const q = d.questions[i]!
     const n = i + 1
+    const media = q.mediaUrl.trim() ? { mediaUrl: q.mediaUrl.trim() } : {}
     if (!q.text.trim()) return { input: null as never, error: `Question ${n} : l'énoncé est vide.` }
     if (q.type === 'mcq') {
       const choices = q.choices.map((c) => c.trim())
       if (choices.some((c) => !c)) return { input: null as never, error: `Question ${n} : les 4 choix doivent être remplis.` }
-      questions.push({ type: 'mcq', text: q.text.trim(), choices, correctAnswers: [choices[q.correctIndex] ?? choices[0]!], timeLimit: q.timeLimit })
+      questions.push({ type: 'mcq', text: q.text.trim(), choices, correctAnswers: [choices[q.correctIndex] ?? choices[0]!], timeLimit: q.timeLimit, ...media })
     } else if (q.type === 'free') {
       const answers = q.freeAnswers.split('\n').map((s) => s.trim()).filter(Boolean)
       if (answers.length === 0) return { input: null as never, error: `Question ${n} : ajoute au moins une bonne réponse.` }
-      questions.push({ type: 'free', text: q.text.trim(), correctAnswers: answers, timeLimit: q.timeLimit })
+      questions.push({ type: 'free', text: q.text.trim(), correctAnswers: answers, timeLimit: q.timeLimit, ...media })
     } else if (q.type === 'ordering') {
       const items = q.freeAnswers.split('\n').map((s) => s.trim()).filter(Boolean)
       if (items.length < 2) return { input: null as never, error: `Question ${n} : mets au moins 2 éléments à ordonner.` }
-      questions.push({ type: 'ordering', text: q.text.trim(), correctAnswers: items, timeLimit: q.timeLimit })
+      questions.push({ type: 'ordering', text: q.text.trim(), correctAnswers: items, timeLimit: q.timeLimit, ...media })
     } else {
       const v = q.closestValue.trim()
       if (v === '' || Number.isNaN(Number(v))) return { input: null as never, error: `Question ${n} : la bonne valeur doit être un nombre.` }
-      questions.push({ type: 'closest', text: q.text.trim(), correctAnswers: [v], timeLimit: q.timeLimit })
+      questions.push({ type: 'closest', text: q.text.trim(), correctAnswers: [v], timeLimit: q.timeLimit, ...media })
     }
   }
   return { input: { title: d.title.trim(), defaultTimeLimit: d.defaultTimeLimit, questions }, error: null }
@@ -315,6 +320,18 @@ export function AdminPage() {
                   className={`${input} w-full`}
                 />
               )}
+
+              <div className="space-y-1">
+                <input
+                  value={q.mediaUrl}
+                  onChange={(e) => patchQ(i, { mediaUrl: e.target.value })}
+                  placeholder="URL d'une image (optionnel, https://…)"
+                  className={`${input} w-full`}
+                />
+                {q.mediaUrl.trim() && (
+                  <QuestionImage key={q.mediaUrl} url={q.mediaUrl.trim()} className="max-h-32" />
+                )}
+              </div>
 
               <label className="flex items-center gap-2 text-sm text-gray-400">
                 Temps (s)

@@ -5,6 +5,7 @@ import { useQuizStore } from '../store/quiz-store'
 import { useRemaining } from '../hooks/useRemaining'
 import { choiceStyle } from '../mcq'
 import { TimePressure } from '../components/TimePressure'
+import { QuestionImage } from '../components/QuestionImage'
 
 // Vue participant pendant une question (mobile). Le rendu dépend du type :
 // - mcq      : boutons couleur (énoncé sur la TV)
@@ -84,6 +85,7 @@ export function QuestionPage() {
       ) : question.type === 'ordering' ? (
         <div className="flex-1 flex flex-col gap-3">
           <p className="text-lg font-bold text-center px-2">{question.text}</p>
+          <QuestionImage key={question.mediaUrl} url={question.mediaUrl} className="max-h-40 max-w-full" />
           <p className="text-center text-gray-500 text-sm mb-1">Remets dans le bon ordre :</p>
           <div className="flex-1 space-y-2">
             {order.map((item, i) => (
@@ -118,6 +120,7 @@ export function QuestionPage() {
         // free / closest : énoncé affiché + champ de saisie
         <div className="flex-1 flex flex-col justify-center gap-5">
           <p className="text-xl font-bold text-center px-2">{question.text}</p>
+          <QuestionImage key={question.mediaUrl} url={question.mediaUrl} className="max-h-48 max-w-full" />
           <input
             type={question.type === 'closest' ? 'number' : 'text'}
             inputMode={question.type === 'closest' ? 'numeric' : 'text'}

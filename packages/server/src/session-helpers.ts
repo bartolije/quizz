@@ -28,6 +28,7 @@ export function toPublicQuestion(
     text: q.text,
     type: q.type,
     ...(choices ? { choices } : {}),
+    ...(q.mediaUrl ? { mediaUrl: q.mediaUrl } : {}),
     timeLimit: q.timeLimit,
     index,
     total,

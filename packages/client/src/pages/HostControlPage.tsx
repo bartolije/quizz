@@ -5,6 +5,7 @@ import { useRemaining } from '../hooks/useRemaining'
 import { fetchReport } from '../host-session'
 import { QrCode } from '../components/QrCode'
 import { ReportView } from '../components/ReportView'
+import { QuestionImage } from '../components/QuestionImage'
 import { choiceStyle } from '../mcq'
 import { rankMovement, movementMark } from '../rank-movement'
 
@@ -110,6 +111,7 @@ export function HostControlPage() {
               )}
             </div>
             <h2 className="text-3xl font-bold">{q.text}</h2>
+            <QuestionImage key={q.mediaUrl} url={q.mediaUrl} className="max-h-40 max-w-full" />
 
             {q.type === 'mcq' ? (
               <div className="grid grid-cols-2 gap-3">

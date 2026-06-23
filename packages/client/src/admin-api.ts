@@ -23,6 +23,7 @@ export interface QuestionInput {
   choices?: string[]
   correctAnswers: string[]
   timeLimit: number
+  mediaUrl?: string
 }
 export interface QuizInput {
   title: string

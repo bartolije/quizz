@@ -25,6 +25,7 @@ export interface QuestionPublic {
   text: string
   type: QuestionType
   choices?: string[]   // 'mcq' : les choix · 'ordering' : les items MÉLANGÉS à réordonner
+  mediaUrl?: string    // image optionnelle (URL publique https)
   timeLimit: number    // en secondes
   index: number        // position dans le quiz (0-based)
   total: number        // nombre total de questions

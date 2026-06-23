@@ -5,6 +5,7 @@ import { QrCode } from '../components/QrCode'
 import { choiceStyle } from '../mcq'
 import { rankMovement, movementMark } from '../rank-movement'
 import { TimePressure } from '../components/TimePressure'
+import { QuestionImage } from '../components/QuestionImage'
 
 // Contrôle audio (fixe, coin haut-droit). Visible sur tous les écrans TV.
 function SoundControl({
@@ -194,9 +195,10 @@ export function HostDisplayPage() {
         )}
       </div>
 
-      <h2 className="text-5xl font-black text-center flex-1 flex items-center justify-center px-4">
-        {q!.text}
-      </h2>
+      <div className="flex-1 flex flex-col items-center justify-center gap-5 px-4 min-h-0">
+        <QuestionImage key={q!.mediaUrl} url={q!.mediaUrl} className="max-h-[32vh] max-w-full" />
+        <h2 className="text-5xl font-black text-center">{q!.text}</h2>
+      </div>
 
       {q!.type === 'mcq' ? (
         <div className="grid grid-cols-2 gap-5">
