@@ -57,14 +57,20 @@ npm run dev:client # http://localhost:5173
   pour résoudre une session depuis `/host/display?session=XXXX`.
 - **S4 ✅** — boucle de jeu MCQ : questions, timer synchronisé, `submit_answer`,
   scoring vitesse, fermeture auto (timer ou tous répondu), révélation + distribution.
-- S5 à S8 — scoring/leaderboard, saisie libre & numérique, robustesse/reconnexion,
-  puis DB (Drizzle + better-sqlite3) + éditeur de quiz. Briefs dans `rules/`.
-- **S9** — déploiement : jeu sur **Vercel**, serveur sur **Railway**. Tuto pas à pas
-  dans [rules/S9.md](rules/S9.md). Config : `vercel.json` + `railway.json`.
-  En prod, le client lit l'URL du serveur via `VITE_SERVER_URL` (cf. `packages/client/.env.example`).
-- **S10** — observabilité : logs serveur structurés (lisibles dans Railway),
-  robustesse des handlers, et remontée des erreurs des téléphones au serveur.
-  Brief dans [rules/S10.md](rules/S10.md). Pour déboguer et itérer sur les retours live.
+- **S5 ✅** — scoring cumulé + leaderboard (rang/ex æquo, delta, mouvements ↑/↓),
+  classement intermédiaire + podium final.
+- **S6 ✅** — saisie libre (normalisation + Levenshtein) & numérique « au plus
+  proche » (scoring dégressif). Les 3 types de questions sont jouables.
+- **S7 ✅** — robustesse : reconnexion en pleine question (`session_restored`
+  restaure question + temps restant + réponse), `host_end_quiz`, reprise host.
+- **S8 ✅** — persistance SQLite (Drizzle) + éditeur `/admin` (CRUD quiz des 3
+  types, protégé par `ADMIN_PASSWORD`). `POST /api/sessions { quizId }`.
+- **S9 ✅** — déploiement **single-service Railway** : le serveur Fastify sert
+  aussi le build client (`@fastify/static` + fallback SPA), l'API et le WebSocket
+  sur une seule URL. SQLite sur Volume Railway. Tuto : [rules/S9.md](rules/S9.md).
+- **S10 ✅** — observabilité : logs serveur structurés par événement (pino, lus
+  dans Railway), robustesse des handlers, remontée des erreurs client
+  (`POST /api/client-log` + ErrorBoundary). Brief : [rules/S10.md](rules/S10.md).
 
 ### Routes client
 
@@ -74,6 +80,7 @@ npm run dev:client # http://localhost:5173
 | `/lobby`         | Lobby participant (temps réel)                       |
 | `/host/control`  | Écran de contrôle host (Mac)                         |
 | `/host/display`  | Écran TV (passif, lisible à distance)                |
+| `/admin`         | Éditeur de quiz (protégé par mot de passe)           |
 
 ### Flow temps réel (S2)
 
