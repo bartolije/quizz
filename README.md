@@ -55,8 +55,13 @@ npm run dev:client # http://localhost:5173
   → `host_start_quiz` → broadcast `session_status_changed` (statut `running`)
   qui synchronise les deux vues host en temps réel. `GET /api/sessions/:id`
   pour résoudre une session depuis `/host/display?session=XXXX`.
-- S4 — questions, timer, affichage des réponses (toujours en mémoire).
-- S8 — DB (Drizzle + better-sqlite3), éditeur de quiz.
+- **S4 ✅** — boucle de jeu MCQ : questions, timer synchronisé, `submit_answer`,
+  scoring vitesse, fermeture auto (timer ou tous répondu), révélation + distribution.
+- S5 à S8 — scoring/leaderboard, saisie libre & numérique, robustesse/reconnexion,
+  puis DB (Drizzle + better-sqlite3) + éditeur de quiz. Briefs dans `rules/`.
+- **S9** — déploiement : jeu sur **Vercel**, serveur sur **Railway**. Tuto pas à pas
+  dans [rules/S9.md](rules/S9.md). Config : `vercel.json` + `railway.json`.
+  En prod, le client lit l'URL du serveur via `VITE_SERVER_URL` (cf. `packages/client/.env.example`).
 
 ### Routes client
 

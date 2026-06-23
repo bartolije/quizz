@@ -1,13 +1,11 @@
 import { io, type Socket } from 'socket.io-client'
 import type { ClientToServerEvents, ServerToClientEvents } from '@lya-quiz/shared'
 import { SOCKET_CLIENT_CONFIG, EVENTS } from '@lya-quiz/shared'
+import { SERVER_URL } from './config'
 
-// Connexion same-origin par défaut : le socket tape sur l'origine de la page
-// (http://<ip-du-mac>:5173) et le proxy Vite (/socket.io) route vers le serveur
-// :3001. Ça permet de tester depuis un téléphone sans hardcoder l'IP du Mac.
-// VITE_SERVER_URL force une URL absolue si besoin (prod, domaine séparé…).
-const SERVER_URL = import.meta.env['VITE_SERVER_URL'] as string | undefined
-
+// Connexion same-origin en dev (SERVER_URL vide → proxy Vite /socket.io vers
+// :3001, pratique pour tester depuis un téléphone sans hardcoder l'IP du Mac).
+// En prod, SERVER_URL est l'URL absolue du serveur Railway (cf. config.ts).
 const options = {
   ...SOCKET_CLIENT_CONFIG,
   autoConnect: false,   // connexion manuelle au moment du join
