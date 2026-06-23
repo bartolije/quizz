@@ -4,7 +4,11 @@ import type { ClientToServerEvents, ServerToClientEvents } from '@lya-quiz/share
 import { SOCKET_SERVER_CONFIG, EVENTS } from '@lya-quiz/shared'
 import { handleJoinSession, handleRejoinSession } from './handlers/join.js'
 import { handleHostJoin, handleHostStartQuiz } from './handlers/host.js'
-import { handleNextQuestion, handleSubmitAnswer } from './handlers/game.js'
+import {
+  handleNextQuestion,
+  handleSubmitAnswer,
+  handleShowLeaderboard,
+} from './handlers/game.js'
 import { handleDisconnect } from './handlers/disconnect.js'
 import { getAllSessions, createSession, getSessionById } from './state.js'
 import { getParticipantList } from './session-helpers.js'
@@ -39,6 +43,10 @@ io.on('connection', (socket) => {
 
   socket.on(EVENTS.HOST_NEXT_QUESTION, () => {
     handleNextQuestion(socket, io)
+  })
+
+  socket.on(EVENTS.HOST_SHOW_LEADERBOARD, () => {
+    handleShowLeaderboard(socket, io)
   })
 
   socket.on(EVENTS.SUBMIT_ANSWER, (payload) => {

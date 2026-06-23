@@ -35,9 +35,18 @@ interface HostSessionView {
   answeredCount: number
   totalCount: number
   reveal: RevealState | null
+  // Classement (S5)
+  leaderboard: ParticipantScore[]
+  prevRanks: Record<string, number>
+  showingLeaderboard: boolean
+  leaderboardFinal: boolean
   start: () => void
   next: () => void
+  showLeaderboard: () => void
 }
+
+const ranksOf = (lb: ParticipantScore[]): Record<string, number> =>
+  Object.fromEntries(lb.map((s) => [s.participantId, s.rank]))
 
 // Types de payload dérivés du contrat → garantit l'alignement avec events.ts
 type JoinedPayload = Parameters<ServerToClientEvents['session_joined']>[0]
@@ -47,6 +56,7 @@ type StatusPayload = Parameters<ServerToClientEvents['session_status_changed']>[
 type QStartedPayload = Parameters<ServerToClientEvents['question_started']>[0]
 type AckPayload = Parameters<ServerToClientEvents['answer_received']>[0]
 type QEndedPayload = Parameters<ServerToClientEvents['question_ended']>[0]
+type LbPayload = Parameters<ServerToClientEvents['leaderboard_update']>[0]
 
 function upsert(list: Participant[], p: Participant): Participant[] {
   return list.some((x) => x.id === p.id)
@@ -72,6 +82,13 @@ export function useHostSession(mode: HostMode): HostSessionView {
   const [answeredCount, setAnsweredCount] = useState(0)
   const [totalCount, setTotalCount] = useState(0)
   const [reveal, setReveal] = useState<RevealState | null>(null)
+
+  // Classement (S5)
+  const [leaderboard, setLeaderboard] = useState<ParticipantScore[]>([])
+  const [prevRanks, setPrevRanks] = useState<Record<string, number>>({})
+  const [showingLeaderboard, setShowingLeaderboard] = useState(false)
+  const [leaderboardFinal, setLeaderboardFinal] = useState(false)
+  const leaderboardRef = useRef<ParticipantScore[]>([])
 
   const resolvedRef = useRef(false)
 
@@ -145,6 +162,8 @@ export function useHostSession(mode: HostMode): HostSessionView {
       setReveal(null)
       setAnsweredCount(0)
       setTotalCount(0)
+      setShowingLeaderboard(false)
+      setLeaderboardFinal(false)
     }
     const onAck = (p: AckPayload) => {
       setAnsweredCount(p.answeredCount)
@@ -158,6 +177,13 @@ export function useHostSession(mode: HostMode): HostSessionView {
       })
       setQuestionStartedAt(null) // stoppe le timer ; on garde currentQuestion pour la révélation
     }
+    const onLeaderboard = (p: LbPayload) => {
+      setPrevRanks(ranksOf(leaderboardRef.current)) // rangs d'avant cette MAJ
+      leaderboardRef.current = p.scores
+      setLeaderboard(p.scores)
+      setShowingLeaderboard(!p.final)
+      setLeaderboardFinal(p.final)
+    }
 
     socket.on(EVENTS.SESSION_JOINED, onJoined)
     socket.on(EVENTS.PARTICIPANT_JOINED, onJoin)
@@ -166,6 +192,7 @@ export function useHostSession(mode: HostMode): HostSessionView {
     socket.on(EVENTS.QUESTION_STARTED, onQuestion)
     socket.on(EVENTS.ANSWER_RECEIVED, onAck)
     socket.on(EVENTS.QUESTION_ENDED, onEnded)
+    socket.on(EVENTS.LEADERBOARD_UPDATE, onLeaderboard)
 
     const join = () => socket.emit(EVENTS.HOST_JOIN, { pin })
     if (!socket.connected) socket.connect()
@@ -180,12 +207,14 @@ export function useHostSession(mode: HostMode): HostSessionView {
       socket.off(EVENTS.QUESTION_STARTED, onQuestion)
       socket.off(EVENTS.ANSWER_RECEIVED, onAck)
       socket.off(EVENTS.QUESTION_ENDED, onEnded)
+      socket.off(EVENTS.LEADERBOARD_UPDATE, onLeaderboard)
       socket.off('connect', join)
     }
   }, [pin])
 
   const start = () => socket.emit(EVENTS.HOST_START_QUIZ, {})
   const next = () => socket.emit(EVENTS.HOST_NEXT_QUESTION, {})
+  const showLeaderboard = () => socket.emit(EVENTS.HOST_SHOW_LEADERBOARD, {})
 
   return {
     pin,
@@ -198,7 +227,12 @@ export function useHostSession(mode: HostMode): HostSessionView {
     answeredCount,
     totalCount,
     reveal,
+    leaderboard,
+    prevRanks,
+    showingLeaderboard,
+    leaderboardFinal,
     start,
     next,
+    showLeaderboard,
   }
 }

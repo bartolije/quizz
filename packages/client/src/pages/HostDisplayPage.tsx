@@ -2,9 +2,10 @@ import { useHostSession } from '../hooks/useHostSession'
 import { useRemaining } from '../hooks/useRemaining'
 import { QrCode } from '../components/QrCode'
 import { choiceStyle } from '../mcq'
+import { rankMovement, movementMark } from '../rank-movement'
 
-// Vue TV : passive, lisible à distance. Affiche l'énoncé + les choix (le
-// téléphone ne montre que les boutons), le timer, puis la révélation.
+// Vue TV : passive, lisible à distance. Énoncé + choix pendant la question
+// (le téléphone ne montre que les boutons), puis révélation, puis classement.
 export function HostDisplayPage() {
   const s = useHostSession('display')
   const connected = s.participants.filter((p) => p.connected)
@@ -27,13 +28,15 @@ export function HostDisplayPage() {
   }
 
   const phase =
-    s.status === 'ended'
+    s.status === 'ended' || s.leaderboardFinal
       ? 'ended'
-      : s.reveal
-        ? 'reveal'
-        : s.currentQuestion && s.questionStartedAt
-          ? 'question'
-          : 'lobby'
+      : s.showingLeaderboard
+        ? 'leaderboard'
+        : s.reveal
+          ? 'reveal'
+          : s.currentQuestion && s.questionStartedAt
+            ? 'question'
+            : 'lobby'
 
   const q = s.currentQuestion
   const total = s.totalCount || connected.length
@@ -69,15 +72,40 @@ export function HostDisplayPage() {
     )
   }
 
-  // ── Fin de quiz ──────────────────────────────────────────────
+  // ── Classement intermédiaire ─────────────────────────────────
+  if (phase === 'leaderboard') {
+    return (
+      <div className="min-h-screen bg-gray-950 text-white flex flex-col items-center justify-center p-10 gap-8">
+        <h1 className="text-5xl font-black">Classement</h1>
+        <ol className="w-full max-w-3xl space-y-3">
+          {s.leaderboard.slice(0, 5).map((sc) => {
+            const mv = movementMark(rankMovement(s.prevRanks, sc.participantId, sc.rank))
+            return (
+              <li
+                key={sc.participantId}
+                className="flex items-center gap-5 px-8 py-5 rounded-2xl bg-gray-900 text-3xl"
+              >
+                <span className="w-12 text-center font-black text-indigo-400">{sc.rank}</span>
+                <span className={`w-8 ${mv.className}`}>{mv.icon}</span>
+                <span className="font-bold flex-1">{sc.pseudo}</span>
+                {sc.delta > 0 && <span className="text-emerald-400 text-2xl">+{sc.delta}</span>}
+                <span className="font-mono font-black tabular-nums">{sc.score}</span>
+              </li>
+            )
+          })}
+        </ol>
+      </div>
+    )
+  }
+
+  // ── Podium final ─────────────────────────────────────────────
   if (phase === 'ended') {
-    const scores = s.reveal?.scores ?? []
     return (
       <div className="min-h-screen bg-gray-950 text-white flex flex-col items-center justify-center p-10 gap-8">
         <div className="text-7xl">🏆</div>
         <h1 className="text-6xl font-black">Classement final</h1>
         <ol className="w-full max-w-3xl space-y-3">
-          {scores.slice(0, 5).map((sc) => (
+          {s.leaderboard.slice(0, 5).map((sc) => (
             <li
               key={sc.participantId}
               className="flex items-center justify-between px-8 py-5 rounded-2xl bg-gray-900 text-3xl"
@@ -147,7 +175,7 @@ export function HostDisplayPage() {
       <p className="text-center text-2xl text-gray-400 mt-6">
         {phase === 'question'
           ? `${s.answeredCount} / ${total} ont répondu`
-          : 'En attente de la prochaine question…'}
+          : 'En attente du classement…'}
       </p>
     </div>
   )

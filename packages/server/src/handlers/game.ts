@@ -75,6 +75,19 @@ export function handleNextQuestion(socket: QuizSocket, io: QuizServer): void {
 // PARTICIPANT : soumettre une réponse
 // ─────────────────────────────────────────────────────────────
 
+// ─────────────────────────────────────────────────────────────
+// HOST : afficher le classement intermédiaire (entre deux questions)
+// ─────────────────────────────────────────────────────────────
+
+export function handleShowLeaderboard(socket: QuizSocket, io: QuizServer): void {
+  const session = findSessionByHostSocket(socket.id)
+  if (!session) return
+  io.to(session.id).emit(EVENTS.LEADERBOARD_UPDATE, {
+    scores: getLeaderboard(session),
+    final: false,
+  })
+}
+
 export function handleSubmitAnswer(
   socket: QuizSocket,
   payload: { answer: string | number },

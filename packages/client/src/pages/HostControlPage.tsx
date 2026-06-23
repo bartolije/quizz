@@ -2,6 +2,7 @@ import { useHostSession } from '../hooks/useHostSession'
 import { useRemaining } from '../hooks/useRemaining'
 import { QrCode } from '../components/QrCode'
 import { choiceStyle } from '../mcq'
+import { rankMovement, movementMark } from '../rank-movement'
 
 export function HostControlPage() {
   const s = useHostSession('control')
@@ -25,18 +26,21 @@ export function HostControlPage() {
   }
 
   const phase =
-    s.status === 'ended'
+    s.status === 'ended' || s.leaderboardFinal
       ? 'ended'
-      : s.reveal
-        ? 'reveal'
-        : s.currentQuestion && s.questionStartedAt
-          ? 'question'
-          : s.status === 'running'
-            ? 'between'
-            : 'waiting'
+      : s.showingLeaderboard
+        ? 'leaderboard'
+        : s.reveal
+          ? 'reveal'
+          : s.currentQuestion && s.questionStartedAt
+            ? 'question'
+            : s.status === 'running'
+              ? 'between'
+              : 'waiting'
 
   const q = s.currentQuestion
   const total = s.totalCount || connected.length
+  const isLastQuestion = !!q && q.index + 1 >= q.total
 
   return (
     <div className="min-h-screen bg-gray-950 text-white flex flex-col">
@@ -134,12 +138,35 @@ export function HostControlPage() {
           </div>
         )}
 
+        {phase === 'leaderboard' && (
+          <div className="flex-1 flex flex-col gap-4">
+            <h2 className="text-2xl font-bold">Classement</h2>
+            <ol className="space-y-2">
+              {s.leaderboard.slice(0, 8).map((sc) => {
+                const mv = movementMark(rankMovement(s.prevRanks, sc.participantId, sc.rank))
+                return (
+                  <li
+                    key={sc.participantId}
+                    className="flex items-center gap-4 px-4 py-3 rounded-xl bg-gray-900"
+                  >
+                    <span className="w-8 text-center font-black text-indigo-400">{sc.rank}</span>
+                    {mv.icon && <span className={mv.className}>{mv.icon}</span>}
+                    <span className="font-medium flex-1">{sc.pseudo}</span>
+                    {sc.delta > 0 && <span className="text-emerald-400 text-sm">+{sc.delta}</span>}
+                    <span className="font-mono font-bold tabular-nums">{sc.score}</span>
+                  </li>
+                )
+              })}
+            </ol>
+          </div>
+        )}
+
         {phase === 'ended' && (
           <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center">
             <div className="text-6xl">🏁</div>
             <h2 className="text-3xl font-black">Quiz terminé</h2>
             <ol className="w-full max-w-md space-y-2 mt-2">
-              {(s.reveal?.scores ?? []).slice(0, 5).map((sc) => (
+              {s.leaderboard.slice(0, 5).map((sc) => (
                 <li
                   key={sc.participantId}
                   className="flex items-center justify-between px-4 py-3 rounded-xl bg-gray-900"
@@ -183,10 +210,18 @@ export function HostControlPage() {
         )}
         {phase === 'reveal' && (
           <button
+            onClick={s.showLeaderboard}
+            className="px-10 py-4 rounded-2xl bg-indigo-600 hover:bg-indigo-500 font-bold text-lg transition-colors"
+          >
+            Voir le classement →
+          </button>
+        )}
+        {phase === 'leaderboard' && (
+          <button
             onClick={s.next}
             className="px-10 py-4 rounded-2xl bg-indigo-600 hover:bg-indigo-500 font-bold text-lg transition-colors"
           >
-            {q && q.index + 1 >= q.total ? 'Terminer le quiz →' : 'Question suivante →'}
+            {isLastQuestion ? 'Voir le podium →' : 'Question suivante →'}
           </button>
         )}
       </footer>

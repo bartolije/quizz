@@ -3,6 +3,7 @@ import { useParticipantEvents } from '../hooks/useParticipantEvents'
 import { LobbyPage } from './LobbyPage'
 import { QuestionPage } from './QuestionPage'
 import { AnswerPage } from './AnswerPage'
+import { LeaderboardPage } from './LeaderboardPage'
 import { EndedPage } from './EndedPage'
 
 // Shell participant monté sur /lobby : branche les events temps réel et bascule
@@ -16,6 +17,8 @@ export function ParticipantApp() {
       return <QuestionPage />
     case 'answer':
       return <AnswerPage />
+    case 'leaderboard':
+      return <LeaderboardPage />
     case 'ended':
       return <EndedPage />
     default:

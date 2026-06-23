@@ -41,6 +41,7 @@ interface QuizStore {
   hasAnswered: boolean
   lastResult: LastResult | null
   leaderboard: ParticipantScore[]
+  prevRanks: Record<string, number>   // rangs au classement précédent (pour les flèches ↑/↓)
 
   // Actions
   setJoined: (params: {
@@ -55,11 +56,14 @@ interface QuizStore {
   onQuestionStarted: (q: QuestionPublic) => void
   markAnswered: () => void
   onQuestionEnded: (payload: QuestionEndedPayload) => void
+  onLeaderboard: (scores: ParticipantScore[], final: boolean) => void
   onQuizEnded: () => void
   setView: (view: AppView) => void
-  setLeaderboard: (scores: ParticipantScore[]) => void
   reset: () => void
 }
+
+const ranksOf = (lb: ParticipantScore[]): Record<string, number> =>
+  Object.fromEntries(lb.map((s) => [s.participantId, s.rank]))
 
 const initialState = {
   myId: null,
@@ -74,6 +78,7 @@ const initialState = {
   hasAnswered: false,
   lastResult: null,
   leaderboard: [],
+  prevRanks: {},
 } satisfies Partial<QuizStore>
 
 export const useQuizStore = create<QuizStore>()((set) => ({
@@ -114,7 +119,6 @@ export const useQuizStore = create<QuizStore>()((set) => ({
       currentView: 'answer',
       questionStartedAt: null,
       myScore: payload.myScore,
-      leaderboard: payload.scores,
       lastResult: {
         correct:
           payload.myAnswer !== null &&
@@ -126,9 +130,17 @@ export const useQuizStore = create<QuizStore>()((set) => ({
       },
     }),
 
+  // leaderboard_update : final=false → écran classement intermédiaire,
+  // final=true → podium de fin. prevRanks = rangs du classement précédent.
+  onLeaderboard: (scores, final) =>
+    set((state) => ({
+      leaderboard: scores,
+      prevRanks: ranksOf(state.leaderboard),
+      currentView: final ? 'ended' : 'leaderboard',
+    })),
+
   onQuizEnded: () => set({ currentView: 'ended', questionStartedAt: null }),
 
   setView: (currentView) => set({ currentView }),
-  setLeaderboard: (leaderboard) => set({ leaderboard }),
   reset: () => set(initialState),
 }))

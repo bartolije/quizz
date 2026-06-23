@@ -36,16 +36,28 @@ export function getParticipantList(session: SessionState): Participant[] {
 }
 
 export function getLeaderboard(session: SessionState): ParticipantScore[] {
-  const sorted = [...session.participants.values()]
-    .sort((a, b) => b.score - a.score)
+  // Tri par score décroissant ; à score égal, ordre stable par pseudo (affichage
+  // déterministe). Rang "standard competition" : les ex æquo partagent le rang,
+  // le suivant saute (ex. 1, 1, 3).
+  const sorted = [...session.participants.values()].sort(
+    (a, b) => b.score - a.score || a.pseudo.localeCompare(b.pseudo),
+  )
 
-  return sorted.map((p, index) => ({
-    participantId: p.id,
-    pseudo: p.pseudo,
-    score: p.score,
-    delta: p.lastDelta,   // points gagnés à la dernière question (ex æquo/rang affinés en S5)
-    rank: index + 1,
-  }))
+  let rank = 0
+  let prevScore: number | null = null
+  return sorted.map((p, index) => {
+    if (prevScore === null || p.score !== prevScore) {
+      rank = index + 1 // saut de rang après des ex æquo
+      prevScore = p.score
+    }
+    return {
+      participantId: p.id,
+      pseudo: p.pseudo,
+      score: p.score,
+      delta: p.lastDelta, // points gagnés à la dernière question fermée
+      rank,
+    }
+  })
 }
 
 export function isPseudoTaken(session: SessionState, pseudo: string): boolean {

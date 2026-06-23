@@ -39,6 +39,9 @@ export interface ClientToServerEvents {
   // HOST ONLY — lancer le quiz (depuis l'écran waiting)
   host_start_quiz: (payload: Record<string, never>) => void
 
+  // HOST ONLY — afficher le classement intermédiaire (entre deux questions)
+  host_show_leaderboard: (payload: Record<string, never>) => void
+
   // HOST ONLY — terminer le quiz manuellement
   host_end_quiz: (payload: Record<string, never>) => void
 
@@ -139,10 +142,11 @@ export const EVENTS = {
   JOIN_SESSION:       'join_session',
   REJOIN_SESSION:     'rejoin_session',
   SUBMIT_ANSWER:      'submit_answer',
-  HOST_NEXT_QUESTION: 'host_next_question',
-  HOST_START_QUIZ:    'host_start_quiz',
-  HOST_END_QUIZ:      'host_end_quiz',
-  HOST_JOIN:          'host_join',
+  HOST_NEXT_QUESTION:    'host_next_question',
+  HOST_START_QUIZ:       'host_start_quiz',
+  HOST_SHOW_LEADERBOARD: 'host_show_leaderboard',
+  HOST_END_QUIZ:         'host_end_quiz',
+  HOST_JOIN:             'host_join',
 
   // Serveur → Client
   SESSION_JOINED:         'session_joined',
