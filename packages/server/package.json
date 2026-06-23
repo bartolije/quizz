@@ -10,6 +10,7 @@
     "start": "node dist/index.js"
   },
   "dependencies": {
+    "@fastify/static": "^7.0.4",
     "@lya-quiz/shared": "*",
     "fastify": "^4.26.0",
     "socket.io": "^4.7.0",

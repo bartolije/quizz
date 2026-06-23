@@ -1,4 +1,7 @@
 import Fastify from 'fastify'
+import fastifyStatic from '@fastify/static'
+import { fileURLToPath } from 'node:url'
+import { dirname, join } from 'node:path'
 import { Server } from 'socket.io'
 import type { ClientToServerEvents, ServerToClientEvents } from '@lya-quiz/shared'
 import { SOCKET_SERVER_CONFIG, EVENTS } from '@lya-quiz/shared'
@@ -88,8 +91,22 @@ app.get<{ Params: { id: string } }>('/api/sessions/:id', async (req, reply) => {
 
 app.get('/health', async () => ({ status: 'ok', sessions: getAllSessions().length }))
 
-// En prod : servir le build client React
-// app.register(import('@fastify/static'), { root: '../client/dist', prefix: '/' })
+// Déploiement single-service : Fastify sert aussi le build client React.
+// __dirname = packages/server/dist → le build client est à ../../client/dist
+// (résolu depuis l'emplacement du fichier, indépendant du cwd de lancement).
+const clientDist = join(dirname(fileURLToPath(import.meta.url)), '../../client/dist')
+void app.register(fastifyStatic, { root: clientDist, wildcard: false })
+
+// SPA : toute route GET non-API/non-socket renvoie index.html
+// (react-router gère le routing /host/control, /join… côté client au refresh).
+app.setNotFoundHandler((req, reply) => {
+  const url = req.raw.url ?? ''
+  if (req.method !== 'GET' || url.startsWith('/api') || url.startsWith('/socket.io')) {
+    void reply.code(404).send({ error: 'not_found' })
+    return
+  }
+  void reply.sendFile('index.html')
+})
 
 const PORT = Number(process.env['PORT'] ?? 3001)
 app.listen({ port: PORT, host: '0.0.0.0' }, (err, address) => {
