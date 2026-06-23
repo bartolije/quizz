@@ -235,12 +235,21 @@ export function HostControlPage() {
           </button>
         )}
         {phase === 'reveal' && (
-          <button
-            onClick={s.showLeaderboard}
-            className="px-10 py-4 rounded-2xl bg-indigo-600 hover:bg-indigo-500 font-bold text-lg transition-colors"
-          >
-            Voir le classement →
-          </button>
+          <>
+            {/* Classement = optionnel (slide à la demande), pas imposé à chaque question */}
+            <button
+              onClick={s.showLeaderboard}
+              className="px-6 py-4 rounded-2xl bg-gray-800 hover:bg-gray-700 font-bold text-lg transition-colors"
+            >
+              Afficher le classement
+            </button>
+            <button
+              onClick={s.next}
+              className="px-10 py-4 rounded-2xl bg-indigo-600 hover:bg-indigo-500 font-bold text-lg transition-colors"
+            >
+              {isLastQuestion ? 'Voir le podium →' : 'Question suivante →'}
+            </button>
+          </>
         )}
         {phase === 'leaderboard' && (
           <button
