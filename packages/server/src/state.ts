@@ -1,5 +1,7 @@
 import { v4 as uuid } from 'uuid'
+import type { Quiz } from '@lya-quiz/shared'
 import { SESSION_TOKEN_TTL_MS } from '@lya-quiz/shared'
+import { SEED_QUIZ } from './seed-quiz.js'
 
 export interface ParticipantState {
   id: string                // uuid stable, identifie le participant
@@ -7,8 +9,15 @@ export interface ParticipantState {
   socketId: string          // socket.id courant, change à chaque reconnexion
   sessionToken: string      // uuid stable, stocké dans localStorage client
   connected: boolean
-  score: number
+  score: number             // score cumulé
+  lastDelta: number         // points gagnés à la dernière question fermée
   disconnectedAt?: number   // timestamp, pour cleanup après TTL
+}
+
+// Réponse en cours d'un participant à la question ouverte
+export interface PendingAnswer {
+  value: string | number
+  submittedAt: number       // timestamp serveur
 }
 
 export interface SessionState {
@@ -18,9 +27,11 @@ export interface SessionState {
   participants: Map<string, ParticipantState>    // clé = participantId
   tokenIndex: Map<string, string>                // sessionToken → participantId
   hostSocketIds: Set<string>                     // plusieurs onglets host possibles
-  currentQuestionIndex: number
-  questionStartedAt: number | null
-  quiz: null   // sera rempli en S3 quand on branche la DB
+  currentQuestionIndex: number                   // -1 = quiz pas encore démarré
+  questionStartedAt: number | null               // null = aucune question ouverte
+  answers: Map<string, PendingAnswer>            // réponses de la question courante (clé = participantId)
+  questionTimer: ReturnType<typeof setTimeout> | null
+  quiz: Quiz | null   // seedé en mémoire en S4, viendra de la DB en S8
 }
 
 // Toutes les sessions actives en mémoire
@@ -48,9 +59,11 @@ export function createSession(): SessionState {
     participants: new Map(),
     tokenIndex: new Map(),
     hostSocketIds: new Set(),
-    currentQuestionIndex: 0,
+    currentQuestionIndex: -1,
     questionStartedAt: null,
-    quiz: null,
+    answers: new Map(),
+    questionTimer: null,
+    quiz: SEED_QUIZ,   // S4 : quiz de démo en mémoire (remplacé par la DB en S8)
   }
   sessions.set(id, session)
   pinIndex.set(pin, id)

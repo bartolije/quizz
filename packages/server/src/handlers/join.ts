@@ -58,6 +58,7 @@ export function handleJoinSession(
     sessionToken: newToken,
     connected: true,
     score: 0,
+    lastDelta: 0,
   }
 
   session.participants.set(participant.id, participant)

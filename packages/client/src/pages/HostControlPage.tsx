@@ -1,31 +1,22 @@
-import { useState } from 'react'
-import { EVENTS } from '@lya-quiz/shared'
-import { socket } from '../socket'
 import { useHostSession } from '../hooks/useHostSession'
+import { useRemaining } from '../hooks/useRemaining'
 import { QrCode } from '../components/QrCode'
+import { choiceStyle } from '../mcq'
 
 export function HostControlPage() {
-  const { pin, participants, status, error } = useHostSession('control')
-  const [started, setStarted] = useState(false)
+  const s = useHostSession('control')
+  const connected = s.participants.filter((p) => p.connected)
+  const joinUrl = s.pin ? `${window.location.origin}/join?pin=${s.pin}` : ''
+  const remaining = useRemaining(s.questionStartedAt, s.currentQuestion?.timeLimit ?? 0)
 
-  const connected = participants.filter((p) => p.connected)
-  const joinUrl = pin ? `${window.location.origin}/join?pin=${pin}` : ''
-  const running = started || status === 'running'
-
-  function startQuiz() {
-    socket.emit(EVENTS.HOST_START_QUIZ, {})
-    setStarted(true)
-  }
-
-  if (error) {
+  if (s.error) {
     return (
       <div className="min-h-screen bg-gray-950 text-white flex items-center justify-center p-8 text-center text-xl">
-        {error}
+        {s.error}
       </div>
     )
   }
-
-  if (!pin) {
+  if (!s.pin) {
     return (
       <div className="min-h-screen bg-gray-950 text-gray-400 flex items-center justify-center">
         Création de la session…
@@ -33,69 +24,171 @@ export function HostControlPage() {
     )
   }
 
+  const phase =
+    s.status === 'ended'
+      ? 'ended'
+      : s.reveal
+        ? 'reveal'
+        : s.currentQuestion && s.questionStartedAt
+          ? 'question'
+          : s.status === 'running'
+            ? 'between'
+            : 'waiting'
+
+  const q = s.currentQuestion
+  const total = s.totalCount || connected.length
+
   return (
     <div className="min-h-screen bg-gray-950 text-white flex flex-col">
       <header className="flex items-center justify-between px-8 py-5 border-b border-gray-800">
         <h1 className="text-2xl font-bold">LYA QUIZ</h1>
         <p className="text-gray-400">
           Session ·{' '}
-          <span className="text-white font-mono font-bold tracking-widest">{pin}</span>
+          <span className="text-white font-mono font-bold tracking-widest">{s.pin}</span>
+          {' · '}
+          <span className="text-indigo-400 font-bold">{connected.length}</span> participant
+          {connected.length > 1 ? 's' : ''}
         </p>
       </header>
 
-      <div className="flex-1 grid md:grid-cols-2 gap-8 p-8">
-        {/* Colonne gauche : QR + PIN */}
-        <section className="flex flex-col items-center justify-center gap-6 bg-gray-900 rounded-3xl p-8">
-          <div className="bg-white p-4 rounded-2xl">
-            <QrCode value={joinUrl} size={260} />
+      <div className="flex-1 p-8 flex flex-col">
+        {phase === 'waiting' && (
+          <div className="flex-1 grid md:grid-cols-2 gap-8">
+            <section className="flex flex-col items-center justify-center gap-6 bg-gray-900 rounded-3xl p-8">
+              <div className="bg-white p-4 rounded-2xl">
+                <QrCode value={joinUrl} size={240} />
+              </div>
+              <div className="text-center">
+                <p className="text-gray-400 text-sm uppercase tracking-wider mb-1">PIN</p>
+                <p className="text-7xl font-black tracking-widest font-mono">{s.pin}</p>
+              </div>
+            </section>
+            <section className="bg-gray-900 rounded-3xl p-8 flex flex-col">
+              <h2 className="text-xl font-bold mb-4">Participants</h2>
+              {connected.length === 0 ? (
+                <p className="text-gray-500 flex-1 flex items-center justify-center">
+                  En attente de participants…
+                </p>
+              ) : (
+                <ul className="space-y-2 overflow-y-auto flex-1">
+                  {connected.map((p) => (
+                    <li key={p.id} className="flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-800">
+                      <span className="w-2 h-2 rounded-full bg-green-400 flex-shrink-0" />
+                      <span className="font-medium">{p.pseudo}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
           </div>
-          <div className="text-center">
-            <p className="text-gray-400 text-sm uppercase tracking-wider mb-1">PIN</p>
-            <p className="text-7xl font-black tracking-widest font-mono">{pin}</p>
-          </div>
-          <p className="text-gray-500 text-sm text-center break-all">{joinUrl}</p>
-        </section>
+        )}
 
-        {/* Colonne droite : participants */}
-        <section className="bg-gray-900 rounded-3xl p-8 flex flex-col">
-          <div className="flex items-baseline justify-between mb-4">
-            <h2 className="text-xl font-bold">Participants</h2>
-            <span className="text-indigo-400 font-bold text-2xl">{connected.length}</span>
+        {phase === 'between' && (
+          <div className="flex-1 flex flex-col items-center justify-center gap-6 text-center">
+            <p className="text-2xl text-gray-300">Le quiz est lancé.</p>
+            <p className="text-gray-500">Clique pour envoyer la première question dans le salon.</p>
           </div>
-          {connected.length === 0 ? (
-            <p className="text-gray-500 flex-1 flex items-center justify-center">
-              En attente de participants…
-            </p>
-          ) : (
-            <ul className="space-y-2 overflow-y-auto flex-1">
-              {connected.map((p) => (
+        )}
+
+        {(phase === 'question' || phase === 'reveal') && q && (
+          <div className="flex-1 flex flex-col gap-6">
+            <div className="flex items-baseline justify-between">
+              <span className="text-gray-400">
+                Question {q.index + 1} / {q.total}
+              </span>
+              {phase === 'question' && (
+                <span className="text-3xl font-bold tabular-nums">{Math.ceil(remaining)}s</span>
+              )}
+            </div>
+            <h2 className="text-3xl font-bold">{q.text}</h2>
+
+            <div className="grid grid-cols-2 gap-3">
+              {(q.choices ?? []).map((choice, i) => {
+                const st = choiceStyle(i)
+                const isCorrect = s.reveal?.correctAnswers.includes(choice)
+                const count = s.reveal?.distribution.find((d) => d.value === choice)?.count ?? 0
+                return (
+                  <div
+                    key={choice}
+                    className={`rounded-2xl px-5 py-4 flex items-center gap-3 ${st.bg} ${
+                      phase === 'reveal' && !isCorrect ? 'opacity-40' : ''
+                    }`}
+                  >
+                    <span className="text-2xl">{st.shape}</span>
+                    <span className="font-bold flex-1">{choice}</span>
+                    {phase === 'reveal' && (
+                      <span className="font-mono text-sm bg-black/30 px-2 py-1 rounded">
+                        {count} {isCorrect && '✓'}
+                      </span>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+
+            {phase === 'question' && (
+              <p className="text-center text-gray-400 text-lg">
+                {s.answeredCount} / {total} ont répondu
+              </p>
+            )}
+          </div>
+        )}
+
+        {phase === 'ended' && (
+          <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center">
+            <div className="text-6xl">🏁</div>
+            <h2 className="text-3xl font-black">Quiz terminé</h2>
+            <ol className="w-full max-w-md space-y-2 mt-2">
+              {(s.reveal?.scores ?? []).slice(0, 5).map((sc) => (
                 <li
-                  key={p.id}
-                  className="flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-800"
+                  key={sc.participantId}
+                  className="flex items-center justify-between px-4 py-3 rounded-xl bg-gray-900"
                 >
-                  <span className="w-2 h-2 rounded-full bg-green-400 flex-shrink-0" />
-                  <span className="font-medium">{p.pseudo}</span>
+                  <span className="font-medium">
+                    {sc.rank}. {sc.pseudo}
+                  </span>
+                  <span className="font-mono font-bold">{sc.score}</span>
                 </li>
               ))}
-            </ul>
-          )}
-        </section>
+            </ol>
+          </div>
+        )}
       </div>
 
-      <footer className="px-8 py-6 border-t border-gray-800 flex items-center justify-between gap-6">
-        <div className="text-gray-400">
-          <span className="text-xs uppercase tracking-wider">Prochaine question</span>
-          <p className="text-white">
-            «&nbsp;…&nbsp;» <span className="text-gray-600 text-sm">(branché en S8)</span>
-          </p>
-        </div>
-        <button
-          onClick={startQuiz}
-          disabled={connected.length === 0 || running}
-          className="px-10 py-4 rounded-2xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed font-bold text-lg transition-colors"
-        >
-          {running ? 'Quiz démarré' : 'Démarrer le quiz'}
-        </button>
+      <footer className="px-8 py-6 border-t border-gray-800 flex items-center justify-end gap-6">
+        {phase === 'waiting' && (
+          <button
+            onClick={s.start}
+            disabled={connected.length === 0}
+            className="px-10 py-4 rounded-2xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed font-bold text-lg transition-colors"
+          >
+            Démarrer le quiz
+          </button>
+        )}
+        {phase === 'between' && (
+          <button
+            onClick={s.next}
+            className="px-10 py-4 rounded-2xl bg-indigo-600 hover:bg-indigo-500 font-bold text-lg transition-colors"
+          >
+            Lancer la première question →
+          </button>
+        )}
+        {phase === 'question' && (
+          <button
+            disabled
+            className="px-10 py-4 rounded-2xl bg-gray-800 text-gray-500 font-bold text-lg cursor-not-allowed"
+          >
+            Question en cours…
+          </button>
+        )}
+        {phase === 'reveal' && (
+          <button
+            onClick={s.next}
+            className="px-10 py-4 rounded-2xl bg-indigo-600 hover:bg-indigo-500 font-bold text-lg transition-colors"
+          >
+            {q && q.index + 1 >= q.total ? 'Terminer le quiz →' : 'Question suivante →'}
+          </button>
+        )}
       </footer>
     </div>
   )

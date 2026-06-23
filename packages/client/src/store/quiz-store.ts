@@ -3,6 +3,24 @@ import type { Participant, ParticipantScore, QuestionPublic } from '@lya-quiz/sh
 
 type AppView = 'join' | 'lobby' | 'question' | 'answer' | 'leaderboard' | 'ended'
 
+export interface LastResult {
+  correct: boolean
+  myAnswer: string | number | null
+  myScore: number
+  myDelta: number
+  correctAnswers: string[]
+}
+
+// Payload de question_ended côté serveur (dérivé du contrat)
+interface QuestionEndedPayload {
+  correctAnswers: string[]
+  scores: ParticipantScore[]
+  distribution: { value: string; count: number }[]
+  myAnswer: string | number | null
+  myScore: number
+  myDelta: number
+}
+
 interface QuizStore {
   // Identité
   myId: string | null
@@ -19,7 +37,9 @@ interface QuizStore {
   // Quiz en cours
   currentView: AppView
   currentQuestion: QuestionPublic | null
-  questionStartedAt: number | null   // timestamp serveur
+  questionStartedAt: number | null   // horloge CLIENT au moment de la réception (anti-skew)
+  hasAnswered: boolean
+  lastResult: LastResult | null
   leaderboard: ParticipantScore[]
 
   // Actions
@@ -32,8 +52,11 @@ interface QuizStore {
   }) => void
   setParticipantJoined: (p: Participant) => void
   setParticipantLeft: (participantId: string) => void
+  onQuestionStarted: (q: QuestionPublic) => void
+  markAnswered: () => void
+  onQuestionEnded: (payload: QuestionEndedPayload) => void
+  onQuizEnded: () => void
   setView: (view: AppView) => void
-  setMyScore: (score: number) => void
   setLeaderboard: (scores: ParticipantScore[]) => void
   reset: () => void
 }
@@ -48,6 +71,8 @@ const initialState = {
   currentView: 'join' as AppView,
   currentQuestion: null,
   questionStartedAt: null,
+  hasAnswered: false,
+  lastResult: null,
   leaderboard: [],
 } satisfies Partial<QuizStore>
 
@@ -71,8 +96,39 @@ export const useQuizStore = create<QuizStore>()((set) => ({
       ),
     })),
 
+  // question_started : on ancre le timer sur l'horloge CLIENT (réception = t0)
+  // pour éviter tout décalage d'horloge serveur/client.
+  onQuestionStarted: (q) =>
+    set({
+      currentView: 'question',
+      currentQuestion: q,
+      questionStartedAt: Date.now(),
+      hasAnswered: false,
+      lastResult: null,
+    }),
+
+  markAnswered: () => set({ hasAnswered: true }),
+
+  onQuestionEnded: (payload) =>
+    set({
+      currentView: 'answer',
+      questionStartedAt: null,
+      myScore: payload.myScore,
+      leaderboard: payload.scores,
+      lastResult: {
+        correct:
+          payload.myAnswer !== null &&
+          payload.correctAnswers.includes(String(payload.myAnswer)),
+        myAnswer: payload.myAnswer,
+        myScore: payload.myScore,
+        myDelta: payload.myDelta,
+        correctAnswers: payload.correctAnswers,
+      },
+    }),
+
+  onQuizEnded: () => set({ currentView: 'ended', questionStartedAt: null }),
+
   setView: (currentView) => set({ currentView }),
-  setMyScore: (myScore) => set({ myScore }),
   setLeaderboard: (leaderboard) => set({ leaderboard }),
   reset: () => set(initialState),
 }))

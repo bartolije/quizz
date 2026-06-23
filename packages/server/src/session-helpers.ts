@@ -1,4 +1,9 @@
-import type { Participant, ParticipantScore } from '@lya-quiz/shared'
+import type {
+  Participant,
+  ParticipantScore,
+  Question,
+  QuestionPublic,
+} from '@lya-quiz/shared'
 import type { SessionState, ParticipantState } from './state.js'
 
 export function toParticipant(p: ParticipantState): Participant {
@@ -6,6 +11,23 @@ export function toParticipant(p: ParticipantState): Participant {
     id: p.id,
     pseudo: p.pseudo,
     connected: p.connected,
+  }
+}
+
+// Question "publique" envoyée aux clients : jamais les bonnes réponses.
+export function toPublicQuestion(
+  q: Question,
+  index: number,
+  total: number,
+): QuestionPublic {
+  return {
+    id: q.id,
+    text: q.text,
+    type: q.type,
+    ...(q.choices ? { choices: q.choices } : {}),
+    timeLimit: q.timeLimit,
+    index,
+    total,
   }
 }
 
@@ -21,7 +43,7 @@ export function getLeaderboard(session: SessionState): ParticipantScore[] {
     participantId: p.id,
     pseudo: p.pseudo,
     score: p.score,
-    delta: 0,   // sera rempli en S5
+    delta: p.lastDelta,   // points gagnés à la dernière question (ex æquo/rang affinés en S5)
     rank: index + 1,
   }))
 }

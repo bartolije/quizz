@@ -100,6 +100,9 @@ export interface ServerToClientEvents {
   question_ended: (payload: {
     correctAnswers: string[]
     scores: ParticipantScore[]
+    // Répartition des réponses (par choix) — utilisée par la vue TV pour le
+    // bar chart de révélation. Vide pour les types non-MCQ.
+    distribution: { value: string; count: number }[]
     myAnswer: string | number | null
     myScore: number
     myDelta: number

@@ -20,9 +20,7 @@ export function JoinPage() {
   // capturé à la fermeture serait toujours `false`).
   const loadingRef = useRef(false)
 
-  const setJoined            = useQuizStore((s) => s.setJoined)
-  const setParticipantJoined = useQuizStore((s) => s.setParticipantJoined)
-  const setParticipantLeft   = useQuizStore((s) => s.setParticipantLeft)
+  const setJoined = useQuizStore((s) => s.setJoined)
 
   function handleJoin() {
     if (!pin.trim() || !pseudo.trim()) return
@@ -54,10 +52,8 @@ export function JoinPage() {
       setLoading(false)
       loadingRef.current = false
 
-      // Brancher les listeners permanents
-      socket.on(EVENTS.PARTICIPANT_JOINED, (p) => setParticipantJoined(p.participant))
-      socket.on(EVENTS.PARTICIPANT_LEFT,   (p) => setParticipantLeft(p.participantId))
-
+      // Les listeners temps réel (participants + questions) sont branchés par
+      // ParticipantApp via useParticipantEvents — rien à faire ici.
       navigate('/lobby')
     })
 

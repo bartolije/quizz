@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import type {
   Participant,
+  ParticipantScore,
+  QuestionPublic,
   ServerToClientEvents,
   SessionStatus,
 } from '@lya-quiz/shared'
@@ -15,12 +17,26 @@ import {
 
 type HostMode = 'control' | 'display'
 
+export interface RevealState {
+  correctAnswers: string[]
+  distribution: { value: string; count: number }[]
+  scores: ParticipantScore[]
+}
+
 interface HostSessionView {
   pin: string | null
   sessionId: string | null
   participants: Participant[]
   status: SessionStatus
   error: string | null
+  // Jeu (S4)
+  currentQuestion: QuestionPublic | null
+  questionStartedAt: number | null   // horloge client (réception) pour le timer
+  answeredCount: number
+  totalCount: number
+  reveal: RevealState | null
+  start: () => void
+  next: () => void
 }
 
 // Types de payload dérivés du contrat → garantit l'alignement avec events.ts
@@ -28,6 +44,9 @@ type JoinedPayload = Parameters<ServerToClientEvents['session_joined']>[0]
 type JoinPayload = Parameters<ServerToClientEvents['participant_joined']>[0]
 type LeftPayload = Parameters<ServerToClientEvents['participant_left']>[0]
 type StatusPayload = Parameters<ServerToClientEvents['session_status_changed']>[0]
+type QStartedPayload = Parameters<ServerToClientEvents['question_started']>[0]
+type AckPayload = Parameters<ServerToClientEvents['answer_received']>[0]
+type QEndedPayload = Parameters<ServerToClientEvents['question_ended']>[0]
 
 function upsert(list: Participant[], p: Participant): Participant[] {
   return list.some((x) => x.id === p.id)
@@ -36,9 +55,9 @@ function upsert(list: Participant[], p: Participant): Participant[] {
 }
 
 /**
- * Résout/crée la session host et maintient la liste des participants à jour
- * via Socket.io. `control` crée la session (POST), `display` la résout
- * (localStorage ou ?session= via GET). StrictMode-safe (ref guard + 2 effects).
+ * Résout/crée la session host et maintient l'état du jeu à jour via Socket.io.
+ * `control` crée la session (POST), `display` la résout (localStorage ou
+ * ?session= via GET). StrictMode-safe (ref guard + 2 effects).
  */
 export function useHostSession(mode: HostMode): HostSessionView {
   const [pin, setPin] = useState<string | null>(null)
@@ -46,6 +65,13 @@ export function useHostSession(mode: HostMode): HostSessionView {
   const [participants, setParticipants] = useState<Participant[]>([])
   const [status, setStatus] = useState<SessionStatus>('waiting')
   const [error, setError] = useState<string | null>(null)
+
+  // État du jeu (S4)
+  const [currentQuestion, setCurrentQuestion] = useState<QuestionPublic | null>(null)
+  const [questionStartedAt, setQuestionStartedAt] = useState<number | null>(null)
+  const [answeredCount, setAnsweredCount] = useState(0)
+  const [totalCount, setTotalCount] = useState(0)
+  const [reveal, setReveal] = useState<RevealState | null>(null)
 
   const resolvedRef = useRef(false)
 
@@ -111,13 +137,35 @@ export function useHostSession(mode: HostMode): HostSessionView {
       setParticipants((prev) =>
         prev.map((x) => (x.id === p.participantId ? { ...x, connected: false } : x)),
       )
-    // Diffusé quand le host démarre/termine le quiz → synchronise display + 2e onglet control
     const onStatus = (p: StatusPayload) => setStatus(p.status)
+
+    const onQuestion = (p: QStartedPayload) => {
+      setCurrentQuestion(p.question)
+      setQuestionStartedAt(Date.now())
+      setReveal(null)
+      setAnsweredCount(0)
+      setTotalCount(0)
+    }
+    const onAck = (p: AckPayload) => {
+      setAnsweredCount(p.answeredCount)
+      setTotalCount(p.totalCount)
+    }
+    const onEnded = (p: QEndedPayload) => {
+      setReveal({
+        correctAnswers: p.correctAnswers,
+        distribution: p.distribution,
+        scores: p.scores,
+      })
+      setQuestionStartedAt(null) // stoppe le timer ; on garde currentQuestion pour la révélation
+    }
 
     socket.on(EVENTS.SESSION_JOINED, onJoined)
     socket.on(EVENTS.PARTICIPANT_JOINED, onJoin)
     socket.on(EVENTS.PARTICIPANT_LEFT, onLeft)
     socket.on(EVENTS.SESSION_STATUS_CHANGED, onStatus)
+    socket.on(EVENTS.QUESTION_STARTED, onQuestion)
+    socket.on(EVENTS.ANSWER_RECEIVED, onAck)
+    socket.on(EVENTS.QUESTION_ENDED, onEnded)
 
     const join = () => socket.emit(EVENTS.HOST_JOIN, { pin })
     if (!socket.connected) socket.connect()
@@ -129,9 +177,28 @@ export function useHostSession(mode: HostMode): HostSessionView {
       socket.off(EVENTS.PARTICIPANT_JOINED, onJoin)
       socket.off(EVENTS.PARTICIPANT_LEFT, onLeft)
       socket.off(EVENTS.SESSION_STATUS_CHANGED, onStatus)
+      socket.off(EVENTS.QUESTION_STARTED, onQuestion)
+      socket.off(EVENTS.ANSWER_RECEIVED, onAck)
+      socket.off(EVENTS.QUESTION_ENDED, onEnded)
       socket.off('connect', join)
     }
   }, [pin])
 
-  return { pin, sessionId, participants, status, error }
+  const start = () => socket.emit(EVENTS.HOST_START_QUIZ, {})
+  const next = () => socket.emit(EVENTS.HOST_NEXT_QUESTION, {})
+
+  return {
+    pin,
+    sessionId,
+    participants,
+    status,
+    error,
+    currentQuestion,
+    questionStartedAt,
+    answeredCount,
+    totalCount,
+    reveal,
+    start,
+    next,
+  }
 }
