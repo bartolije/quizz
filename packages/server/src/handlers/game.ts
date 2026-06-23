@@ -8,6 +8,7 @@ import {
 } from '@lya-quiz/shared'
 import { getAllSessions, type SessionState } from '../state.js'
 import { getLeaderboard, toPublicQuestion } from '../session-helpers.js'
+import { logEvent } from '../logger.js'
 
 type QuizSocket = Socket<ClientToServerEvents, ServerToClientEvents>
 type QuizServer = Server<ClientToServerEvents, ServerToClientEvents>
@@ -55,6 +56,7 @@ export function handleNextQuestion(socket: QuizSocket, io: QuizServer): void {
       scores: getLeaderboard(session),
       final: true,
     })
+    logEvent('quiz_ended', { sessionId: session.id, questions: questions.length })
     return
   }
 
@@ -67,12 +69,18 @@ export function handleNextQuestion(socket: QuizSocket, io: QuizServer): void {
 
   // Fermeture automatique à la fin du temps imparti
   session.questionTimer = setTimeout(() => {
-    closeQuestion(session, io)
+    closeQuestion(session, io, 'timer')
   }, q.timeLimit * 1000)
 
   io.to(session.id).emit(EVENTS.QUESTION_STARTED, {
     question: toPublicQuestion(q, nextIndex, questions.length),
     startedAt: session.questionStartedAt,
+  })
+  logEvent('question_started', {
+    sessionId: session.id,
+    questionIndex: nextIndex,
+    type: q.type,
+    timeLimit: q.timeLimit,
   })
 }
 
@@ -123,7 +131,7 @@ export function handleSubmitAnswer(
 
   // Fin anticipée : tous les connectés ont répondu
   if (connected.length > 0 && session.answers.size >= connected.length) {
-    closeQuestion(session, io)
+    closeQuestion(session, io, 'all_answered')
   }
 }
 
@@ -131,7 +139,11 @@ export function handleSubmitAnswer(
 // Fermeture d'une question : scoring + révélation
 // ─────────────────────────────────────────────────────────────
 
-export function closeQuestion(session: SessionState, io: QuizServer): void {
+export function closeQuestion(
+  session: SessionState,
+  io: QuizServer,
+  reason: 'timer' | 'all_answered' = 'timer',
+): void {
   if (session.questionStartedAt === null) return // déjà fermée
   const startedAt = session.questionStartedAt
   session.questionStartedAt = null
@@ -227,5 +239,14 @@ export function closeQuestion(session: SessionState, io: QuizServer): void {
     myCorrect: false,
     myScore: 0,
     myDelta: 0,
+  })
+
+  logEvent('question_closed', {
+    sessionId: session.id,
+    questionIndex: session.currentQuestionIndex,
+    type: q.type,
+    answeredCount: session.answers.size,
+    correctCount: [...results.values()].filter((r) => r.correct).length,
+    closeReason: reason,
   })
 }

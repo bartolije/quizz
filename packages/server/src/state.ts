@@ -2,6 +2,7 @@ import { v4 as uuid } from 'uuid'
 import type { Quiz } from '@lya-quiz/shared'
 import { SESSION_TOKEN_TTL_MS } from '@lya-quiz/shared'
 import { getDefaultQuiz, getQuiz } from './quiz-repo.js'
+import { logEvent } from './logger.js'
 
 export interface ParticipantState {
   id: string                // uuid stable, identifie le participant
@@ -68,6 +69,7 @@ export function createSession(quizId?: string): SessionState {
   }
   sessions.set(id, session)
   pinIndex.set(pin, id)
+  logEvent('session_created', { sessionId: id, pin, quizId: session.quiz?.id ?? null })
   return session
 }
 

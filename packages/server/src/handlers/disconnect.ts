@@ -2,6 +2,7 @@ import type { Server } from 'socket.io'
 import type { ClientToServerEvents, ServerToClientEvents } from '@lya-quiz/shared'
 import { EVENTS } from '@lya-quiz/shared'
 import type { SessionState } from '../state.js'
+import { logEvent } from '../logger.js'
 
 export function handleDisconnect(
   socketId: string,
@@ -19,6 +20,7 @@ export function handleDisconnect(
         io.to(session.id).emit(EVENTS.PARTICIPANT_LEFT, {
           participantId: participant.id,
         })
+        logEvent('participant_left', { sessionId: session.id, participantId: participant.id })
         return
       }
     }

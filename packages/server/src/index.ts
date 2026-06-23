@@ -25,9 +25,14 @@ import {
   deleteQuiz,
   type QuizInput,
 } from './quiz-repo.js'
+import { logWarn, logError } from './logger.js'
 
 // Au démarrage : crée les tables (import de db via quiz-repo) + seed si DB vide.
 seedIfEmpty()
+
+// Filets de sécurité : on logge les crashs au lieu de mourir en silence.
+process.on('uncaughtException', (e) => logError('fatal_uncaught_exception', e))
+process.on('unhandledRejection', (e) => logError('fatal_unhandled_rejection', e))
 
 // Mot de passe de l'éditeur admin (à définir dans Railway via ADMIN_PASSWORD).
 const ADMIN_PASSWORD = process.env['ADMIN_PASSWORD'] ?? 'lyaquiz'
@@ -37,7 +42,9 @@ async function requireAdmin(req: FastifyRequest, reply: FastifyReply): Promise<v
   }
 }
 
-const app = Fastify({ logger: true })
+// Logger Fastify en 'warn' : évite de noyer les logs sous chaque requête HTTP
+// (assets, /health…). Les événements métier passent par logEvent (info). cf. logger.ts
+const app = Fastify({ logger: { level: 'warn' } })
 
 // Socket.io partage le serveur HTTP sous-jacent de Fastify (app.server).
 // app.listen() démarre les deux : routes HTTP + WebSocket sur le même port.
@@ -47,44 +54,26 @@ const io = new Server<ClientToServerEvents, ServerToClientEvents>(
 )
 
 io.on('connection', (socket) => {
-  console.log('[connect]', socket.id)
+  // Exécute un handler en isolant les exceptions : on logge (handler_error) et on
+  // prévient le client au lieu de laisser planter le serveur.
+  const safe = (event: string, fn: () => void): void => {
+    try {
+      fn()
+    } catch (e) {
+      logError('handler_error', e, { event, socketId: socket.id })
+      socket.emit(EVENTS.QUIZ_ERROR, { code: 'UNKNOWN', message: 'Erreur interne du serveur.' })
+    }
+  }
 
-  socket.on(EVENTS.JOIN_SESSION, (payload) => {
-    handleJoinSession(socket, payload, io)
-  })
-
-  socket.on(EVENTS.REJOIN_SESSION, (payload) => {
-    handleRejoinSession(socket, payload, io)
-  })
-
-  socket.on(EVENTS.HOST_JOIN, (payload) => {
-    handleHostJoin(socket, payload)
-  })
-
-  socket.on(EVENTS.HOST_START_QUIZ, () => {
-    handleHostStartQuiz(socket, io)
-  })
-
-  socket.on(EVENTS.HOST_NEXT_QUESTION, () => {
-    handleNextQuestion(socket, io)
-  })
-
-  socket.on(EVENTS.HOST_SHOW_LEADERBOARD, () => {
-    handleShowLeaderboard(socket, io)
-  })
-
-  socket.on(EVENTS.HOST_END_QUIZ, () => {
-    handleHostEndQuiz(socket, io)
-  })
-
-  socket.on(EVENTS.SUBMIT_ANSWER, (payload) => {
-    handleSubmitAnswer(socket, payload, io)
-  })
-
-  socket.on('disconnect', () => {
-    console.log('[disconnect]', socket.id)
-    handleDisconnect(socket.id, io, getAllSessions)
-  })
+  socket.on(EVENTS.JOIN_SESSION, (p) => safe('join_session', () => handleJoinSession(socket, p, io)))
+  socket.on(EVENTS.REJOIN_SESSION, (p) => safe('rejoin_session', () => handleRejoinSession(socket, p, io)))
+  socket.on(EVENTS.HOST_JOIN, (p) => safe('host_join', () => handleHostJoin(socket, p)))
+  socket.on(EVENTS.HOST_START_QUIZ, () => safe('host_start_quiz', () => handleHostStartQuiz(socket, io)))
+  socket.on(EVENTS.HOST_NEXT_QUESTION, () => safe('host_next_question', () => handleNextQuestion(socket, io)))
+  socket.on(EVENTS.HOST_SHOW_LEADERBOARD, () => safe('host_show_leaderboard', () => handleShowLeaderboard(socket, io)))
+  socket.on(EVENTS.HOST_END_QUIZ, () => safe('host_end_quiz', () => handleHostEndQuiz(socket, io)))
+  socket.on(EVENTS.SUBMIT_ANSWER, (p) => safe('submit_answer', () => handleSubmitAnswer(socket, p, io)))
+  socket.on('disconnect', () => safe('disconnect', () => handleDisconnect(socket.id, io, getAllSessions)))
 })
 
 // Création d'une session (host au chargement de /host/control, ou "Lancer" depuis
@@ -157,6 +146,23 @@ app.get<{ Params: { id: string } }>('/api/sessions/:id', async (req, reply) => {
 })
 
 app.get('/health', async () => ({ status: 'ok', sessions: getAllSessions().length }))
+
+// Remontée des erreurs JS des clients (téléphones) → logs serveur (S10).
+// Sinon un crash côté joueur est invisible. Payload borné, pas de log du log.
+app.post<{
+  Body: { level?: string; message?: string; stack?: string; context?: Record<string, unknown> }
+}>('/api/client-log', async (req) => {
+  const b = req.body ?? {}
+  const message = String(b.message ?? '').slice(0, 500)
+  if (!message) return { ok: false }
+  logWarn('client_error', {
+    level: b.level ?? 'error',
+    message,
+    stack: typeof b.stack === 'string' ? b.stack.slice(0, 2000) : undefined,
+    ctx: b.context,
+  })
+  return { ok: true }
+})
 
 // Déploiement single-service : Fastify sert aussi le build client React.
 // __dirname = packages/server/dist → le build client est à ../../client/dist

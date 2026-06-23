@@ -15,6 +15,7 @@ import {
   toPublicQuestion,
   getLeaderboard,
 } from '../session-helpers.js'
+import { logEvent } from '../logger.js'
 
 type QuizSocket = Socket<ClientToServerEvents, ServerToClientEvents>
 type QuizServer = Server<ClientToServerEvents, ServerToClientEvents>
@@ -86,6 +87,11 @@ export function handleJoinSession(
   socket.to(session.id).emit(EVENTS.PARTICIPANT_JOINED, {
     participant: toParticipant(participant),
   })
+  logEvent('participant_joined', {
+    sessionId: session.id,
+    participantId: participant.id,
+    pseudo: participant.pseudo,
+  })
 }
 
 export function handleRejoinSession(
@@ -154,5 +160,10 @@ function handleRejoinWithParticipant(
   // Notifier les autres que ce participant est de retour
   socket.to(session.id).emit(EVENTS.PARTICIPANT_JOINED, {
     participant: toParticipant(participant),
+  })
+  logEvent('participant_rejoined', {
+    sessionId: session.id,
+    participantId: participant.id,
+    duringQuestion: currentQuestion !== null,
   })
 }

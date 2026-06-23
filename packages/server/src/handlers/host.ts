@@ -3,6 +3,7 @@ import type { ClientToServerEvents, ServerToClientEvents } from '@lya-quiz/share
 import { EVENTS } from '@lya-quiz/shared'
 import { getSessionByPin, createSession, getAllSessions, type SessionState } from '../state.js'
 import { getParticipantList, toPublicQuestion, getLeaderboard } from '../session-helpers.js'
+import { logEvent } from '../logger.js'
 
 type QuizSocket = Socket<ClientToServerEvents, ServerToClientEvents>
 type QuizServer = Server<ClientToServerEvents, ServerToClientEvents>
@@ -24,6 +25,7 @@ export function handleHostJoin(
   session.hostSocketIds.add(socket.id)
   void socket.join(session.id)
   void socket.join(`host:${session.id}`)   // room host-only pour answer_received
+  logEvent('host_joined', { sessionId: session.id, pin: session.pin })
 
   // Envoyer l'état courant au host
   socket.emit(EVENTS.SESSION_JOINED, {
@@ -66,6 +68,7 @@ export function handleHostStartQuiz(socket: QuizSocket, io: QuizServer): void {
     if (session.hostSocketIds.has(socket.id)) {
       session.status = 'running'
       io.to(session.id).emit(EVENTS.SESSION_STATUS_CHANGED, { status: session.status })
+      logEvent('quiz_started', { sessionId: session.id })
       return
     }
   }
