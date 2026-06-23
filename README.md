@@ -62,6 +62,9 @@ npm run dev:client # http://localhost:5173
 - **S9** — déploiement : jeu sur **Vercel**, serveur sur **Railway**. Tuto pas à pas
   dans [rules/S9.md](rules/S9.md). Config : `vercel.json` + `railway.json`.
   En prod, le client lit l'URL du serveur via `VITE_SERVER_URL` (cf. `packages/client/.env.example`).
+- **S10** — observabilité : logs serveur structurés (lisibles dans Railway),
+  robustesse des handlers, et remontée des erreurs des téléphones au serveur.
+  Brief dans [rules/S10.md](rules/S10.md). Pour déboguer et itérer sur les retours live.
 
 ### Routes client
 
