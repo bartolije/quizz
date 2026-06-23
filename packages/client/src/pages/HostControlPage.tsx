@@ -271,9 +271,9 @@ export function HostControlPage() {
             {/* Classement = optionnel (slide à la demande), pas imposé à chaque question */}
             <button
               onClick={s.showLeaderboard}
-              className="px-6 py-4 rounded-2xl bg-gray-800 hover:bg-gray-700 font-bold text-lg transition-colors"
+              className="px-6 py-4 rounded-2xl bg-violet-600 hover:bg-violet-500 font-bold text-lg transition-colors"
             >
-              Afficher le classement
+              📊 Afficher le classement
             </button>
             <button
               onClick={s.next}

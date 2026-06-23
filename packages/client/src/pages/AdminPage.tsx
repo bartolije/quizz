@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { Quiz, Question, QuestionType } from '@lya-quiz/shared'
 import { QuestionImage } from '../components/QuestionImage'
+import { toExport, downloadJson, slugify, parseQuizJson } from '../quiz-io'
 import {
   checkPw,
   setPw,
@@ -108,6 +109,9 @@ export function AdminPage() {
   const [quizzes, setQuizzes] = useState<QuizSummary[]>([])
   const [draft, setDraft] = useState<EditDraft | null>(null)
   const [error, setError] = useState('')
+  const [importing, setImporting] = useState(false)
+  const [importText, setImportText] = useState('')
+  const [importErr, setImportErr] = useState('')
 
   useEffect(() => {
     if (!getPw()) {
@@ -167,6 +171,24 @@ export function AdminPage() {
   async function remove(id: string) {
     if (!confirm('Supprimer ce quiz ?')) return
     await deleteQuiz(id)
+    void reload()
+  }
+
+  async function exportQuiz(id: string) {
+    const quiz = await fetchQuiz(id)
+    downloadJson(`${slugify(quiz.title)}.json`, toExport(quiz))
+  }
+
+  async function doImport() {
+    const { quiz, error: e } = parseQuizJson(importText)
+    if (e || !quiz) {
+      setImportErr(e ?? 'Erreur.')
+      return
+    }
+    await createQuiz(quiz)
+    setImporting(false)
+    setImportText('')
+    setImportErr('')
     void reload()
   }
 
@@ -367,14 +389,67 @@ export function AdminPage() {
     )
   }
 
+  // ── Import JSON ──
+  if (importing) {
+    return (
+      <div className="min-h-screen bg-gray-950 text-white p-6 max-w-3xl mx-auto">
+        <h1 className="text-2xl font-bold mb-2">Importer un quiz (JSON)</h1>
+        <p className="text-gray-400 text-sm mb-3">
+          Colle le JSON d'un quiz, ou charge un fichier <code>.json</code>. Format = celui de
+          l'export (idéal pour générer un quiz avec un LLM puis l'importer).
+        </p>
+        <input
+          type="file"
+          accept="application/json,.json"
+          onChange={(e) => {
+            const f = e.target.files?.[0]
+            if (f) void f.text().then(setImportText)
+          }}
+          className="mb-3 text-sm text-gray-300"
+        />
+        <textarea
+          value={importText}
+          onChange={(e) => setImportText(e.target.value)}
+          rows={14}
+          placeholder={'{\n  "title": "Mon quiz",\n  "defaultTimeLimit": 20,\n  "questions": [\n    { "type": "mcq", "text": "...", "choices": ["a","b","c","d"], "correctAnswers": ["a"], "timeLimit": 20 }\n  ]\n}'}
+          className={`${input} w-full font-mono text-sm`}
+        />
+        {importErr && <p className="text-rose-400 mt-2">{importErr}</p>}
+        <div className="flex gap-3 mt-4">
+          <button onClick={doImport} className="px-8 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 font-bold">
+            Importer
+          </button>
+          <button
+            onClick={() => {
+              setImporting(false)
+              setImportText('')
+              setImportErr('')
+            }}
+            className="px-6 py-3 rounded-xl bg-gray-800 hover:bg-gray-700"
+          >
+            Annuler
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   // ── Liste des quiz ──
   return (
     <div className="min-h-screen bg-gray-950 text-white p-6 max-w-3xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Mes quiz</h1>
-        <button onClick={openNew} className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 font-bold">
-          + Nouveau quiz
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setImporting(true)}
+            className="px-4 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 font-bold"
+          >
+            ⬆ Importer JSON
+          </button>
+          <button onClick={openNew} className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 font-bold">
+            + Nouveau quiz
+          </button>
+        </div>
       </div>
 
       {quizzes.length === 0 ? (
@@ -392,6 +467,9 @@ export function AdminPage() {
               </button>
               <button onClick={() => openEdit(q.id)} className="px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-sm">
                 Éditer
+              </button>
+              <button onClick={() => void exportQuiz(q.id)} className="px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-sm">
+                Export
               </button>
               <button onClick={() => remove(q.id)} className="px-3 py-2 rounded-lg bg-rose-900/60 hover:bg-rose-800 text-rose-200 text-sm">
                 Suppr.
