@@ -59,6 +59,34 @@ export interface Session {
   currentQuestionIndex: number
 }
 
+// ─────────────────────────────────────────────────────────────
+// Rapport de fin de partie (REST: GET /api/sessions/:id/report)
+// ─────────────────────────────────────────────────────────────
+
+export interface QuestionReport {
+  index: number
+  text: string
+  type: QuestionType
+  correctAnswers: string[]
+  answeredCount: number
+  correctCount: number
+}
+
+export interface PlayerReport {
+  participantId: string
+  pseudo: string
+  score: number
+  rank: number
+  correct: number // nombre de questions réussies (mcq/free/ordering parfait)
+}
+
+export interface GameReport {
+  title: string
+  totalQuestions: number
+  questions: QuestionReport[]
+  players: PlayerReport[]
+}
+
 // Réponse d'un participant à une question
 export interface Answer {
   participantId: string

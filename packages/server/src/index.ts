@@ -15,7 +15,8 @@ import {
 } from './handlers/game.js'
 import { handleDisconnect } from './handlers/disconnect.js'
 import { getAllSessions, createSession, getSessionById } from './state.js'
-import { getParticipantList } from './session-helpers.js'
+import { getParticipantList, getLeaderboard } from './session-helpers.js'
+import type { GameReport } from '@lya-quiz/shared'
 import {
   seedIfEmpty,
   listQuizzes,
@@ -143,6 +144,28 @@ app.get<{ Params: { id: string } }>('/api/sessions/:id', async (req, reply) => {
     status: session.status,
     participants: getParticipantList(session),
   }
+})
+
+// Rapport de fin de partie : stats par question + classement par joueur.
+app.get<{ Params: { id: string } }>('/api/sessions/:id/report', async (req, reply) => {
+  const session = getSessionById(req.params.id)
+  if (!session) {
+    reply.code(404)
+    return { error: 'not_found' }
+  }
+  const report: GameReport = {
+    title: session.quiz?.title ?? 'Quiz',
+    totalQuestions: session.results.length,
+    questions: session.results,
+    players: getLeaderboard(session).map((s) => ({
+      participantId: s.participantId,
+      pseudo: s.pseudo,
+      score: s.score,
+      rank: s.rank,
+      correct: session.participants.get(s.participantId)?.correctTotal ?? 0,
+    })),
+  }
+  return report
 })
 
 app.get('/health', async () => ({ status: 'ok', sessions: getAllSessions().length }))

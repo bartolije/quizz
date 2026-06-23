@@ -1,4 +1,4 @@
-import type { Participant, SessionStatus } from '@lya-quiz/shared'
+import type { Participant, SessionStatus, GameReport } from '@lya-quiz/shared'
 import { apiUrl } from './config'
 
 // Identité de la session host, persistée pour survivre à un refresh (cf. S3 spec).
@@ -49,4 +49,11 @@ export async function fetchSessionInfo(id: string): Promise<SessionInfo | null> 
   const res = await fetch(apiUrl(`/api/sessions/${encodeURIComponent(id)}`))
   if (!res.ok) return null
   return (await res.json()) as SessionInfo
+}
+
+// GET /api/sessions/:id/report → rapport de fin de partie (stats + classement).
+export async function fetchReport(id: string): Promise<GameReport | null> {
+  const res = await fetch(apiUrl(`/api/sessions/${encodeURIComponent(id)}/report`))
+  if (!res.ok) return null
+  return (await res.json()) as GameReport
 }

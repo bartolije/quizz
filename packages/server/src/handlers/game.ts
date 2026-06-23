@@ -227,6 +227,7 @@ export function closeQuestion(
 
     p.lastDelta = gained
     p.score += gained
+    if (correct) p.correctTotal += 1
     results.set(pid, { gained, correct })
   }
 
@@ -242,6 +243,16 @@ export function closeQuestion(
   const scores = getLeaderboard(session)
   const answeredCount = session.answers.size
   const correctCount = [...results.values()].filter((r) => r.correct).length
+
+  // Historise la question pour le rapport de fin de partie
+  session.results.push({
+    index: session.currentQuestionIndex,
+    text: q.text,
+    type: q.type,
+    correctAnswers: q.correctAnswers,
+    answeredCount,
+    correctCount,
+  })
 
   // question_ended est personnalisé (myAnswer/myCorrect/myScore/myDelta) → emit par socket
   for (const p of session.participants.values()) {

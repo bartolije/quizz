@@ -1,5 +1,5 @@
 import { v4 as uuid } from 'uuid'
-import type { Quiz } from '@lya-quiz/shared'
+import type { Quiz, QuestionReport } from '@lya-quiz/shared'
 import { SESSION_TOKEN_TTL_MS } from '@lya-quiz/shared'
 import { getDefaultQuiz, getQuiz } from './quiz-repo.js'
 import { logEvent } from './logger.js'
@@ -12,6 +12,7 @@ export interface ParticipantState {
   connected: boolean
   score: number             // score cumulé
   lastDelta: number         // points gagnés à la dernière question fermée
+  correctTotal: number      // nb de questions réussies (pour le rapport de fin)
   disconnectedAt?: number   // timestamp, pour cleanup après TTL
 }
 
@@ -32,6 +33,7 @@ export interface SessionState {
   questionStartedAt: number | null               // null = aucune question ouverte
   answers: Map<string, PendingAnswer>            // réponses de la question courante (clé = participantId)
   currentShuffled: string[] | null               // items mélangés de la question 'ordering' en cours
+  results: QuestionReport[]                       // historique des questions fermées (rapport de fin)
   questionTimer: ReturnType<typeof setTimeout> | null
   quiz: Quiz | null   // seedé en mémoire en S4, viendra de la DB en S8
 }
@@ -65,6 +67,7 @@ export function createSession(quizId?: string): SessionState {
     questionStartedAt: null,
     answers: new Map(),
     currentShuffled: null,
+    results: [],
     questionTimer: null,
     // S8 : le quiz vient de la DB (quizId explicite, sinon le quiz par défaut).
     quiz: quizId ? getQuiz(quizId) : getDefaultQuiz(),

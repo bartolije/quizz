@@ -1,6 +1,10 @@
+import { useState } from 'react'
+import type { GameReport } from '@lya-quiz/shared'
 import { useHostSession } from '../hooks/useHostSession'
 import { useRemaining } from '../hooks/useRemaining'
+import { fetchReport } from '../host-session'
 import { QrCode } from '../components/QrCode'
+import { ReportView } from '../components/ReportView'
 import { choiceStyle } from '../mcq'
 import { rankMovement, movementMark } from '../rank-movement'
 
@@ -9,6 +13,7 @@ export function HostControlPage() {
   const connected = s.participants.filter((p) => p.connected)
   const joinUrl = s.pin ? `${window.location.origin}/join?pin=${s.pin}` : ''
   const remaining = useRemaining(s.questionStartedAt, s.currentQuestion?.timeLimit ?? 0)
+  const [report, setReport] = useState<GameReport | null>(null)
 
   if (s.error) {
     return (
@@ -208,9 +213,19 @@ export function HostControlPage() {
                 </li>
               ))}
             </ol>
+            <button
+              onClick={() => {
+                if (s.sessionId) void fetchReport(s.sessionId).then(setReport)
+              }}
+              className="mt-4 px-6 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500 font-bold"
+            >
+              📊 Voir le rapport détaillé
+            </button>
           </div>
         )}
       </div>
+
+      {report && <ReportView report={report} onClose={() => setReport(null)} />}
 
       <footer className="px-8 py-6 border-t border-gray-800 flex items-center justify-between gap-6">
         <div>

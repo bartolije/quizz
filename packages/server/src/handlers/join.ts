@@ -66,6 +66,7 @@ export function handleJoinSession(
     connected: true,
     score: 0,
     lastDelta: 0,
+    correctTotal: 0,
   }
 
   session.participants.set(participant.id, participant)
