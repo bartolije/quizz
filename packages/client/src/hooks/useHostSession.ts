@@ -27,6 +27,7 @@ interface HostSessionView {
 type JoinedPayload = Parameters<ServerToClientEvents['session_joined']>[0]
 type JoinPayload = Parameters<ServerToClientEvents['participant_joined']>[0]
 type LeftPayload = Parameters<ServerToClientEvents['participant_left']>[0]
+type StatusPayload = Parameters<ServerToClientEvents['session_status_changed']>[0]
 
 function upsert(list: Participant[], p: Participant): Participant[] {
   return list.some((x) => x.id === p.id)
@@ -110,10 +111,13 @@ export function useHostSession(mode: HostMode): HostSessionView {
       setParticipants((prev) =>
         prev.map((x) => (x.id === p.participantId ? { ...x, connected: false } : x)),
       )
+    // Diffusé quand le host démarre/termine le quiz → synchronise display + 2e onglet control
+    const onStatus = (p: StatusPayload) => setStatus(p.status)
 
     socket.on(EVENTS.SESSION_JOINED, onJoined)
     socket.on(EVENTS.PARTICIPANT_JOINED, onJoin)
     socket.on(EVENTS.PARTICIPANT_LEFT, onLeft)
+    socket.on(EVENTS.SESSION_STATUS_CHANGED, onStatus)
 
     const join = () => socket.emit(EVENTS.HOST_JOIN, { pin })
     if (!socket.connected) socket.connect()
@@ -124,6 +128,7 @@ export function useHostSession(mode: HostMode): HostSessionView {
       socket.off(EVENTS.SESSION_JOINED, onJoined)
       socket.off(EVENTS.PARTICIPANT_JOINED, onJoin)
       socket.off(EVENTS.PARTICIPANT_LEFT, onLeft)
+      socket.off(EVENTS.SESSION_STATUS_CHANGED, onStatus)
       socket.off('connect', join)
     }
   }, [pin])

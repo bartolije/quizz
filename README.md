@@ -52,8 +52,9 @@ npm run dev:client # http://localhost:5173
 - **S3 ✅** — vues host `/host/control` (création session + PIN + QR code +
   participants temps réel + bouton Démarrer) et `/host/display` (TV, synchro
   via la même room). Routing react-router, QR code (`qrcode`), bouton Démarrer
-  → `host_start_quiz` (statut `running`). `GET /api/sessions/:id` pour résoudre
-  une session depuis `/host/display?session=XXXX`.
+  → `host_start_quiz` → broadcast `session_status_changed` (statut `running`)
+  qui synchronise les deux vues host en temps réel. `GET /api/sessions/:id`
+  pour résoudre une session depuis `/host/display?session=XXXX`.
 - S4 — questions, timer, affichage des réponses (toujours en mémoire).
 - S8 — DB (Drizzle + better-sqlite3), éditeur de quiz.
 

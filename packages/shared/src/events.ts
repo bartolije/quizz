@@ -3,6 +3,7 @@ import type {
   ParticipantScore,
   QuestionPublic,
   Session,
+  SessionStatus,
 } from './models.js'
 
 // Token de session persistant côté client (localStorage)
@@ -72,6 +73,13 @@ export interface ServerToClientEvents {
     session: Pick<Session, 'status' | 'pin'>
   }) => void
 
+  // Le statut de la session a changé (host démarre / termine le quiz).
+  // Diffusé à toute la room → les deux vues host (control + display) se
+  // synchronisent. Les questions elles-mêmes passent par question_started (S4).
+  session_status_changed: (payload: {
+    status: SessionStatus
+  }) => void
+
   // Un nouveau participant vient de rejoindre (broadcast à tous)
   participant_joined: (payload: {
     participant: Participant
@@ -134,9 +142,10 @@ export const EVENTS = {
   HOST_JOIN:          'host_join',
 
   // Serveur → Client
-  SESSION_JOINED:     'session_joined',
-  SESSION_RESTORED:   'session_restored',
-  PARTICIPANT_JOINED: 'participant_joined',
+  SESSION_JOINED:         'session_joined',
+  SESSION_RESTORED:       'session_restored',
+  SESSION_STATUS_CHANGED: 'session_status_changed',
+  PARTICIPANT_JOINED:     'participant_joined',
   PARTICIPANT_LEFT:   'participant_left',
   QUESTION_STARTED:   'question_started',
   QUESTION_ENDED:     'question_ended',

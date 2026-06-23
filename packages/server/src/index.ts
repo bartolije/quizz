@@ -33,7 +33,7 @@ io.on('connection', (socket) => {
   })
 
   socket.on(EVENTS.HOST_START_QUIZ, () => {
-    handleHostStartQuiz(socket)
+    handleHostStartQuiz(socket, io)
   })
 
   socket.on('disconnect', () => {
