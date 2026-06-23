@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { socket } from '../socket'
 import { useQuizStore } from '../store/quiz-store'
@@ -21,6 +21,15 @@ export function JoinPage() {
   const loadingRef = useRef(false)
 
   const setJoined = useQuizStore((s) => s.setJoined)
+
+  // Reprise au reload : pas de QR (?pin absent) + un token présent → on retourne
+  // directement dans la partie via /lobby (ParticipantApp tente la reconnexion).
+  // Avec ?pin (scan d'un QR), on garde le formulaire pour rejoindre cette session.
+  useEffect(() => {
+    if (!searchParams.get('pin') && localStorage.getItem('lya_quiz_token')) {
+      navigate('/lobby', { replace: true })
+    }
+  }, [navigate, searchParams])
 
   function handleJoin() {
     if (!pin.trim() || !pseudo.trim()) return

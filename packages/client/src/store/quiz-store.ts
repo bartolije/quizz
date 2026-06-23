@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { Participant, ParticipantScore, QuestionPublic } from '@lya-quiz/shared'
+import type { Participant, ParticipantScore, QuestionPublic, SessionStatus } from '@lya-quiz/shared'
 
 type AppView = 'join' | 'lobby' | 'question' | 'answer' | 'leaderboard' | 'ended'
 
@@ -22,13 +22,15 @@ interface QuestionEndedPayload {
   myDelta: number
 }
 
-// Sous-ensemble de session_restored utilisé par le store (reconnexion S7)
+// Sous-ensemble de session_restored utilisé par le store (reconnexion S7 + reprise au reload)
 interface SessionRestoredPayload {
+  participant: { id: string; pseudo: string }
   participants: Participant[]
   currentQuestion: QuestionPublic | null
   timeElapsed: number
   alreadyAnswered: boolean
   myScore: number
+  session: { pin: string; status: SessionStatus }
 }
 
 interface QuizStore {
@@ -151,11 +153,19 @@ export const useQuizStore = create<QuizStore>()((set) => ({
   // Reconnexion (S7) : on resynchronise participants + score, et si une question
   // est en cours on y revient avec le bon temps restant et l'état "déjà répondu".
   onSessionRestored: (payload) =>
-    set(() => {
+    set((state) => {
+      // Identité (re)peuplée → indispensable pour la reprise après un rechargement
+      // complet (sinon le lobby renvoie au /join faute de myId).
+      const identity = {
+        myId: payload.participant.id,
+        myPseudo: payload.participant.pseudo,
+        sessionPin: payload.session.pin,
+        participants: payload.participants,
+        myScore: payload.myScore,
+      }
       if (payload.currentQuestion) {
         return {
-          participants: payload.participants,
-          myScore: payload.myScore,
+          ...identity,
           currentView: 'question' as AppView,
           currentQuestion: payload.currentQuestion,
           // ancre le timer pour refléter le temps déjà écoulé côté serveur
@@ -164,8 +174,16 @@ export const useQuizStore = create<QuizStore>()((set) => ({
           lastResult: null,
         }
       }
-      // pas de question ouverte : on ne perturbe pas la vue courante
-      return { participants: payload.participants, myScore: payload.myScore }
+      // Pas de question ouverte :
+      // - reload (vue 'join') → on entre dans le lobby (ou l'écran de fin) ;
+      // - simple blip (déjà en jeu) → on NE perturbe PAS la vue courante.
+      const view: AppView =
+        state.currentView === 'join'
+          ? payload.session.status === 'ended'
+            ? 'ended'
+            : 'lobby'
+          : state.currentView
+      return { ...identity, currentView: view }
     }),
 
   onQuizEnded: () => set({ currentView: 'ended', questionStartedAt: null }),
