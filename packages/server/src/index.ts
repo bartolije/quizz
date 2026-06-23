@@ -168,7 +168,11 @@ app.get<{ Params: { id: string } }>('/api/sessions/:id/report', async (req, repl
   return report
 })
 
-app.get('/health', async () => ({ status: 'ok', sessions: getAllSessions().length }))
+app.get('/health', async () => ({
+  status: 'ok',
+  sessions: getAllSessions().length,
+  build: process.env['RAILWAY_GIT_COMMIT_SHA']?.slice(0, 7) ?? 'local',
+}))
 
 // Remontée des erreurs JS des clients (téléphones) → logs serveur (S10).
 // Sinon un crash côté joueur est invisible. Payload borné, pas de log du log.
@@ -191,7 +195,15 @@ app.post<{
 // __dirname = packages/server/dist → le build client est à ../../client/dist
 // (résolu depuis l'emplacement du fichier, indépendant du cwd de lancement).
 const clientDist = join(dirname(fileURLToPath(import.meta.url)), '../../client/dist')
-void app.register(fastifyStatic, { root: clientDist, wildcard: false })
+void app.register(fastifyStatic, {
+  root: clientDist,
+  wildcard: false,
+  // index.html en no-cache → un nouveau déploiement est pris en compte sans
+  // hard-refresh (les assets JS/CSS sont eux hashés donc immuables).
+  setHeaders: (res, path) => {
+    if (path.endsWith('.html')) res.setHeader('cache-control', 'no-cache')
+  },
+})
 
 // SPA : toute route GET non-API/non-socket renvoie index.html
 // (react-router gère le routing /host/control, /join… côté client au refresh).
@@ -201,7 +213,7 @@ app.setNotFoundHandler((req, reply) => {
     void reply.code(404).send({ error: 'not_found' })
     return
   }
-  void reply.sendFile('index.html')
+  void reply.header('cache-control', 'no-cache').sendFile('index.html')
 })
 
 const PORT = Number(process.env['PORT'] ?? 3001)

@@ -4,10 +4,12 @@ import { ParticipantApp } from './pages/ParticipantApp'
 import { HostControlPage } from './pages/HostControlPage'
 import { HostDisplayPage } from './pages/HostDisplayPage'
 import { AdminPage } from './pages/AdminPage'
+import { BuildBadge } from './components/BuildBadge'
 
 export function App() {
   return (
     <BrowserRouter>
+      <BuildBadge />
       <Routes>
         <Route path="/" element={<JoinPage />} />
         <Route path="/join" element={<JoinPage />} />
