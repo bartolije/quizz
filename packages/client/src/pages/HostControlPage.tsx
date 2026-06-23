@@ -106,29 +106,44 @@ export function HostControlPage() {
             </div>
             <h2 className="text-3xl font-bold">{q.text}</h2>
 
-            <div className="grid grid-cols-2 gap-3">
-              {(q.choices ?? []).map((choice, i) => {
-                const st = choiceStyle(i)
-                const isCorrect = s.reveal?.correctAnswers.includes(choice)
-                const count = s.reveal?.distribution.find((d) => d.value === choice)?.count ?? 0
-                return (
-                  <div
-                    key={choice}
-                    className={`rounded-2xl px-5 py-4 flex items-center gap-3 ${st.bg} ${
-                      phase === 'reveal' && !isCorrect ? 'opacity-40' : ''
-                    }`}
-                  >
-                    <span className="text-2xl">{st.shape}</span>
-                    <span className="font-bold flex-1">{choice}</span>
-                    {phase === 'reveal' && (
-                      <span className="font-mono text-sm bg-black/30 px-2 py-1 rounded">
-                        {count} {isCorrect && '✓'}
-                      </span>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
+            {q.type === 'mcq' ? (
+              <div className="grid grid-cols-2 gap-3">
+                {(q.choices ?? []).map((choice, i) => {
+                  const st = choiceStyle(i)
+                  const isCorrect = s.reveal?.correctAnswers.includes(choice)
+                  const count = s.reveal?.distribution.find((d) => d.value === choice)?.count ?? 0
+                  return (
+                    <div
+                      key={choice}
+                      className={`rounded-2xl px-5 py-4 flex items-center gap-3 ${st.bg} ${
+                        phase === 'reveal' && !isCorrect ? 'opacity-40' : ''
+                      }`}
+                    >
+                      <span className="text-2xl">{st.shape}</span>
+                      <span className="font-bold flex-1">{choice}</span>
+                      {phase === 'reveal' && (
+                        <span className="font-mono text-sm bg-black/30 px-2 py-1 rounded">
+                          {count} {isCorrect && '✓'}
+                        </span>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            ) : phase === 'reveal' ? (
+              <div className="bg-gray-900 rounded-2xl p-6 text-center">
+                <p className="text-gray-400 text-xs uppercase tracking-wider mb-1">
+                  {q.type === 'closest' ? 'Bonne réponse' : 'Réponse(s) acceptée(s)'}
+                </p>
+                <p className="text-3xl font-bold">{(s.reveal?.correctAnswers ?? []).join(' · ')}</p>
+              </div>
+            ) : (
+              <p className="text-gray-500 text-center">
+                {q.type === 'closest'
+                  ? 'Réponse numérique sur les téléphones…'
+                  : 'Réponse libre sur les téléphones…'}
+              </p>
+            )}
 
             {phase === 'question' && (
               <p className="text-center text-gray-400 text-lg">

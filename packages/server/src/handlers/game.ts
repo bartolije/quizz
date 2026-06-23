@@ -1,6 +1,11 @@
 import type { Server, Socket } from 'socket.io'
 import type { ClientToServerEvents, ServerToClientEvents } from '@lya-quiz/shared'
-import { EVENTS, calculateScore } from '@lya-quiz/shared'
+import {
+  EVENTS,
+  calculateScore,
+  calculateClosestScore,
+  isCorrectFreeAnswer,
+} from '@lya-quiz/shared'
 import { getAllSessions, type SessionState } from '../state.js'
 import { getLeaderboard, toPublicQuestion } from '../session-helpers.js'
 
@@ -140,31 +145,65 @@ export function closeQuestion(session: SessionState, io: QuizServer): void {
   const q = quiz?.questions[session.currentQuestionIndex]
   if (!quiz || !q) return
 
-  // Reset des deltas, puis scoring des réponses de la question
+  // Reset des deltas
   for (const p of session.participants.values()) p.lastDelta = 0
 
+  // Parse robuste d'un nombre (virgule décimale tolérée) pour le type 'closest'
+  const toNum = (v: string | number): number | null => {
+    const n = typeof v === 'number' ? v : Number(String(v).replace(',', '.').trim())
+    return Number.isFinite(n) ? n : null
+  }
+
+  // 'closest' : pré-calcul de la valeur cible + écart max parmi les réponses
+  // numériques (sert de référence au scoring dégressif).
+  let correctNum = 0
+  let maxDeviation = 0
+  if (q.type === 'closest') {
+    correctNum = Number(q.correctAnswers[0])
+    for (const ans of session.answers.values()) {
+      const n = toNum(ans.value)
+      if (n !== null) maxDeviation = Math.max(maxDeviation, Math.abs(correctNum - n))
+    }
+  }
+
+  // Scoring par type → { gained, correct } par participant
+  const results = new Map<string, { gained: number; correct: boolean }>()
   for (const [pid, ans] of session.answers) {
     const p = session.participants.get(pid)
     if (!p) continue
     const elapsed = (ans.submittedAt - startedAt) / 1000
-    const correct =
-      q.type === 'mcq' &&
-      typeof ans.value === 'string' &&
-      q.correctAnswers.includes(ans.value)
-    const gained = correct ? calculateScore(q.timeLimit, elapsed) : 0
+    let gained = 0
+    let correct = false
+
+    if (q.type === 'mcq') {
+      correct = typeof ans.value === 'string' && q.correctAnswers.includes(ans.value)
+      gained = correct ? calculateScore(q.timeLimit, elapsed) : 0
+    } else if (q.type === 'free') {
+      correct = isCorrectFreeAnswer(String(ans.value), q.correctAnswers)
+      gained = correct ? calculateScore(q.timeLimit, elapsed) : 0
+    } else {
+      // closest : tout le monde marque selon la distance (pas de bonus vitesse)
+      const n = toNum(ans.value)
+      gained = n === null ? 0 : calculateClosestScore(correctNum, n, maxDeviation)
+    }
+
     p.lastDelta = gained
     p.score += gained
+    results.set(pid, { gained, correct })
   }
 
-  // Répartition des réponses par choix (pour le bar chart de la TV)
-  const distribution = (q.choices ?? []).map((choice) => ({
-    value: choice,
-    count: [...session.answers.values()].filter((a) => a.value === choice).length,
-  }))
+  // Répartition par choix (bar chart TV) — pertinent uniquement pour le MCQ
+  const distribution =
+    q.type === 'mcq'
+      ? (q.choices ?? []).map((choice) => ({
+          value: choice,
+          count: [...session.answers.values()].filter((a) => a.value === choice).length,
+        }))
+      : []
 
   const scores = getLeaderboard(session)
 
-  // question_ended est personnalisé (myAnswer/myScore/myDelta) → emit par socket
+  // question_ended est personnalisé (myAnswer/myCorrect/myScore/myDelta) → emit par socket
   for (const p of session.participants.values()) {
     if (!p.connected) continue
     const ans = session.answers.get(p.id)
@@ -173,6 +212,7 @@ export function closeQuestion(session: SessionState, io: QuizServer): void {
       scores,
       distribution,
       myAnswer: ans?.value ?? null,
+      myCorrect: results.get(p.id)?.correct ?? false,
       myScore: p.score,
       myDelta: p.lastDelta,
     })
@@ -184,6 +224,7 @@ export function closeQuestion(session: SessionState, io: QuizServer): void {
     scores,
     distribution,
     myAnswer: null,
+    myCorrect: false,
     myScore: 0,
     myDelta: 0,
   })

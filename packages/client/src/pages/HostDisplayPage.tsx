@@ -141,36 +141,51 @@ export function HostDisplayPage() {
         {q!.text}
       </h2>
 
-      <div className="grid grid-cols-2 gap-5">
-        {(q!.choices ?? []).map((choice, i) => {
-          const st = choiceStyle(i)
-          const isCorrect = s.reveal?.correctAnswers.includes(choice)
-          const count = s.reveal?.distribution.find((d) => d.value === choice)?.count ?? 0
-          const dimmed = phase === 'reveal' && !isCorrect
-          return (
-            <div
-              key={choice}
-              className={`rounded-3xl px-8 py-7 flex items-center gap-5 ${st.bg} ${
-                dimmed ? 'opacity-30' : ''
-              } ${phase === 'reveal' && isCorrect ? 'ring-4 ring-white' : ''}`}
-            >
-              <span className="text-5xl">{st.shape}</span>
-              <span className="text-3xl font-bold flex-1">{choice}</span>
-              {phase === 'reveal' && (
-                <div className="flex items-center gap-3">
-                  <div className="w-32 h-3 bg-black/30 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-white/80"
-                      style={{ width: `${(count / maxCount) * 100}%` }}
-                    />
+      {q!.type === 'mcq' ? (
+        <div className="grid grid-cols-2 gap-5">
+          {(q!.choices ?? []).map((choice, i) => {
+            const st = choiceStyle(i)
+            const isCorrect = s.reveal?.correctAnswers.includes(choice)
+            const count = s.reveal?.distribution.find((d) => d.value === choice)?.count ?? 0
+            const dimmed = phase === 'reveal' && !isCorrect
+            return (
+              <div
+                key={choice}
+                className={`rounded-3xl px-8 py-7 flex items-center gap-5 ${st.bg} ${
+                  dimmed ? 'opacity-30' : ''
+                } ${phase === 'reveal' && isCorrect ? 'ring-4 ring-white' : ''}`}
+              >
+                <span className="text-5xl">{st.shape}</span>
+                <span className="text-3xl font-bold flex-1">{choice}</span>
+                {phase === 'reveal' && (
+                  <div className="flex items-center gap-3">
+                    <div className="w-32 h-3 bg-black/30 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-white/80"
+                        style={{ width: `${(count / maxCount) * 100}%` }}
+                      />
+                    </div>
+                    <span className="text-2xl font-mono font-bold w-10 text-right">{count}</span>
                   </div>
-                  <span className="text-2xl font-mono font-bold w-10 text-right">{count}</span>
-                </div>
-              )}
-            </div>
-          )
-        })}
-      </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      ) : phase === 'reveal' ? (
+        <div className="bg-gray-900 rounded-3xl p-10 text-center">
+          <p className="text-gray-400 text-2xl uppercase tracking-wider mb-3">
+            {q!.type === 'closest' ? 'Bonne réponse' : 'Réponse(s) acceptée(s)'}
+          </p>
+          <p className="text-6xl font-black">{(s.reveal?.correctAnswers ?? []).join(' · ')}</p>
+        </div>
+      ) : (
+        <p className="text-center text-3xl text-gray-500">
+          {q!.type === 'closest'
+            ? '⌨️ Saisie numérique sur les téléphones'
+            : '⌨️ Saisie libre sur les téléphones'}
+        </p>
+      )}
 
       <p className="text-center text-2xl text-gray-400 mt-6">
         {phase === 'question'

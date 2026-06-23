@@ -108,6 +108,7 @@ export interface ServerToClientEvents {
     // bar chart de révélation. Vide pour les types non-MCQ.
     distribution: { value: string; count: number }[]
     myAnswer: string | number | null
+    myCorrect: boolean   // ma réponse était-elle correcte (mcq/free) ; toujours false pour closest
     myScore: number
     myDelta: number
   }) => void

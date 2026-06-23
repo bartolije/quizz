@@ -17,6 +17,7 @@ interface QuestionEndedPayload {
   scores: ParticipantScore[]
   distribution: { value: string; count: number }[]
   myAnswer: string | number | null
+  myCorrect: boolean
   myScore: number
   myDelta: number
 }
@@ -130,9 +131,7 @@ export const useQuizStore = create<QuizStore>()((set) => ({
       questionStartedAt: null,
       myScore: payload.myScore,
       lastResult: {
-        correct:
-          payload.myAnswer !== null &&
-          payload.correctAnswers.includes(String(payload.myAnswer)),
+        correct: payload.myCorrect,
         myAnswer: payload.myAnswer,
         myScore: payload.myScore,
         myDelta: payload.myDelta,
