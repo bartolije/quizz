@@ -34,6 +34,39 @@ export function AnswerPage() {
     )
   }
 
+  // ordering : score partiel selon le nombre d'items bien placés
+  if (type === 'ordering') {
+    const order = result.correctAnswers
+    const mine = Array.isArray(result.myAnswer) ? result.myAnswer : []
+    const placed = order.filter((v, i) => mine[i] === v).length
+    const full = result.correct
+    return (
+      <div
+        className={`min-h-screen flex flex-col items-center justify-center p-6 text-center text-white ${
+          full ? 'bg-emerald-700' : 'bg-indigo-800'
+        }`}
+      >
+        <div className="text-7xl mb-3">{full ? '✅' : '🔀'}</div>
+        <p className="text-3xl font-black mb-2">
+          {full ? 'Ordre parfait !' : `${placed} / ${order.length} bien placés`}
+        </p>
+        <p className="text-2xl font-bold mb-4">+{result.myDelta} pts</p>
+        <div className="bg-black/20 rounded-2xl px-8 py-4 mb-4 text-left">
+          <p className="text-xs uppercase tracking-wider opacity-80 mb-2 text-center">Le bon ordre</p>
+          <ol className="space-y-1">
+            {order.map((v, i) => (
+              <li key={v}>
+                {i + 1}. {v}
+              </li>
+            ))}
+          </ol>
+        </div>
+        {scoreCard}
+        <p className="text-sm opacity-80 mt-6">En attente de la suite…</p>
+      </div>
+    )
+  }
+
   // mcq / free : bon ou faux
   const correct = result.correct
   return (

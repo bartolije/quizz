@@ -6,24 +6,36 @@ import { useRemaining } from '../hooks/useRemaining'
 import { choiceStyle } from '../mcq'
 
 // Vue participant pendant une question (mobile). Le rendu dépend du type :
-// - mcq    : boutons couleur (énoncé sur la TV)
-// - free   : champ texte
-// - closest: champ numérique
+// - mcq      : boutons couleur (énoncé sur la TV)
+// - free     : champ texte
+// - closest  : champ numérique
+// - ordering : liste à réordonner (↑/↓) puis valider
 export function QuestionPage() {
   const question = useQuizStore((s) => s.currentQuestion)
   const startedAt = useQuizStore((s) => s.questionStartedAt)
   const hasAnswered = useQuizStore((s) => s.hasAnswered)
   const markAnswered = useQuizStore((s) => s.markAnswered)
   const [text, setText] = useState('')
+  const [order, setOrder] = useState<string[]>(() => [...(question?.choices ?? [])])
 
   const remaining = useRemaining(startedAt, question?.timeLimit ?? 0)
 
   if (!question) return null
 
-  function submit(answer: string | number) {
+  function submit(answer: string | number | string[]) {
     if (hasAnswered) return
     socket.emit(EVENTS.SUBMIT_ANSWER, { answer })
     markAnswered()
+  }
+
+  function move(i: number, dir: -1 | 1) {
+    setOrder((prev) => {
+      const j = i + dir
+      if (j < 0 || j >= prev.length) return prev
+      const next = [...prev]
+      ;[next[i], next[j]] = [next[j]!, next[i]!]
+      return next
+    })
   }
 
   return (
@@ -60,6 +72,39 @@ export function QuestionPage() {
             })}
           </div>
         </>
+      ) : question.type === 'ordering' ? (
+        <div className="flex-1 flex flex-col gap-3">
+          <p className="text-lg font-bold text-center px-2">{question.text}</p>
+          <p className="text-center text-gray-500 text-sm mb-1">Remets dans le bon ordre :</p>
+          <div className="flex-1 space-y-2">
+            {order.map((item, i) => (
+              <div key={item} className="flex items-center gap-2 bg-gray-800 rounded-xl px-3 py-3">
+                <span className="w-6 text-center text-gray-500 font-bold">{i + 1}</span>
+                <span className="flex-1 font-medium">{item}</span>
+                <button
+                  onClick={() => move(i, -1)}
+                  disabled={i === 0}
+                  className="w-10 h-10 rounded-lg bg-gray-700 disabled:opacity-30 text-xl"
+                >
+                  ↑
+                </button>
+                <button
+                  onClick={() => move(i, 1)}
+                  disabled={i === order.length - 1}
+                  className="w-10 h-10 rounded-lg bg-gray-700 disabled:opacity-30 text-xl"
+                >
+                  ↓
+                </button>
+              </div>
+            ))}
+          </div>
+          <button
+            onClick={() => submit(order)}
+            className="w-full py-5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-xl font-bold transition-colors"
+          >
+            Valider l'ordre
+          </button>
+        </div>
       ) : (
         // free / closest : énoncé affiché + champ de saisie
         <div className="flex-1 flex flex-col justify-center gap-5">

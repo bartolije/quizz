@@ -138,7 +138,12 @@ function handleRejoinWithParticipant(
     session.questionStartedAt !== null ? quiz?.questions[session.currentQuestionIndex] : undefined
   const currentQuestion =
     session.questionStartedAt !== null && quiz && openQuestion
-      ? toPublicQuestion(openQuestion, session.currentQuestionIndex, quiz.questions.length)
+      ? toPublicQuestion(
+          openQuestion,
+          session.currentQuestionIndex,
+          quiz.questions.length,
+          session.currentShuffled ?? undefined,
+        )
       : null
   const timeElapsed = session.questionStartedAt
     ? (Date.now() - session.questionStartedAt) / 1000

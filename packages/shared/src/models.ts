@@ -1,4 +1,4 @@
-export type QuestionType = 'mcq' | 'free' | 'closest'
+export type QuestionType = 'mcq' | 'free' | 'closest' | 'ordering'
 
 export type QuestionStatus = 'waiting' | 'running' | 'ended'
 export type SessionStatus  = 'waiting' | 'running' | 'ended'
@@ -24,7 +24,7 @@ export interface QuestionPublic {
   id: string
   text: string
   type: QuestionType
-  choices?: string[]   // uniquement pour 'mcq'
+  choices?: string[]   // 'mcq' : les choix · 'ordering' : les items MÉLANGÉS à réordonner
   timeLimit: number    // en secondes
   index: number        // position dans le quiz (0-based)
   total: number        // nombre total de questions

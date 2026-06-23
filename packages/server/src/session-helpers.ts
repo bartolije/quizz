@@ -15,16 +15,19 @@ export function toParticipant(p: ParticipantState): Participant {
 }
 
 // Question "publique" envoyée aux clients : jamais les bonnes réponses.
+// choicesOverride : pour 'ordering', les items MÉLANGÉS à réordonner.
 export function toPublicQuestion(
   q: Question,
   index: number,
   total: number,
+  choicesOverride?: string[],
 ): QuestionPublic {
+  const choices = choicesOverride ?? q.choices
   return {
     id: q.id,
     text: q.text,
     type: q.type,
-    ...(q.choices ? { choices: q.choices } : {}),
+    ...(choices ? { choices } : {}),
     timeLimit: q.timeLimit,
     index,
     total,

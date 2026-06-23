@@ -49,7 +49,8 @@ function fromQuestion(q: Question): EQ {
     text: q.text,
     choices,
     correctIndex: q.type === 'mcq' ? Math.max(0, choices.indexOf(q.correctAnswers[0] ?? '')) : 0,
-    freeAnswers: q.type === 'free' ? q.correctAnswers.join('\n') : '',
+    freeAnswers:
+      q.type === 'free' || q.type === 'ordering' ? q.correctAnswers.join('\n') : '',
     closestValue: q.type === 'closest' ? (q.correctAnswers[0] ?? '') : '',
     timeLimit: q.timeLimit,
   }
@@ -80,6 +81,10 @@ function toInput(d: EditDraft): { input: QuizInput; error: string | null } {
       const answers = q.freeAnswers.split('\n').map((s) => s.trim()).filter(Boolean)
       if (answers.length === 0) return { input: null as never, error: `Question ${n} : ajoute au moins une bonne réponse.` }
       questions.push({ type: 'free', text: q.text.trim(), correctAnswers: answers, timeLimit: q.timeLimit })
+    } else if (q.type === 'ordering') {
+      const items = q.freeAnswers.split('\n').map((s) => s.trim()).filter(Boolean)
+      if (items.length < 2) return { input: null as never, error: `Question ${n} : mets au moins 2 éléments à ordonner.` }
+      questions.push({ type: 'ordering', text: q.text.trim(), correctAnswers: items, timeLimit: q.timeLimit })
     } else {
       const v = q.closestValue.trim()
       if (v === '' || Number.isNaN(Number(v))) return { input: null as never, error: `Question ${n} : la bonne valeur doit être un nombre.` }
@@ -241,6 +246,7 @@ export function AdminPage() {
                   <option value="mcq">Choix multiple</option>
                   <option value="free">Saisie libre</option>
                   <option value="closest">Au plus proche</option>
+                  <option value="ordering">Remettre dans l'ordre</option>
                 </select>
                 <div className="ml-auto flex gap-1">
                   <button onClick={() => moveQ(i, -1)} className="px-2 py-1 rounded bg-gray-800 hover:bg-gray-700">↑</button>
@@ -286,12 +292,16 @@ export function AdminPage() {
                 </div>
               )}
 
-              {q.type === 'free' && (
+              {(q.type === 'free' || q.type === 'ordering') && (
                 <textarea
                   value={q.freeAnswers}
                   onChange={(e) => patchQ(i, { freeAnswers: e.target.value })}
-                  placeholder="Bonnes réponses acceptées (une par ligne)"
-                  rows={3}
+                  placeholder={
+                    q.type === 'ordering'
+                      ? 'Éléments DANS LE BON ORDRE (un par ligne) — ils seront mélangés pour les joueurs'
+                      : 'Bonnes réponses acceptées (une par ligne)'
+                  }
+                  rows={4}
                   className={`${input} w-full`}
                 />
               )}

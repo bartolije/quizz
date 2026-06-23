@@ -17,7 +17,7 @@ export interface ParticipantState {
 
 // Réponse en cours d'un participant à la question ouverte
 export interface PendingAnswer {
-  value: string | number
+  value: string | number | string[]   // string[] pour le type 'ordering'
   submittedAt: number       // timestamp serveur
 }
 
@@ -31,6 +31,7 @@ export interface SessionState {
   currentQuestionIndex: number                   // -1 = quiz pas encore démarré
   questionStartedAt: number | null               // null = aucune question ouverte
   answers: Map<string, PendingAnswer>            // réponses de la question courante (clé = participantId)
+  currentShuffled: string[] | null               // items mélangés de la question 'ordering' en cours
   questionTimer: ReturnType<typeof setTimeout> | null
   quiz: Quiz | null   // seedé en mémoire en S4, viendra de la DB en S8
 }
@@ -63,6 +64,7 @@ export function createSession(quizId?: string): SessionState {
     currentQuestionIndex: -1,
     questionStartedAt: null,
     answers: new Map(),
+    currentShuffled: null,
     questionTimer: null,
     // S8 : le quiz vient de la DB (quizId explicite, sinon le quiz par défaut).
     quiz: quizId ? getQuiz(quizId) : getDefaultQuiz(),

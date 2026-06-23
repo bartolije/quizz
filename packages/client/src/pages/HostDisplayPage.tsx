@@ -175,15 +175,21 @@ export function HostDisplayPage() {
       ) : phase === 'reveal' ? (
         <div className="bg-gray-900 rounded-3xl p-10 text-center">
           <p className="text-gray-400 text-2xl uppercase tracking-wider mb-3">
-            {q!.type === 'closest' ? 'Bonne réponse' : 'Réponse(s) acceptée(s)'}
+            {q!.type === 'closest'
+              ? 'Bonne réponse'
+              : q!.type === 'ordering'
+                ? 'Le bon ordre'
+                : 'Réponse(s) acceptée(s)'}
           </p>
-          <p className="text-6xl font-black">{(s.reveal?.correctAnswers ?? []).join(' · ')}</p>
+          <p className="text-5xl font-black">{(s.reveal?.correctAnswers ?? []).join(' · ')}</p>
         </div>
       ) : (
         <p className="text-center text-3xl text-gray-500">
           {q!.type === 'closest'
             ? '⌨️ Saisie numérique sur les téléphones'
-            : '⌨️ Saisie libre sur les téléphones'}
+            : q!.type === 'ordering'
+              ? '🔀 Les joueurs réordonnent sur leurs téléphones'
+              : '⌨️ Saisie libre sur les téléphones'}
         </p>
       )}
 

@@ -28,9 +28,10 @@ export interface ClientToServerEvents {
     sessionToken: SessionToken
   }) => void
 
-  // Participant envoie sa réponse
+  // Participant envoie sa réponse.
+  // string : free/mcq · number : closest · string[] : ordering (items réordonnés)
   submit_answer: (payload: {
-    answer: string | number
+    answer: string | number | string[]
   }) => void
 
   // HOST ONLY — passer à la question suivante
@@ -107,8 +108,8 @@ export interface ServerToClientEvents {
     // Répartition des réponses (par choix) — utilisée par la vue TV pour le
     // bar chart de révélation. Vide pour les types non-MCQ.
     distribution: { value: string; count: number }[]
-    myAnswer: string | number | null
-    myCorrect: boolean   // ma réponse était-elle correcte (mcq/free) ; toujours false pour closest
+    myAnswer: string | number | string[] | null
+    myCorrect: boolean   // correcte (mcq/free) ou ordre parfait (ordering) ; false pour closest
     myScore: number
     myDelta: number
   }) => void

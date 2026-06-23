@@ -47,6 +47,13 @@ export const SEED_QUIZ: Quiz = {
       correctAnswers: ['1969'],
       timeLimit: 20,
     },
+    {
+      id: 'q6',
+      text: 'Remets ces planètes dans l’ordre, du plus proche du Soleil au plus loin',
+      type: 'ordering',
+      correctAnswers: ['Mercure', 'Vénus', 'Terre', 'Mars'],
+      timeLimit: 30,
+    },
   ],
 }
 

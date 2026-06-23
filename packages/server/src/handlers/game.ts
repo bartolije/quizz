@@ -36,6 +36,21 @@ function connectedParticipants(session: SessionState) {
   return [...session.participants.values()].filter((p) => p.connected)
 }
 
+// Mélange (Fisher-Yates) en garantissant un ordre différent de l'original.
+function shuffleDistinct(items: string[]): string[] {
+  if (items.length < 2) return [...items]
+  let out = [...items]
+  for (let attempt = 0; attempt < 6; attempt++) {
+    for (let i = out.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[out[i], out[j]] = [out[j]!, out[i]!]
+    }
+    if (out.some((v, i) => v !== items[i])) return out // au moins un item déplacé
+    out = [...items]
+  }
+  return out
+}
+
 // ─────────────────────────────────────────────────────────────
 // HOST : lancer la question suivante (ou terminer le quiz)
 // ─────────────────────────────────────────────────────────────
@@ -66,6 +81,8 @@ export function handleNextQuestion(socket: QuizSocket, io: QuizServer): void {
   session.currentQuestionIndex = nextIndex
   session.answers.clear()
   session.questionStartedAt = Date.now()
+  // 'ordering' : items mélangés une fois (même mélange pour tous + reconnexion cohérente)
+  session.currentShuffled = q.type === 'ordering' ? shuffleDistinct(q.correctAnswers) : null
 
   // Fermeture automatique à la fin du temps imparti
   session.questionTimer = setTimeout(() => {
@@ -73,7 +90,7 @@ export function handleNextQuestion(socket: QuizSocket, io: QuizServer): void {
   }, q.timeLimit * 1000)
 
   io.to(session.id).emit(EVENTS.QUESTION_STARTED, {
-    question: toPublicQuestion(q, nextIndex, questions.length),
+    question: toPublicQuestion(q, nextIndex, questions.length, session.currentShuffled ?? undefined),
     startedAt: session.questionStartedAt,
   })
   logEvent('question_started', {
@@ -103,7 +120,7 @@ export function handleShowLeaderboard(socket: QuizSocket, io: QuizServer): void 
 
 export function handleSubmitAnswer(
   socket: QuizSocket,
-  payload: { answer: string | number },
+  payload: { answer: string | number | string[] },
   io: QuizServer,
 ): void {
   const ctx = findParticipantContext(socket.id)
@@ -161,7 +178,8 @@ export function closeQuestion(
   for (const p of session.participants.values()) p.lastDelta = 0
 
   // Parse robuste d'un nombre (virgule décimale tolérée) pour le type 'closest'
-  const toNum = (v: string | number): number | null => {
+  const toNum = (v: string | number | string[]): number | null => {
+    if (Array.isArray(v)) return null
     const n = typeof v === 'number' ? v : Number(String(v).replace(',', '.').trim())
     return Number.isFinite(n) ? n : null
   }
@@ -193,6 +211,14 @@ export function closeQuestion(
     } else if (q.type === 'free') {
       correct = isCorrectFreeAnswer(String(ans.value), q.correctAnswers)
       gained = correct ? calculateScore(q.timeLimit, elapsed) : 0
+    } else if (q.type === 'ordering') {
+      // partiel : ratio d'items à la bonne position × score de vitesse
+      const submitted = Array.isArray(ans.value) ? ans.value : []
+      const order = q.correctAnswers
+      const placed = order.filter((v, idx) => submitted[idx] === v).length
+      const ratio = order.length > 0 ? placed / order.length : 0
+      gained = Math.round(calculateScore(q.timeLimit, elapsed) * ratio)
+      correct = ratio === 1
     } else {
       // closest : tout le monde marque selon la distance (pas de bonus vitesse)
       const n = toNum(ans.value)

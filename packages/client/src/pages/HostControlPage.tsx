@@ -133,7 +133,11 @@ export function HostControlPage() {
             ) : phase === 'reveal' ? (
               <div className="bg-gray-900 rounded-2xl p-6 text-center">
                 <p className="text-gray-400 text-xs uppercase tracking-wider mb-1">
-                  {q.type === 'closest' ? 'Bonne réponse' : 'Réponse(s) acceptée(s)'}
+                  {q.type === 'closest'
+                    ? 'Bonne réponse'
+                    : q.type === 'ordering'
+                      ? 'Le bon ordre'
+                      : 'Réponse(s) acceptée(s)'}
                 </p>
                 <p className="text-3xl font-bold">{(s.reveal?.correctAnswers ?? []).join(' · ')}</p>
               </div>
@@ -141,7 +145,9 @@ export function HostControlPage() {
               <p className="text-gray-500 text-center">
                 {q.type === 'closest'
                   ? 'Réponse numérique sur les téléphones…'
-                  : 'Réponse libre sur les téléphones…'}
+                  : q.type === 'ordering'
+                    ? 'Les joueurs réordonnent sur leurs téléphones…'
+                    : 'Réponse libre sur les téléphones…'}
               </p>
             )}
 

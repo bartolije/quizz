@@ -5,7 +5,7 @@ type AppView = 'join' | 'lobby' | 'question' | 'answer' | 'leaderboard' | 'ended
 
 export interface LastResult {
   correct: boolean
-  myAnswer: string | number | null
+  myAnswer: string | number | string[] | null
   myScore: number
   myDelta: number
   correctAnswers: string[]
@@ -16,7 +16,7 @@ interface QuestionEndedPayload {
   correctAnswers: string[]
   scores: ParticipantScore[]
   distribution: { value: string; count: number }[]
-  myAnswer: string | number | null
+  myAnswer: string | number | string[] | null
   myCorrect: boolean
   myScore: number
   myDelta: number
