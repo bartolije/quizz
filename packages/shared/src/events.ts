@@ -108,6 +108,8 @@ export interface ServerToClientEvents {
     // Répartition des réponses (par choix) — utilisée par la vue TV pour le
     // bar chart de révélation. Vide pour les types non-MCQ.
     distribution: { value: string; count: number }[]
+    answeredCount: number   // nombre de réponses reçues (récap)
+    correctCount: number    // nombre de bonnes réponses (mcq/free) / ordre parfait (ordering)
     myAnswer: string | number | string[] | null
     myCorrect: boolean   // correcte (mcq/free) ou ordre parfait (ordering) ; false pour closest
     myScore: number

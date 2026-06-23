@@ -125,6 +125,12 @@ export function HostDisplayPage() {
 
   // ── Question en cours / Révélation ───────────────────────────
   const maxCount = Math.max(1, ...(s.reveal?.distribution.map((d) => d.count) ?? [1]))
+  const answered = s.reveal?.answeredCount ?? 0
+  const correctN = s.reveal?.correctCount ?? 0
+  const revealSummary =
+    q!.type === 'closest'
+      ? `${answered} réponse${answered > 1 ? 's' : ''}`
+      : `✓ ${correctN} / ${answered} ${q!.type === 'ordering' ? "ont l'ordre parfait" : 'ont trouvé'}`
 
   return (
     <div className="min-h-screen bg-gray-950 text-white flex flex-col p-10">
@@ -168,13 +174,16 @@ export function HostDisplayPage() {
                 <span className="text-3xl font-bold flex-1">{choice}</span>
                 {phase === 'reveal' && (
                   <div className="flex items-center gap-3">
-                    <div className="w-32 h-3 bg-black/30 rounded-full overflow-hidden">
+                    {isCorrect && <span className="text-3xl">✓</span>}
+                    <div className="w-28 h-3 bg-black/30 rounded-full overflow-hidden">
                       <div
                         className="h-full bg-white/80"
                         style={{ width: `${(count / maxCount) * 100}%` }}
                       />
                     </div>
-                    <span className="text-2xl font-mono font-bold w-10 text-right">{count}</span>
+                    <span className="text-2xl font-mono font-bold w-24 text-right">
+                      {count} · {answered > 0 ? Math.round((count / answered) * 100) : 0}%
+                    </span>
                   </div>
                 )}
               </div>
@@ -202,10 +211,14 @@ export function HostDisplayPage() {
         </p>
       )}
 
-      <p className="text-center text-2xl text-gray-400 mt-6">
-        {phase === 'question'
-          ? `${s.answeredCount} / ${total} ont répondu`
-          : 'En attente du classement…'}
+      <p className="text-center text-2xl mt-6">
+        {phase === 'question' ? (
+          <span className="text-gray-400">
+            {s.answeredCount} / {total} ont répondu
+          </span>
+        ) : (
+          <span className="text-emerald-400 font-bold">{revealSummary}</span>
+        )}
       </p>
     </div>
   )

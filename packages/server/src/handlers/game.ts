@@ -240,6 +240,8 @@ export function closeQuestion(
       : []
 
   const scores = getLeaderboard(session)
+  const answeredCount = session.answers.size
+  const correctCount = [...results.values()].filter((r) => r.correct).length
 
   // question_ended est personnalisé (myAnswer/myCorrect/myScore/myDelta) → emit par socket
   for (const p of session.participants.values()) {
@@ -249,6 +251,8 @@ export function closeQuestion(
       correctAnswers: q.correctAnswers,
       scores,
       distribution,
+      answeredCount,
+      correctCount,
       myAnswer: ans?.value ?? null,
       myCorrect: results.get(p.id)?.correct ?? false,
       myScore: p.score,
@@ -261,6 +265,8 @@ export function closeQuestion(
     correctAnswers: q.correctAnswers,
     scores,
     distribution,
+    answeredCount,
+    correctCount,
     myAnswer: null,
     myCorrect: false,
     myScore: 0,
@@ -271,8 +277,8 @@ export function closeQuestion(
     sessionId: session.id,
     questionIndex: session.currentQuestionIndex,
     type: q.type,
-    answeredCount: session.answers.size,
-    correctCount: [...results.values()].filter((r) => r.correct).length,
+    answeredCount,
+    correctCount,
     closeReason: reason,
   })
 }

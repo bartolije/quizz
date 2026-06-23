@@ -156,6 +156,15 @@ export function HostControlPage() {
                 {s.answeredCount} / {total} ont répondu
               </p>
             )}
+            {phase === 'reveal' && s.reveal && (
+              <p className="text-center text-emerald-400 text-lg font-bold">
+                {q.type === 'closest'
+                  ? `${s.reveal.answeredCount} réponse${s.reveal.answeredCount > 1 ? 's' : ''}`
+                  : `✓ ${s.reveal.correctCount} / ${s.reveal.answeredCount} ${
+                      q.type === 'ordering' ? "ont l'ordre parfait" : 'ont trouvé'
+                    }`}
+              </p>
+            )}
           </div>
         )}
 

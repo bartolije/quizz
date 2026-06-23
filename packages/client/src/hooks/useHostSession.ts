@@ -21,6 +21,8 @@ export interface RevealState {
   correctAnswers: string[]
   distribution: { value: string; count: number }[]
   scores: ParticipantScore[]
+  answeredCount: number
+  correctCount: number
 }
 
 interface HostSessionView {
@@ -175,6 +177,8 @@ export function useHostSession(mode: HostMode): HostSessionView {
         correctAnswers: p.correctAnswers,
         distribution: p.distribution,
         scores: p.scores,
+        answeredCount: p.answeredCount,
+        correctCount: p.correctCount,
       })
       setQuestionStartedAt(null) // stoppe le timer ; on garde currentQuestion pour la révélation
     }
