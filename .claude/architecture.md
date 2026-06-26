@@ -1,0 +1,158 @@
+# Architecture — LYA QUIZ
+
+## Vue d'ensemble
+
+Monorepo npm workspaces à 3 packages. `shared` est importé par `server` et `client`
+sous le nom `@lya-quiz/shared` et **doit être buildé avant** (les scripts le font).
+
+```
+quizz/
+├── packages/
+│   ├── shared/   types, contrat d'events Socket.io, scoring, normalisation, config WS
+│   ├── server/   Fastify + Socket.io, handlers, état en mémoire, persistance SQLite
+│   └── client/   React + Vite : pages participant / host / admin, store Zustand
+├── CLAUDE.md     mémoire projet (auto-chargée)
+└── .claude/      doc détaillée (ce dossier)
+```
+
+## packages/shared
+
+La **source de vérité partagée**. Tout ce qui doit être identique entre client et
+serveur vit ici.
+
+| Fichier | Contenu |
+|---|---|
+| `events.ts` | `EVENTS` (strings d'events — **seule source autorisée**), interfaces `ClientToServerEvents` / `ServerToClientEvents` typant chaque payload |
+| `models.ts` | `Participant`, `ParticipantScore`, `QuestionPublic` (sans réponses), `Question`/`Quiz`/`Session` (serveur), types de rapport (`GameReport`…) |
+| `scoring.ts` | `calculateScore` (vitesse, 0–1000 linéaire), `calculateClosestScore` (numérique dégressif), `normalizeAnswer` + `levenshtein` + `isCorrectFreeAnswer` (saisie libre tolérante) |
+| `socket-config.ts` | `SOCKET_CLIENT_CONFIG`, `SOCKET_SERVER_CONFIG`, `SESSION_TOKEN_TTL_MS` |
+
+### Types de questions (`QuestionType`)
+
+- `mcq` — choix multiples (énoncé sur la TV, boutons couleur sur le tél)
+- `free` — saisie libre (normalisation + Levenshtein ≤ 2 pour tolérer les fautes)
+- `closest` — numérique « au plus proche » (scoring dégressif vs l'écart max observé)
+- `ordering` — remettre des items dans le bon ordre (`choices` = items **mélangés** ;
+  réponse = `string[]` réordonné ; `myCorrect` = ordre parfait)
+
+`QuestionPublic.choices` sert à deux choses selon le type : les choix MCQ, ou les
+items à réordonner. Jamais les bonnes réponses (`correctAnswers` reste côté serveur).
+
+## packages/server
+
+Point d'entrée : `src/index.ts`. Fastify et Socket.io **partagent le même serveur
+HTTP** (`new Server(app.server, …)`) → un seul port pour HTTP + WebSocket.
+
+| Fichier | Rôle |
+|---|---|
+| `index.ts` | bootstrap, branchement des handlers Socket.io, routes REST, service du build client, fallback SPA |
+| `state.ts` | état **en mémoire** : sessions, participants, PIN ↔ session, tokens |
+| `handlers/join.ts` | `join_session` (1er join) + `rejoin_session` (reconnexion par token) |
+| `handlers/host.ts` | `host_join`, `host_start_quiz`, `host_end_quiz` |
+| `handlers/game.ts` | `host_next_question`, `submit_answer`, `host_show_leaderboard` (boucle de jeu, scoring, fermeture de question) |
+| `handlers/disconnect.ts` | déconnexion → marque le participant `connected:false`, garde l'état le temps du TTL |
+| `session-helpers.ts` | dérivations : liste participants, leaderboard |
+| `db.ts` | better-sqlite3 + schéma Drizzle, création idempotente des tables |
+| `quiz-repo.ts` | CRUD quiz (utilisé par l'admin) + `seedIfEmpty` |
+| `seed-quiz.ts` | quiz par défaut injecté si la base est vide |
+| `logger.ts` | logs structurés par événement (pino), `logWarn` / `logError` |
+
+Les sessions de jeu sont **en mémoire** (rapidité, éphémère). Seuls les **quiz**
+(contenu éditable) sont persistés en SQLite.
+
+### Robustesse serveur
+
+- Chaque handler Socket.io est enveloppé dans `safe()` : une exception est loggée
+  (`handler_error`) et renvoyée au client en `quiz_error` au lieu de planter le process.
+- `uncaughtException` / `unhandledRejection` sont loggés (`fatal_*`).
+
+## packages/client
+
+React + Vite, routing react-router. Store global **Zustand** (`store/quiz-store.ts`).
+
+### Routes
+
+| Route | Vue |
+|---|---|
+| `/` `/join` | Join participant (PIN pré-rempli via `?pin=`) |
+| `/lobby` | Shell participant (`ParticipantApp`) — bascule la vue selon l'état du jeu |
+| `/host/control` | Écran de contrôle host (Mac) |
+| `/host/display` | Écran TV passif (lisible à distance) |
+| `/admin` | Éditeur de quiz (protégé par mot de passe) |
+
+`ParticipantApp` est monté sur `/lobby` : il branche les events temps réel
+(`useParticipantEvents`), gère la reprise au reload, et `switch` sur
+`currentView` (`lobby` / `question` / `answer` / `leaderboard` / `ended`).
+
+> ⚠️ `<QuestionPage>` est monté avec `key={question.index}` pour **repartir d'un
+> état neuf à chaque question** (`order`, `text` sont en `useState`). Sans cette
+> key, le tri par ordre repartait avec les choix de la question précédente.
+> Voir [known-issues.md](known-issues.md).
+
+### Fichiers clés client
+
+| Fichier | Rôle |
+|---|---|
+| `socket.ts` | instance Socket.io (autoConnect off) + ré-émission auto de `rejoin_session` sur chaque `connect` |
+| `config.ts` | `SERVER_URL` : vide en dev (same-origin + proxy Vite), URL absolue en prod via `VITE_SERVER_URL` |
+| `store/quiz-store.ts` | état du jeu + actions (`onQuestionStarted`, `onQuestionEnded`, `onSessionRestored`…) |
+| `hooks/useParticipantEvents.ts` | abonnement aux events serveur → mise à jour du store |
+| `hooks/useRemaining.ts` | timer dérivé de `questionStartedAt` (ancré sur l'horloge **client**, anti-skew) |
+| `pages/QuestionPage.tsx` | rendu de la question selon le type (mcq/free/closest/ordering) |
+
+## Flux temps réel
+
+### Join & lobby
+1. `POST /api/sessions { quizId? }` → `{ pin, sessionId }` (host).
+2. Participant : `join_session { pin, pseudo, sessionToken:null }` →
+   `session_joined { sessionToken, participant, participants, … }`. Le client
+   stocke le token dans `localStorage` (`lya_quiz_token`).
+3. `participant_joined` / `participant_left` diffusés à toute la room (lobby live).
+
+### Boucle de jeu
+1. Host : `host_start_quiz` → `session_status_changed { running }` (synchro control + TV).
+2. `host_next_question` → `question_started { question, startedAt }` à toute la room.
+   Le client ancre le timer sur l'horloge **client** à la réception (anti-skew serveur).
+3. Participant : `submit_answer { answer }`. Le host reçoit `answer_received` (ack, pas la réponse).
+4. Fin de question (timer écoulé **ou** tous ont répondu) → `question_ended`
+   (bonnes réponses, scores, distribution pour le bar chart TV, récap perso).
+5. `host_show_leaderboard` → `leaderboard_update { scores, final:false }` (classement intermédiaire).
+6. `host_end_quiz` ou dernière question → `leaderboard_update { final:true }` (podium).
+
+### <a name="reconnexion"></a>Reconnexion transparente (la feature centrale)
+- `socket.ts` ré-émet automatiquement `rejoin_session { sessionToken }` à **chaque**
+  event `connect` Socket.io (cycle de vie, pas métier).
+- Le serveur répond `session_restored` avec : même `participantId`, participants,
+  **question en cours** (`currentQuestion`), `timeElapsed` (→ le client recale le
+  timer : `questionStartedAt = Date.now() - timeElapsed*1000`), `alreadyAnswered`, `myScore`.
+- Reprise au **reload complet** (store vidé mais token présent) : `ParticipantApp`
+  reconnecte le socket ; `session_restored` repeuple identité + état. On ne renvoie
+  vers `/join` QUE si le serveur dit `INVALID_TOKEN` / `SESSION_ENDED`. Pas de
+  timeout : si le serveur est lent, Socket.io retente (`reconnectionAttempts: Infinity`).
+- Côté config WS : `pingInterval 10s` / `pingTimeout 5s` (détecte les zombies),
+  reconnexion 500ms→2s avec `randomizationFactor 0.3` (évite que N téléphones
+  reconnectent en même temps), `SESSION_TOKEN_TTL_MS = 30s` (fenêtre de reprise sans perte d'état).
+
+## API REST (serveur)
+
+| Route | Usage |
+|---|---|
+| `POST /api/sessions { quizId? }` | crée une session → `{ pin, sessionId }` |
+| `GET /api/sessions/:id` | résout une session (bootstrap `/host/display?session=XXXX`) |
+| `GET /api/sessions/:id/report` | rapport de fin (stats par question + classement) |
+| `POST /api/client-log` | remontée des erreurs JS des téléphones → logs serveur (S10) |
+| `GET /health` | `{ status, sessions, build }` (healthcheck Railway) |
+| `*/api/admin/*` | CRUD quiz, protégé par header `x-admin-password` |
+
+Toute autre route GET (non `/api`, non `/socket.io`) renvoie `index.html` (SPA fallback).
+`index.html` est servi en `cache-control: no-cache` → un nouveau déploiement est pris
+en compte sans hard-refresh (les assets JS/CSS sont hashés donc immuables).
+
+## Scoring (rappel)
+
+- **Vitesse** (mcq/free/ordering) : `1000 * (timeLimit - elapsed) / timeLimit`,
+  arrondi, borné 0–1000. Répondre vite = plus de points.
+- **closest** : le plus proche reçoit 1000 ; les autres `1000 * (1 - écart/écartMax)`,
+  où `écartMax` = plus grand écart observé parmi les participants.
+- **free** : `normalizeAnswer` (trim, lowercase, sans accents/tirets/apostrophes/espaces)
+  puis égalité exacte OU Levenshtein ≤ 2 (tolère les fautes de frappe).

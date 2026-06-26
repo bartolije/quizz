@@ -1,0 +1,50 @@
+# Contrat d'events Socket.io — LYA QUIZ
+
+> **Source de vérité unique : `packages/shared/src/events.ts`.** Ce fichier en est
+> le miroir lisible — en cas de doute, le `.ts` fait foi. Ne jamais écrire une
+> string d'event en dur : importer `EVENTS` depuis `@lya-quiz/shared`.
+
+## Client → Serveur (`ClientToServerEvents`)
+
+| Event (`EVENTS.*`) | string | Payload | Qui |
+|---|---|---|---|
+| `JOIN_SESSION` | `join_session` | `{ pin, pseudo, sessionToken: string\|null }` | participant (1er join, token `null`) |
+| `REJOIN_SESSION` | `rejoin_session` | `{ sessionToken }` | participant — **auto-émis sur chaque `connect`** |
+| `SUBMIT_ANSWER` | `submit_answer` | `{ answer: string\|number\|string[] }` | participant (string=mcq/free · number=closest · string[]=ordering) |
+| `HOST_JOIN` | `host_join` | `{ pin }` | host (s'identifie) |
+| `HOST_START_QUIZ` | `host_start_quiz` | `{}` | host |
+| `HOST_NEXT_QUESTION` | `host_next_question` | `{}` | host |
+| `HOST_SHOW_LEADERBOARD` | `host_show_leaderboard` | `{}` | host (classement intermédiaire) |
+| `HOST_END_QUIZ` | `host_end_quiz` | `{}` | host |
+
+## Serveur → Client (`ServerToClientEvents`)
+
+| Event (`EVENTS.*`) | string | Payload (résumé) | Destinataire |
+|---|---|---|---|
+| `SESSION_JOINED` | `session_joined` | `{ sessionToken, sessionId, participant, participants, session }` | l'émetteur du join |
+| `SESSION_RESTORED` | `session_restored` | `{ participant, participants, currentQuestion\|null, timeElapsed, alreadyAnswered, myScore, myRank, session }` | l'émetteur du rejoin |
+| `SESSION_STATUS_CHANGED` | `session_status_changed` | `{ status }` | toute la room (synchro control + TV) |
+| `PARTICIPANT_JOINED` | `participant_joined` | `{ participant }` | toute la room |
+| `PARTICIPANT_LEFT` | `participant_left` | `{ participantId }` | toute la room |
+| `QUESTION_STARTED` | `question_started` | `{ question: QuestionPublic, startedAt }` | toute la room |
+| `QUESTION_ENDED` | `question_ended` | `{ correctAnswers, scores, distribution, answeredCount, correctCount, myAnswer, myCorrect, myScore, myDelta }` | toute la room |
+| `ANSWER_RECEIVED` | `answer_received` | `{ participantId, pseudo, answeredCount, totalCount }` | host (ack, **pas** la réponse) |
+| `LEADERBOARD_UPDATE` | `leaderboard_update` | `{ scores, final }` | toute la room (`final:true` = podium) |
+| `QUIZ_ERROR` | `quiz_error` | `{ code, message }` | l'émetteur |
+
+### Codes d'erreur (`quiz_error.code`)
+
+`INVALID_PIN` · `PSEUDO_TAKEN` · `SESSION_ENDED` · `SESSION_FULL` · `INVALID_TOKEN` · `UNKNOWN`
+
+Côté participant, `INVALID_TOKEN` et `SESSION_ENDED` purgent le token localStorage
+et renvoient vers `/join` (cf. `ParticipantApp`).
+
+## Notes de contrat
+
+- `QUESTION_STARTED.startedAt` est un timestamp **serveur**, mais le client ancre son
+  timer sur **son propre `Date.now()`** à la réception (anti-skew d'horloge).
+- `QUESTION_ENDED.distribution` ne sert qu'au bar chart TV ; vide pour les types non-MCQ.
+- `myCorrect` = bonne réponse (mcq/free) **ou** ordre parfait (ordering) ; toujours
+  `false` pour `closest` (il n'y a pas de « juste/faux », juste un score de proximité).
+- Les payloads des events host sont `Record<string, never>` (objet vide typé) — ne
+  rien y mettre.

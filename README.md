@@ -2,39 +2,45 @@
 
 Application de quiz multijoueur en temps réel. Un host lance un quiz depuis son
 Mac (TV + écran de contrôle), les participants rejoignent depuis leur téléphone
-via un PIN + pseudo. Questions chronométrées, scoring, leaderboard.
+via un PIN + pseudo. Questions chronométrées, scoring à la vitesse, leaderboard.
 
 > **Priorité du projet : la stabilité WebSocket.** La reconnexion transparente
 > est la feature principale — chaque participant retrouve automatiquement son
-> état (question en cours, score) si son téléphone perd le réseau 2-3 secondes.
+> état (question en cours, temps restant, réponse, score) si son téléphone perd
+> le réseau quelques secondes.
+
+> 🧠 **Pour Claude Code** : le contexte projet est dans [`CLAUDE.md`](CLAUDE.md)
+> (chargé automatiquement) et la doc détaillée dans [`.claude/`](.claude/).
 
 ## Stack
 
-- Node.js 20 · TypeScript strict (`strict`, `noUncheckedIndexedAccess`)
+- Node.js 20 · TypeScript strict (`strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`)
 - Fastify 4 · Socket.io 4
-- React 18 · Vite 5 · Tailwind CSS 3 · Zustand
-- Drizzle ORM + better-sqlite3 (S2+)
+- React 18 · Vite 5 · Tailwind CSS 3 · Zustand · react-router
+- Drizzle ORM + better-sqlite3 (persistance des quiz)
 
 ## Architecture (monorepo npm workspaces)
 
 ```
-lya-quiz/
+quizz/
 ├── packages/
 │   ├── shared/   types, contrat d'events Socket.io, scoring, config WS
-│   ├── server/   Fastify + Socket.io (stub en S1)
-│   └── client/   React + Vite (stub en S1)
+│   ├── server/   Fastify + Socket.io, handlers, état en mémoire, repo SQLite
+│   └── client/   React + Vite : pages participant / host / admin
+├── CLAUDE.md     mémoire projet (auto-chargée par Claude Code)
+└── .claude/      doc détaillée (architecture, events, déploiement, historique…)
 ```
 
 **Règle absolue :** aucune string d'event Socket.io en dur hors de
-`packages/shared/src/events.ts`. Client et serveur importent toujours depuis
-`@lya-quiz/shared`.
+`packages/shared/src/events.ts`. Client et serveur importent toujours `EVENTS`
+depuis `@lya-quiz/shared`. Détail : [`.claude/events-contract.md`](.claude/events-contract.md).
 
 ## Démarrage
 
 ```bash
 npm install        # installe + build le package shared
 
-npm run typecheck  # vérifie les 3 packages (TS strict)
+npm run typecheck  # vérifie les 3 packages (TS strict) — à lancer avant de commit
 npm run dev        # lance serveur (:3001) + client (:5173) en parallèle
 
 # ou séparément :
@@ -42,53 +48,52 @@ npm run dev:server # http://localhost:3001  (GET /health → {"status":"ok"})
 npm run dev:client # http://localhost:5173
 ```
 
-## État d'avancement
+Pour tester depuis un téléphone en dev, le client tape en same-origin (proxy Vite
+vers `:3001`) : ouvrir `http://<ip-du-mac>:5173` sur le téléphone.
 
-- **S1 ✅** — monorepo qui compile, contrat d'events TypeScript complet,
-  utilitaires de scoring/normalisation, stubs serveur & client.
-- **S2 ✅** — sessions en mémoire + PIN, rooms Socket.io, flow join/rejoin,
-  lobby temps réel, **reconnexion transparente par token** (re-identification
-  automatique sur `connect`). Pages participant (join + lobby), store Zustand.
-- **S3 ✅** — vues host `/host/control` (création session + PIN + QR code +
-  participants temps réel + bouton Démarrer) et `/host/display` (TV, synchro
-  via la même room). Routing react-router, QR code (`qrcode`), bouton Démarrer
-  → `host_start_quiz` → broadcast `session_status_changed` (statut `running`)
-  qui synchronise les deux vues host en temps réel. `GET /api/sessions/:id`
-  pour résoudre une session depuis `/host/display?session=XXXX`.
-- **S4 ✅** — boucle de jeu MCQ : questions, timer synchronisé, `submit_answer`,
-  scoring vitesse, fermeture auto (timer ou tous répondu), révélation + distribution.
-- **S5 ✅** — scoring cumulé + leaderboard (rang/ex æquo, delta, mouvements ↑/↓),
-  classement intermédiaire + podium final.
-- **S6 ✅** — saisie libre (normalisation + Levenshtein) & numérique « au plus
-  proche » (scoring dégressif). Les 3 types de questions sont jouables.
-- **S7 ✅** — robustesse : reconnexion en pleine question (`session_restored`
-  restaure question + temps restant + réponse), `host_end_quiz`, reprise host.
-- **S8 ✅** — persistance SQLite (Drizzle) + éditeur `/admin` (CRUD quiz des 3
-  types, protégé par `ADMIN_PASSWORD`). `POST /api/sessions { quizId }`.
-- **S9 ✅** — déploiement **single-service Railway** : le serveur Fastify sert
-  aussi le build client (`@fastify/static` + fallback SPA), l'API et le WebSocket
-  sur une seule URL. SQLite sur Volume Railway. Tuto : [rules/S9.md](rules/S9.md).
-- **S10 ✅** — observabilité : logs serveur structurés par événement (pino, lus
-  dans Railway), robustesse des handlers, remontée des erreurs client
-  (`POST /api/client-log` + ErrorBoundary). Brief : [rules/S10.md](rules/S10.md).
+## Fonctionnalités
 
-### Routes client
+- **Temps réel** : lobby live, boucle de jeu synchronisée host ↔ téléphones ↔ TV.
+- **Reconnexion transparente** : reprise de l'état en pleine question, y compris
+  après un rechargement complet de la page (token en `localStorage`).
+- **4 types de questions** : QCM (`mcq`), saisie libre tolérante (`free`, normalisation
+  + Levenshtein), numérique « au plus proche » (`closest`), remettre dans l'ordre
+  (`ordering`).
+- **Images** dans les questions (URL publique).
+- **Scoring à la vitesse** + leaderboard (rangs, ex æquo, deltas, mouvements ↑/↓),
+  classement intermédiaire (à la demande du host) et podium final.
+- **Rapport de fin de partie** (stats par question + export CSV).
+- **Éditeur `/admin`** (CRUD des quiz, import/export JSON, protégé par mot de passe).
+- **Observabilité** : logs serveur structurés (pino) + remontée des erreurs client.
+- **Déploiement single-service** (Fastify sert le client + l'API + le WebSocket).
+
+État détaillé des étapes S1→S13 : [`.claude/history.md`](.claude/history.md).
+
+## Routes client
 
 | Route            | Vue                                                  |
 | ---------------- | ---------------------------------------------------- |
 | `/` `/join`      | Join participant (PIN pré-rempli via `?pin=`)        |
-| `/lobby`         | Lobby participant (temps réel)                       |
+| `/lobby`         | Shell participant (bascule selon l'état du jeu)      |
 | `/host/control`  | Écran de contrôle host (Mac)                         |
 | `/host/display`  | Écran TV (passif, lisible à distance)                |
 | `/admin`         | Éditeur de quiz (protégé par mot de passe)           |
 
-### Flow temps réel (S2)
+## API REST (extrait)
 
-- `POST /api/sessions` → crée une session, renvoie `{ pin, sessionId }`.
-- Participant : `join_session` (PIN + pseudo) → `session_joined` (+ token localStorage).
-- Reconnexion : sur chaque `connect`, le client ré-émet `rejoin_session` avec son
-  token → `session_restored` (même `participantId`, score conservé).
-- Lobby : `participant_joined` / `participant_left` diffusés à toute la room.
+| Route                          | Usage                                            |
+| ------------------------------ | ------------------------------------------------ |
+| `POST /api/sessions`           | crée une session → `{ pin, sessionId }`          |
+| `GET /api/sessions/:id`        | résout une session (bootstrap de la TV)          |
+| `GET /api/sessions/:id/report` | rapport de fin (stats + classement)              |
+| `GET /health`                  | healthcheck `{ status, sessions, build }`        |
+| `*/api/admin/*`                | CRUD quiz (header `x-admin-password`)            |
+
+## Déploiement
+
+Cible de référence : **single-service Railway** (le serveur sert aussi le build
+client), SQLite sur Volume Railway. Détail, variables d'env et pièges :
+[`.claude/deployment.md`](.claude/deployment.md).
 
 ## Scripts
 
