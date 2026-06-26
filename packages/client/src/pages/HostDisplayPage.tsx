@@ -204,29 +204,42 @@ export function HostDisplayPage() {
         <div className="grid grid-cols-2 gap-5">
           {(q!.choices ?? []).map((choice, i) => {
             const st = choiceStyle(i)
+            const isReveal = phase === 'reveal'
             const isCorrect = s.reveal?.correctAnswers.includes(choice)
             const count = s.reveal?.distribution.find((d) => d.value === choice)?.count ?? 0
-            const dimmed = phase === 'reveal' && !isCorrect
+            const pct = answered > 0 ? Math.round((count / answered) * 100) : 0
+            // À la révélation : la bonne réponse passe en VERT et reste pleine ;
+            // les mauvaises gardent leur couleur Kahoot mais sont estompées.
+            const tileBg = isReveal && isCorrect ? 'bg-emerald-500' : st.bg
+            const dimmed = isReveal && !isCorrect
             return (
               <div
                 key={choice}
-                className={`rounded-3xl px-8 py-7 flex items-center gap-5 ${st.bg} ${
+                className={`relative rounded-3xl px-8 py-7 flex items-center gap-5 transition-all ${tileBg} ${
                   dimmed ? 'opacity-30' : ''
-                } ${phase === 'reveal' && isCorrect ? 'ring-4 ring-white' : ''}`}
+                } ${
+                  isReveal && isCorrect
+                    ? 'ring-4 ring-emerald-300 scale-[1.03] shadow-2xl shadow-emerald-500/40'
+                    : ''
+                }`}
               >
+                {isReveal && isCorrect && (
+                  <span className="absolute -top-4 -left-4 w-12 h-12 flex items-center justify-center rounded-full bg-emerald-400 text-emerald-950 text-3xl font-black shadow-lg">
+                    ✓
+                  </span>
+                )}
                 <span className="text-5xl">{st.shape}</span>
                 <span className="text-3xl font-bold flex-1">{choice}</span>
-                {phase === 'reveal' && (
+                {isReveal && (
                   <div className="flex items-center gap-3">
-                    {isCorrect && <span className="text-3xl">✓</span>}
                     <div className="w-28 h-3 bg-black/30 rounded-full overflow-hidden">
                       <div
                         className="h-full bg-white/80"
                         style={{ width: `${(count / maxCount) * 100}%` }}
                       />
                     </div>
-                    <span className="text-2xl font-mono font-bold w-24 text-right">
-                      {count} · {answered > 0 ? Math.round((count / answered) * 100) : 0}%
+                    <span className="text-2xl font-mono font-bold w-28 text-right tabular-nums">
+                      {count} · {pct}%
                     </span>
                   </div>
                 )}
@@ -235,15 +248,17 @@ export function HostDisplayPage() {
           })}
         </div>
       ) : phase === 'reveal' ? (
-        <div className="bg-gray-900 rounded-3xl p-10 text-center">
-          <p className="text-gray-400 text-2xl uppercase tracking-wider mb-3">
+        <div className="bg-emerald-500/10 ring-2 ring-emerald-500/40 rounded-3xl p-10 text-center">
+          <p className="text-emerald-300/80 text-2xl uppercase tracking-wider mb-3">
             {q!.type === 'closest'
               ? 'Bonne réponse'
               : q!.type === 'ordering'
                 ? 'Le bon ordre'
                 : 'Réponse(s) acceptée(s)'}
           </p>
-          <p className="text-5xl font-black">{(s.reveal?.correctAnswers ?? []).join(' · ')}</p>
+          <p className="text-5xl font-black text-emerald-300">
+            {(s.reveal?.correctAnswers ?? []).join(' · ')}
+          </p>
         </div>
       ) : (
         <p className="text-center text-3xl text-gray-500">
