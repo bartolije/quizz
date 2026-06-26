@@ -5,6 +5,9 @@ export function AnswerPage() {
   const result = useQuizStore((s) => s.lastResult)
   const myScore = useQuizStore((s) => s.myScore)
   const type = useQuizStore((s) => s.currentQuestion?.type)
+  const mode = useQuizStore((s) => s.mode)
+  const myTeamId = useQuizStore((s) => s.myTeamId)
+  const teamLeaderboard = useQuizStore((s) => s.teamLeaderboard)
 
   if (!result) return null
 
@@ -14,6 +17,18 @@ export function AnswerPage() {
       <p className="text-4xl font-black tabular-nums">{myScore}</p>
     </div>
   )
+
+  // Mode équipe : contribution de mon équipe sur cette question (+ total cumulé).
+  const myTeam = mode === 'team' ? teamLeaderboard.find((t) => t.teamId === myTeamId) : undefined
+  const teamCard = myTeam ? (
+    <div className="rounded-2xl px-6 py-4 mt-3 text-white" style={{ backgroundColor: myTeam.color }}>
+      <p className="text-sm uppercase tracking-wider opacity-90">Équipe {myTeam.name}</p>
+      <p className="text-3xl font-black tabular-nums">
+        {myTeam.score} <span className="text-base font-bold opacity-90">pts</span>
+        {myTeam.delta > 0 && <span className="text-base font-bold"> · +{myTeam.delta}</span>}
+      </p>
+    </div>
+  ) : null
 
   // closest : pas de bon/faux binaire, on montre la proximité
   if (type === 'closest') {
@@ -29,6 +44,7 @@ export function AnswerPage() {
         </p>
         <p className="text-2xl font-bold mb-6">+{result.myDelta} pts</p>
         {scoreCard}
+        {teamCard}
         <p className="text-sm opacity-80 mt-8">En attente de la suite…</p>
       </div>
     )
@@ -62,6 +78,7 @@ export function AnswerPage() {
           </ol>
         </div>
         {scoreCard}
+        {teamCard}
         <p className="text-sm opacity-80 mt-6">En attente de la suite…</p>
       </div>
     )
@@ -87,6 +104,7 @@ export function AnswerPage() {
       )}
 
       {scoreCard}
+      {teamCard}
       <p className="text-sm opacity-80 mt-8">En attente de la suite…</p>
     </div>
   )

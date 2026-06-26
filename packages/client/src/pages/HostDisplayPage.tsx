@@ -322,6 +322,24 @@ export function HostDisplayPage() {
           <span className="text-emerald-400 font-bold">{revealSummary}</span>
         )}
       </p>
+
+      {/* Mode équipe : points gagnés par chaque équipe SUR CETTE question */}
+      {phase === 'reveal' && s.mode === 'team' && s.teamLeaderboard.length > 0 && (
+        <div className="flex flex-wrap justify-center gap-3 mt-4">
+          {[...s.teamLeaderboard]
+            .sort((a, b) => b.delta - a.delta)
+            .map((t) => (
+              <span
+                key={t.teamId}
+                className="flex items-center gap-2 rounded-full px-5 py-2 text-2xl font-bold text-white"
+                style={{ backgroundColor: t.color }}
+              >
+                {t.name}
+                <span className="opacity-90">+{t.delta}</span>
+              </span>
+            ))}
+        </div>
+      )}
     </div>
   )
 }
