@@ -16,6 +16,10 @@ export function ParticipantApp() {
   useParticipantEvents()
   const view = useQuizStore((s) => s.currentView)
   const myId = useQuizStore((s) => s.myId)
+  // Identité de la question courante : sert de `key` à <QuestionPage /> pour la
+  // remonter à chaque nouvelle question. Sans ça, son état local (`order`, `text`)
+  // initialisé en useState lazy ne se réinitialise jamais → tri par ordre cassé.
+  const questionIndex = useQuizStore((s) => s.currentQuestion?.index)
   // 'trying' tant qu'un token est présent (on tente la reprise) ; 'failed' = pas
   // de token ou token périmé → on bascule vers /join. État initial synchrone
   // (pas de flash "Reconnexion" si aucun token).
@@ -61,7 +65,7 @@ export function ParticipantApp() {
 
   switch (view) {
     case 'question':
-      return <QuestionPage />
+      return <QuestionPage key={questionIndex ?? 'q'} />
     case 'answer':
       return <AnswerPage />
     case 'leaderboard':
