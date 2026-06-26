@@ -157,3 +157,30 @@ en compte sans hard-refresh (les assets JS/CSS sont hashés donc immuables).
   où `écartMax` = plus grand écart observé parmi les participants.
 - **free** : `normalizeAnswer` (trim, lowercase, sans accents/tirets/apostrophes/espaces)
   puis égalité exacte OU Levenshtein ≤ 2 (tolère les fautes de frappe).
+
+## Mode équipe
+
+Couche optionnelle **par-dessus** la boucle de jeu (qui ne change pas). Les équipes
+sont **éphémères, par session, en mémoire** — aucune persistance DB.
+
+- **Modèle** (`shared/models.ts`) : `SessionMode 'solo'|'team'`, `Team {id,name,color}`,
+  `teamId?` sur `Participant`, `TeamScore`. Couleurs = hex de `TEAM_PALETTE`, appliquées
+  en **style inline** côté client (pas de classe Tailwind dynamique → pas de purge).
+- **État serveur** (`state.ts`) : `mode`, `teams: Map`, `teamsLocked` sur la session ;
+  `teamId?` sur le participant.
+- **Handlers** (`handlers/team.ts`) : `host_set_mode`, `host_add_team`, `host_remove_team`,
+  `host_lock_teams`, `host_assign_participant`, `host_autobalance_teams`, `join_team`.
+  Chaque mutation rediffuse `teams_updated` (état complet) à toute la room.
+- **Scoring** (`session-helpers.getTeamLeaderboard`) : score d'équipe = somme des
+  scores des membres ; delta d'équipe sur une question = somme des deltas des membres.
+  Les joueurs sans équipe ne comptent pour personne. `teamScores` est injecté dans
+  `question_ended` et `leaderboard_update` quand `mode === 'team'`.
+- **Garde-fous** : changement de mode / création d'équipe / `join_team` uniquement en
+  `status === 'waiting'` (sinon le scoring cumulé deviendrait incohérent). Le host peut
+  (ré)assigner / verrouiller à tout moment.
+- **Reconnexion** : `session_joined` / `session_restored` embarquent `mode`, `teams`,
+  `teamsLocked` (+ `participant.teamId`) → le joueur retrouve son équipe.
+- **Client** : store (`mode/teams/teamsLocked/myTeamId/teamLeaderboard` + `onTeamsUpdated`),
+  composants `TeamPicker` (lobby), `HostTeamPanel` (host waiting : toggle, création,
+  verrou, auto-répartition, attribution par tap), `TeamStandings` (classement réutilisable
+  téléphone + TV). Pages lobby/host/TV/classements ont une variante équipe.

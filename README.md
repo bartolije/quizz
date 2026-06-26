@@ -62,6 +62,9 @@ vers `:3001`) : ouvrir `http://<ip-du-mac>:5173` sur le téléphone.
 - **Images** dans les questions (URL publique).
 - **Scoring à la vitesse** + leaderboard (rangs, ex æquo, deltas, mouvements ↑/↓),
   classement intermédiaire (à la demande du host) et podium final.
+- **Mode équipe** (optionnel) : le host crée des équipes nommées dans le lobby, les
+  joueurs rejoignent par tap (ou le host (ré)assigne / verrouille / auto-répartit) ;
+  le score de chaque membre est cumulé en score d'équipe.
 - **Rapport de fin de partie** (stats par question + export CSV).
 - **Éditeur `/admin`** (CRUD des quiz, import/export JSON, protégé par mot de passe).
 - **Observabilité** : logs serveur structurés (pino) + remontée des erreurs client.

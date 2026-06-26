@@ -33,6 +33,17 @@ ce qui existe et pourquoi.
 - Admin : import/export JSON des quiz + classement plus visible.
 - Indicateur de version (build SHA + date, `BuildBadge`) + `index.html` no-cache.
 
+## Mode équipe (2026-06-26)
+
+Couche optionnelle par-dessus la boucle de jeu (inchangée). Le host bascule en mode
+équipe dans le lobby, crée des équipes nommées (couleur auto), les joueurs rejoignent
+par tap (ou le host (ré)assigne / verrouille / auto-répartit). Le score d'équipe = somme
+des scores des membres ; classements (intermédiaire, podium) en version équipe sur le
+téléphone et la TV. Équipes éphémères en mémoire (pas de DB). Détail :
+[architecture.md](architecture.md#mode-équipe). Limites MVP : pas de drag&drop
+d'attribution (tap), changement de mode/équipe verrouillé une fois le quiz lancé,
+joueur sans équipe = ne score pour personne.
+
 ## Corrections notables
 
 - **fix participant (tri par ordre + bouton d'action)** : `<QuestionPage>` remonté

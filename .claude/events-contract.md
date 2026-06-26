@@ -16,6 +16,13 @@
 | `HOST_NEXT_QUESTION` | `host_next_question` | `{}` | host |
 | `HOST_SHOW_LEADERBOARD` | `host_show_leaderboard` | `{}` | host (classement intermédiaire) |
 | `HOST_END_QUIZ` | `host_end_quiz` | `{}` | host |
+| `HOST_SET_MODE` | `host_set_mode` | `{ mode: 'solo'\|'team' }` | host (waiting only) |
+| `HOST_ADD_TEAM` | `host_add_team` | `{ name }` | host (waiting only) |
+| `HOST_REMOVE_TEAM` | `host_remove_team` | `{ teamId }` | host (waiting only) |
+| `HOST_LOCK_TEAMS` | `host_lock_teams` | `{ locked }` | host |
+| `HOST_ASSIGN_PARTICIPANT` | `host_assign_participant` | `{ participantId, teamId: string\|null }` | host |
+| `HOST_AUTOBALANCE_TEAMS` | `host_autobalance_teams` | `{}` | host |
+| `JOIN_TEAM` | `join_team` | `{ teamId: string\|null }` | participant (waiting, non verrouillé) |
 
 ## Serveur → Client (`ServerToClientEvents`)
 
@@ -31,6 +38,11 @@
 | `ANSWER_RECEIVED` | `answer_received` | `{ participantId, pseudo, answeredCount, totalCount }` | host (ack, **pas** la réponse) |
 | `LEADERBOARD_UPDATE` | `leaderboard_update` | `{ scores, final }` | toute la room (`final:true` = podium) |
 | `QUIZ_ERROR` | `quiz_error` | `{ code, message }` | l'émetteur |
+| `TEAMS_UPDATED` | `teams_updated` | `{ mode, teams: Team[], locked, participants: Participant[] }` | toute la room (état équipe complet) |
+
+> Mode équipe : `session_joined` / `session_restored` embarquent aussi `mode`, `teams`,
+> `teamsLocked` ; `question_ended` et `leaderboard_update` portent un `teamScores?` présent
+> uniquement quand `mode === 'team'`. Détail : [architecture.md](architecture.md#mode-équipe).
 
 ### Codes d'erreur (`quiz_error.code`)
 
