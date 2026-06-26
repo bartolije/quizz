@@ -6,6 +6,8 @@ import { fetchReport } from '../host-session'
 import { QrCode } from '../components/QrCode'
 import { ReportView } from '../components/ReportView'
 import { QuestionImage } from '../components/QuestionImage'
+import { HostTeamPanel } from '../components/HostTeamPanel'
+import { TeamStandings } from '../components/TeamStandings'
 import { choiceStyle } from '../mcq'
 import { rankMovement, movementMark } from '../rank-movement'
 
@@ -73,23 +75,18 @@ export function HostControlPage() {
                 <p className="text-7xl font-black tracking-widest font-mono">{s.pin}</p>
               </div>
             </section>
-            <section className="bg-gray-900 rounded-3xl p-8 flex flex-col">
-              <h2 className="text-xl font-bold mb-4">Participants</h2>
-              {connected.length === 0 ? (
-                <p className="text-gray-500 flex-1 flex items-center justify-center">
-                  En attente de participants…
-                </p>
-              ) : (
-                <ul className="space-y-2 overflow-y-auto flex-1">
-                  {connected.map((p) => (
-                    <li key={p.id} className="flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-800">
-                      <span className="w-2 h-2 rounded-full bg-green-400 flex-shrink-0" />
-                      <span className="font-medium">{p.pseudo}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
+            <HostTeamPanel
+              mode={s.mode}
+              teams={s.teams}
+              locked={s.teamsLocked}
+              participants={s.participants}
+              setMode={s.setMode}
+              addTeam={s.addTeam}
+              removeTeam={s.removeTeam}
+              lockTeams={s.lockTeams}
+              assign={s.assign}
+              autobalance={s.autobalance}
+            />
           </div>
         )}
 
@@ -175,7 +172,14 @@ export function HostControlPage() {
           </div>
         )}
 
-        {phase === 'leaderboard' && (
+        {phase === 'leaderboard' && s.mode === 'team' && (
+          <div className="flex-1 flex flex-col gap-4">
+            <h2 className="text-2xl font-bold">Classement des équipes</h2>
+            <TeamStandings teams={s.teamLeaderboard} />
+          </div>
+        )}
+
+        {phase === 'leaderboard' && s.mode !== 'team' && (
           <div className="flex-1 flex flex-col gap-4">
             <h2 className="text-2xl font-bold">Classement</h2>
             <ol className="space-y-2">
@@ -202,19 +206,25 @@ export function HostControlPage() {
           <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center">
             <div className="text-6xl">🏁</div>
             <h2 className="text-3xl font-black">Quiz terminé</h2>
-            <ol className="w-full max-w-md space-y-2 mt-2">
-              {s.leaderboard.slice(0, 5).map((sc) => (
-                <li
-                  key={sc.participantId}
-                  className="flex items-center justify-between px-4 py-3 rounded-xl bg-gray-900"
-                >
-                  <span className="font-medium">
-                    {sc.rank}. {sc.pseudo}
-                  </span>
-                  <span className="font-mono font-bold">{sc.score}</span>
-                </li>
-              ))}
-            </ol>
+            {s.mode === 'team' ? (
+              <div className="w-full max-w-md mt-2">
+                <TeamStandings teams={s.teamLeaderboard} />
+              </div>
+            ) : (
+              <ol className="w-full max-w-md space-y-2 mt-2">
+                {s.leaderboard.slice(0, 5).map((sc) => (
+                  <li
+                    key={sc.participantId}
+                    className="flex items-center justify-between px-4 py-3 rounded-xl bg-gray-900"
+                  >
+                    <span className="font-medium">
+                      {sc.rank}. {sc.pseudo}
+                    </span>
+                    <span className="font-mono font-bold">{sc.score}</span>
+                  </li>
+                ))}
+              </ol>
+            )}
             <button
               onClick={() => {
                 if (s.sessionId) void fetchReport(s.sessionId).then(setReport)

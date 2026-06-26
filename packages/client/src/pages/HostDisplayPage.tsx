@@ -6,6 +6,7 @@ import { choiceStyle } from '../mcq'
 import { rankMovement, movementMark } from '../rank-movement'
 import { TimePressure } from '../components/TimePressure'
 import { QuestionImage } from '../components/QuestionImage'
+import { TeamStandings } from '../components/TeamStandings'
 
 // Contrôle audio (fixe, coin haut-droit). Visible sur tous les écrans TV.
 function SoundControl({
@@ -101,12 +102,35 @@ export function HostDisplayPage() {
           <p className="text-center text-gray-400 text-2xl mb-4">
             {connected.length} participant{connected.length > 1 ? 's' : ''}
           </p>
+          {s.mode === 'team' && s.teams.length > 0 && (
+            <div className="flex flex-wrap justify-center gap-3 mb-5">
+              {s.teams.map((t) => {
+                const n = connected.filter((p) => p.teamId === t.id).length
+                return (
+                  <span
+                    key={t.id}
+                    className="px-5 py-2 rounded-full text-2xl font-bold text-white"
+                    style={{ backgroundColor: t.color }}
+                  >
+                    {t.name} · {n}
+                  </span>
+                )
+              })}
+            </div>
+          )}
           <div className="flex flex-wrap justify-center gap-3">
-            {connected.map((p) => (
-              <span key={p.id} className="px-6 py-2 rounded-full bg-gray-800 text-2xl font-medium">
-                {p.pseudo}
-              </span>
-            ))}
+            {connected.map((p) => {
+              const color = s.mode === 'team' ? s.teams.find((t) => t.id === p.teamId)?.color : undefined
+              return (
+                <span
+                  key={p.id}
+                  className="px-6 py-2 rounded-full bg-gray-800 text-2xl font-medium"
+                  style={color ? { backgroundColor: color, color: '#fff' } : undefined}
+                >
+                  {p.pseudo}
+                </span>
+              )
+            })}
           </div>
         </div>
         <p className="text-gray-500 text-3xl mt-4">En attente du host…</p>
@@ -115,6 +139,15 @@ export function HostDisplayPage() {
   }
 
   // ── Classement intermédiaire ─────────────────────────────────
+  if (phase === 'leaderboard' && s.mode === 'team') {
+    return (
+      <div className="min-h-screen bg-gray-950 text-white flex flex-col items-center justify-center p-10 gap-8">
+        {soundCtl}
+        <h1 className="text-5xl font-black">Classement des équipes</h1>
+        <TeamStandings teams={s.teamLeaderboard} big />
+      </div>
+    )
+  }
   if (phase === 'leaderboard') {
     return (
       <div className="min-h-screen bg-gray-950 text-white flex flex-col items-center justify-center p-10 gap-8">
@@ -142,6 +175,16 @@ export function HostDisplayPage() {
   }
 
   // ── Podium final ─────────────────────────────────────────────
+  if (phase === 'ended' && s.mode === 'team') {
+    return (
+      <div className="min-h-screen bg-gray-950 text-white flex flex-col items-center justify-center p-10 gap-8">
+        {soundCtl}
+        <div className="text-7xl">🏆</div>
+        <h1 className="text-6xl font-black">Classement final des équipes</h1>
+        <TeamStandings teams={s.teamLeaderboard} big />
+      </div>
+    )
+  }
   if (phase === 'ended') {
     return (
       <div className="min-h-screen bg-gray-950 text-white flex flex-col items-center justify-center p-10 gap-8">

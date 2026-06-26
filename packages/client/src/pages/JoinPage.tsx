@@ -57,6 +57,10 @@ export function JoinPage() {
         sessionPin: payload.session.pin,
         sessionId: payload.sessionId,
         participants: payload.participants,
+        mode: payload.mode,
+        teams: payload.teams,
+        teamsLocked: payload.teamsLocked,
+        myTeamId: payload.participant.teamId ?? null,
       })
       setLoading(false)
       loadingRef.current = false

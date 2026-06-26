@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useQuizStore } from '../store/quiz-store'
 import { ParticipantList } from '../components/ParticipantList'
+import { TeamPicker } from '../components/TeamPicker'
 import {
   isVibrationEnabled,
   setVibrationEnabled,
@@ -14,6 +15,10 @@ export function LobbyPage() {
   const sessionPin   = useQuizStore((s) => s.sessionPin)
   const myPseudo     = useQuizStore((s) => s.myPseudo)
   const participants = useQuizStore((s) => s.participants)
+  const mode         = useQuizStore((s) => s.mode)
+  const teams        = useQuizStore((s) => s.teams)
+  const teamsLocked  = useQuizStore((s) => s.teamsLocked)
+  const myTeamId     = useQuizStore((s) => s.myTeamId)
 
   const [vib, setVib] = useState(isVibrationEnabled())
 
@@ -31,6 +36,12 @@ export function LobbyPage() {
       <p className="text-gray-400 text-sm mb-10">
         Tu joues en tant que <span className="text-white font-medium">{myPseudo}</span>
       </p>
+
+      {mode === 'team' && (
+        <div className="w-full max-w-sm mb-8">
+          <TeamPicker teams={teams} myTeamId={myTeamId} locked={teamsLocked} />
+        </div>
+      )}
 
       <div className="w-full max-w-sm">
         <p className="text-gray-400 text-xs mb-3 uppercase tracking-wider">

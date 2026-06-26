@@ -4,7 +4,10 @@ import type {
   ParticipantScore,
   QuestionPublic,
   ServerToClientEvents,
+  SessionMode,
   SessionStatus,
+  Team,
+  TeamScore,
 } from '@lya-quiz/shared'
 import { EVENTS } from '@lya-quiz/shared'
 import { socket } from '../socket'
@@ -42,10 +45,22 @@ interface HostSessionView {
   prevRanks: Record<string, number>
   showingLeaderboard: boolean
   leaderboardFinal: boolean
+  // Mode équipe
+  mode: SessionMode
+  teams: Team[]
+  teamsLocked: boolean
+  teamLeaderboard: TeamScore[]
   start: () => void
   next: () => void
   showLeaderboard: () => void
   endQuiz: () => void
+  // Actions host mode équipe
+  setMode: (mode: SessionMode) => void
+  addTeam: (name: string) => void
+  removeTeam: (teamId: string) => void
+  lockTeams: (locked: boolean) => void
+  assign: (participantId: string, teamId: string | null) => void
+  autobalance: () => void
 }
 
 const ranksOf = (lb: ParticipantScore[]): Record<string, number> =>
@@ -60,6 +75,7 @@ type QStartedPayload = Parameters<ServerToClientEvents['question_started']>[0]
 type AckPayload = Parameters<ServerToClientEvents['answer_received']>[0]
 type QEndedPayload = Parameters<ServerToClientEvents['question_ended']>[0]
 type LbPayload = Parameters<ServerToClientEvents['leaderboard_update']>[0]
+type TeamsPayload = Parameters<ServerToClientEvents['teams_updated']>[0]
 
 function upsert(list: Participant[], p: Participant): Participant[] {
   return list.some((x) => x.id === p.id)
@@ -92,6 +108,12 @@ export function useHostSession(mode: HostMode): HostSessionView {
   const [showingLeaderboard, setShowingLeaderboard] = useState(false)
   const [leaderboardFinal, setLeaderboardFinal] = useState(false)
   const leaderboardRef = useRef<ParticipantScore[]>([])
+
+  // Mode équipe (state distinct du paramètre `mode` = vue host control/display)
+  const [teamMode, setTeamMode] = useState<SessionMode>('solo')
+  const [teams, setTeams] = useState<Team[]>([])
+  const [teamsLocked, setTeamsLocked] = useState(false)
+  const [teamLeaderboard, setTeamLeaderboard] = useState<TeamScore[]>([])
 
   const resolvedRef = useRef(false)
 
@@ -149,7 +171,16 @@ export function useHostSession(mode: HostMode): HostSessionView {
       setSessionId(p.sessionId)
       setParticipants(p.participants)
       setStatus(p.session.status)
+      setTeamMode(p.mode)
+      setTeams(p.teams)
+      setTeamsLocked(p.teamsLocked)
       writeHostSession({ sessionId: p.sessionId, pin: p.session.pin })
+    }
+    const onTeams = (p: TeamsPayload) => {
+      setTeamMode(p.mode)
+      setTeams(p.teams)
+      setTeamsLocked(p.locked)
+      setParticipants(p.participants)
     }
     const onJoin = (p: JoinPayload) =>
       setParticipants((prev) => upsert(prev, p.participant))
@@ -180,6 +211,7 @@ export function useHostSession(mode: HostMode): HostSessionView {
         answeredCount: p.answeredCount,
         correctCount: p.correctCount,
       })
+      if (p.teamScores) setTeamLeaderboard(p.teamScores)
       setQuestionStartedAt(null) // stoppe le timer ; on garde currentQuestion pour la révélation
     }
     const onLeaderboard = (p: LbPayload) => {
@@ -188,6 +220,7 @@ export function useHostSession(mode: HostMode): HostSessionView {
       setLeaderboard(p.scores)
       setShowingLeaderboard(!p.final)
       setLeaderboardFinal(p.final)
+      if (p.teamScores) setTeamLeaderboard(p.teamScores)
     }
 
     socket.on(EVENTS.SESSION_JOINED, onJoined)
@@ -198,6 +231,7 @@ export function useHostSession(mode: HostMode): HostSessionView {
     socket.on(EVENTS.ANSWER_RECEIVED, onAck)
     socket.on(EVENTS.QUESTION_ENDED, onEnded)
     socket.on(EVENTS.LEADERBOARD_UPDATE, onLeaderboard)
+    socket.on(EVENTS.TEAMS_UPDATED, onTeams)
 
     const join = () => socket.emit(EVENTS.HOST_JOIN, { pin })
     if (!socket.connected) socket.connect()
@@ -213,6 +247,7 @@ export function useHostSession(mode: HostMode): HostSessionView {
       socket.off(EVENTS.ANSWER_RECEIVED, onAck)
       socket.off(EVENTS.QUESTION_ENDED, onEnded)
       socket.off(EVENTS.LEADERBOARD_UPDATE, onLeaderboard)
+      socket.off(EVENTS.TEAMS_UPDATED, onTeams)
       socket.off('connect', join)
     }
   }, [pin])
@@ -221,6 +256,15 @@ export function useHostSession(mode: HostMode): HostSessionView {
   const next = () => socket.emit(EVENTS.HOST_NEXT_QUESTION, {})
   const showLeaderboard = () => socket.emit(EVENTS.HOST_SHOW_LEADERBOARD, {})
   const endQuiz = () => socket.emit(EVENTS.HOST_END_QUIZ, {})
+
+  // Actions host mode équipe
+  const changeMode = (m: SessionMode) => socket.emit(EVENTS.HOST_SET_MODE, { mode: m })
+  const addTeam = (name: string) => socket.emit(EVENTS.HOST_ADD_TEAM, { name })
+  const removeTeam = (teamId: string) => socket.emit(EVENTS.HOST_REMOVE_TEAM, { teamId })
+  const lockTeams = (locked: boolean) => socket.emit(EVENTS.HOST_LOCK_TEAMS, { locked })
+  const assign = (participantId: string, teamId: string | null) =>
+    socket.emit(EVENTS.HOST_ASSIGN_PARTICIPANT, { participantId, teamId })
+  const autobalance = () => socket.emit(EVENTS.HOST_AUTOBALANCE_TEAMS, {})
 
   return {
     pin,
@@ -237,9 +281,19 @@ export function useHostSession(mode: HostMode): HostSessionView {
     prevRanks,
     showingLeaderboard,
     leaderboardFinal,
+    mode: teamMode,
+    teams,
+    teamsLocked,
+    teamLeaderboard,
     start,
     next,
     showLeaderboard,
     endQuiz,
+    setMode: changeMode,
+    addTeam,
+    removeTeam,
+    lockTeams,
+    assign,
+    autobalance,
   }
 }

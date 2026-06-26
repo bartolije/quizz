@@ -1,5 +1,13 @@
 import { create } from 'zustand'
-import type { Participant, ParticipantScore, QuestionPublic, SessionStatus } from '@lya-quiz/shared'
+import type {
+  Participant,
+  ParticipantScore,
+  QuestionPublic,
+  SessionMode,
+  SessionStatus,
+  Team,
+  TeamScore,
+} from '@lya-quiz/shared'
 
 type AppView = 'join' | 'lobby' | 'question' | 'answer' | 'leaderboard' | 'ended'
 
@@ -20,17 +28,21 @@ interface QuestionEndedPayload {
   myCorrect: boolean
   myScore: number
   myDelta: number
+  teamScores?: TeamScore[]
 }
 
 // Sous-ensemble de session_restored utilisé par le store (reconnexion S7 + reprise au reload)
 interface SessionRestoredPayload {
-  participant: { id: string; pseudo: string }
+  participant: { id: string; pseudo: string; teamId?: string }
   participants: Participant[]
   currentQuestion: QuestionPublic | null
   timeElapsed: number
   alreadyAnswered: boolean
   myScore: number
   session: { pin: string; status: SessionStatus }
+  mode: SessionMode
+  teams: Team[]
+  teamsLocked: boolean
 }
 
 interface QuizStore {
@@ -45,6 +57,13 @@ interface QuizStore {
 
   // Participants
   participants: Participant[]
+
+  // Mode équipe
+  mode: SessionMode
+  teams: Team[]
+  teamsLocked: boolean
+  myTeamId: string | null
+  teamLeaderboard: TeamScore[]
 
   // Quiz en cours
   currentView: AppView
@@ -62,13 +81,23 @@ interface QuizStore {
     sessionPin: string
     sessionId: string
     participants: Participant[]
+    mode: SessionMode
+    teams: Team[]
+    teamsLocked: boolean
+    myTeamId: string | null
   }) => void
   setParticipantJoined: (p: Participant) => void
   setParticipantLeft: (participantId: string) => void
+  onTeamsUpdated: (payload: {
+    mode: SessionMode
+    teams: Team[]
+    locked: boolean
+    participants: Participant[]
+  }) => void
   onQuestionStarted: (q: QuestionPublic) => void
   markAnswered: () => void
   onQuestionEnded: (payload: QuestionEndedPayload) => void
-  onLeaderboard: (scores: ParticipantScore[], final: boolean) => void
+  onLeaderboard: (scores: ParticipantScore[], final: boolean, teamScores?: TeamScore[]) => void
   onSessionRestored: (payload: SessionRestoredPayload) => void
   onQuizEnded: () => void
   setView: (view: AppView) => void
@@ -85,6 +114,11 @@ const initialState = {
   sessionPin: null,
   sessionId: null,
   participants: [],
+  mode: 'solo' as SessionMode,
+  teams: [],
+  teamsLocked: false,
+  myTeamId: null,
+  teamLeaderboard: [],
   currentView: 'join' as AppView,
   currentQuestion: null,
   questionStartedAt: null,
@@ -97,8 +131,19 @@ const initialState = {
 export const useQuizStore = create<QuizStore>()((set) => ({
   ...initialState,
 
-  setJoined: ({ myId, myPseudo, sessionPin, sessionId, participants }) =>
-    set({ myId, myPseudo, sessionPin, sessionId, participants, currentView: 'lobby' }),
+  setJoined: ({ myId, myPseudo, sessionPin, sessionId, participants, mode, teams, teamsLocked, myTeamId }) =>
+    set({ myId, myPseudo, sessionPin, sessionId, participants, mode, teams, teamsLocked, myTeamId, currentView: 'lobby' }),
+
+  // teams_updated : source de vérité de l'état équipe. On remplace participants +
+  // état d'équipe et on recalcule myTeamId depuis la liste.
+  onTeamsUpdated: ({ mode, teams, locked, participants }) =>
+    set((state) => ({
+      mode,
+      teams,
+      teamsLocked: locked,
+      participants,
+      myTeamId: participants.find((p) => p.id === state.myId)?.teamId ?? null,
+    })),
 
   setParticipantJoined: (p) =>
     set((state) => ({
@@ -132,6 +177,7 @@ export const useQuizStore = create<QuizStore>()((set) => ({
       currentView: 'answer',
       questionStartedAt: null,
       myScore: payload.myScore,
+      ...(payload.teamScores ? { teamLeaderboard: payload.teamScores } : {}),
       lastResult: {
         correct: payload.myCorrect,
         myAnswer: payload.myAnswer,
@@ -143,11 +189,12 @@ export const useQuizStore = create<QuizStore>()((set) => ({
 
   // leaderboard_update : final=false → écran classement intermédiaire,
   // final=true → podium de fin. prevRanks = rangs du classement précédent.
-  onLeaderboard: (scores, final) =>
+  onLeaderboard: (scores, final, teamScores) =>
     set((state) => ({
       leaderboard: scores,
       prevRanks: ranksOf(state.leaderboard),
       currentView: final ? 'ended' : 'leaderboard',
+      ...(teamScores ? { teamLeaderboard: teamScores } : {}),
     })),
 
   // Reconnexion (S7) : on resynchronise participants + score, et si une question
@@ -162,6 +209,11 @@ export const useQuizStore = create<QuizStore>()((set) => ({
         sessionPin: payload.session.pin,
         participants: payload.participants,
         myScore: payload.myScore,
+        // Mode équipe restauré
+        mode: payload.mode,
+        teams: payload.teams,
+        teamsLocked: payload.teamsLocked,
+        myTeamId: payload.participant.teamId ?? null,
       }
       if (payload.currentQuestion) {
         return {
