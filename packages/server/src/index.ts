@@ -14,6 +14,15 @@ import {
   handleShowLeaderboard,
 } from './handlers/game.js'
 import { handleDisconnect } from './handlers/disconnect.js'
+import {
+  handleSetMode,
+  handleAddTeam,
+  handleRemoveTeam,
+  handleLockTeams,
+  handleAssignParticipant,
+  handleAutobalance,
+  handleJoinTeam,
+} from './handlers/team.js'
 import { getAllSessions, createSession, getSessionById } from './state.js'
 import { getParticipantList, getLeaderboard } from './session-helpers.js'
 import type { GameReport } from '@lya-quiz/shared'
@@ -96,6 +105,16 @@ io.on('connection', (socket) => {
   socket.on(EVENTS.HOST_SHOW_LEADERBOARD, () => safe('host_show_leaderboard', () => handleShowLeaderboard(socket, io)))
   socket.on(EVENTS.HOST_END_QUIZ, () => safe('host_end_quiz', () => handleHostEndQuiz(socket, io)))
   socket.on(EVENTS.SUBMIT_ANSWER, (p) => safe('submit_answer', () => handleSubmitAnswer(socket, p, io)))
+
+  // Mode équipe
+  socket.on(EVENTS.HOST_SET_MODE, (p) => safe('host_set_mode', () => handleSetMode(socket, p, io)))
+  socket.on(EVENTS.HOST_ADD_TEAM, (p) => safe('host_add_team', () => handleAddTeam(socket, p, io)))
+  socket.on(EVENTS.HOST_REMOVE_TEAM, (p) => safe('host_remove_team', () => handleRemoveTeam(socket, p, io)))
+  socket.on(EVENTS.HOST_LOCK_TEAMS, (p) => safe('host_lock_teams', () => handleLockTeams(socket, p, io)))
+  socket.on(EVENTS.HOST_ASSIGN_PARTICIPANT, (p) => safe('host_assign_participant', () => handleAssignParticipant(socket, p, io)))
+  socket.on(EVENTS.HOST_AUTOBALANCE_TEAMS, () => safe('host_autobalance_teams', () => handleAutobalance(socket, io)))
+  socket.on(EVENTS.JOIN_TEAM, (p) => safe('join_team', () => handleJoinTeam(socket, p, io)))
+
   socket.on('disconnect', () => safe('disconnect', () => handleDisconnect(socket.id, io, getAllSessions)))
 })
 

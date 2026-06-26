@@ -3,7 +3,10 @@ import type {
   ParticipantScore,
   QuestionPublic,
   Session,
+  SessionMode,
   SessionStatus,
+  Team,
+  TeamScore,
 } from './models.js'
 
 // Token de session persistant côté client (localStorage)
@@ -50,6 +53,31 @@ export interface ClientToServerEvents {
   host_join: (payload: {
     pin: string
   }) => void
+
+  // ── MODE ÉQUIPE ──────────────────────────────────────────────
+  // HOST ONLY — basculer solo/équipe (uniquement avant le démarrage)
+  host_set_mode: (payload: { mode: SessionMode }) => void
+
+  // HOST ONLY — créer une équipe nommée (couleur attribuée par le serveur)
+  host_add_team: (payload: { name: string }) => void
+
+  // HOST ONLY — supprimer une équipe (ses membres repassent "sans équipe")
+  host_remove_team: (payload: { teamId: string }) => void
+
+  // HOST ONLY — verrouiller/déverrouiller le choix d'équipe par les joueurs
+  host_lock_teams: (payload: { locked: boolean }) => void
+
+  // HOST ONLY — (ré)assigner un participant à une équipe (null = retirer)
+  host_assign_participant: (payload: {
+    participantId: string
+    teamId: string | null
+  }) => void
+
+  // HOST ONLY — répartir automatiquement les joueurs sans équipe
+  host_autobalance_teams: (payload: Record<string, never>) => void
+
+  // PARTICIPANT — rejoindre / quitter une équipe (avant le démarrage, si non verrouillé)
+  join_team: (payload: { teamId: string | null }) => void
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -64,6 +92,10 @@ export interface ServerToClientEvents {
     participant: Participant
     participants: Participant[]
     session: Pick<Session, 'status' | 'pin'>
+    // Mode équipe (toujours présent → resync à la connexion)
+    mode: SessionMode
+    teams: Team[]
+    teamsLocked: boolean
   }) => void
 
   // Confirmation de rejoin réussi après reconnexion
@@ -76,6 +108,20 @@ export interface ServerToClientEvents {
     myScore: number
     myRank: number
     session: Pick<Session, 'status' | 'pin'>
+    // Mode équipe restauré (le participant retrouve son équipe)
+    mode: SessionMode
+    teams: Team[]
+    teamsLocked: boolean
+  }) => void
+
+  // Mode équipe : état complet (re)diffusé à toute la room à chaque changement
+  // (toggle mode, ajout/suppression d'équipe, lock, (ré)assignation, join/leave).
+  // Source de vérité unique → le client remplace participants + état d'équipe.
+  teams_updated: (payload: {
+    mode: SessionMode
+    teams: Team[]
+    locked: boolean
+    participants: Participant[]   // avec leur teamId à jour
   }) => void
 
   // Le statut de la session a changé (host démarre / termine le quiz).
@@ -114,6 +160,8 @@ export interface ServerToClientEvents {
     myCorrect: boolean   // correcte (mcq/free) ou ordre parfait (ordering) ; false pour closest
     myScore: number
     myDelta: number
+    // Mode équipe uniquement : classement des équipes après cette question
+    teamScores?: TeamScore[]
   }) => void
 
   // HOST ONLY — un participant a répondu (pas la réponse, juste l'ack)
@@ -128,6 +176,8 @@ export interface ServerToClientEvents {
   leaderboard_update: (payload: {
     scores: ParticipantScore[]
     final: boolean               // true = fin du quiz
+    // Mode équipe uniquement : classement des équipes
+    teamScores?: TeamScore[]
   }) => void
 
   // Erreur métier (pin invalide, pseudo déjà pris, session terminée...)
@@ -153,10 +203,20 @@ export const EVENTS = {
   HOST_END_QUIZ:         'host_end_quiz',
   HOST_JOIN:             'host_join',
 
+  // Mode équipe
+  HOST_SET_MODE:            'host_set_mode',
+  HOST_ADD_TEAM:            'host_add_team',
+  HOST_REMOVE_TEAM:         'host_remove_team',
+  HOST_LOCK_TEAMS:          'host_lock_teams',
+  HOST_ASSIGN_PARTICIPANT:  'host_assign_participant',
+  HOST_AUTOBALANCE_TEAMS:   'host_autobalance_teams',
+  JOIN_TEAM:                'join_team',
+
   // Serveur → Client
   SESSION_JOINED:         'session_joined',
   SESSION_RESTORED:       'session_restored',
   SESSION_STATUS_CHANGED: 'session_status_changed',
+  TEAMS_UPDATED:          'teams_updated',
   PARTICIPANT_JOINED:     'participant_joined',
   PARTICIPANT_LEFT:   'participant_left',
   QUESTION_STARTED:   'question_started',

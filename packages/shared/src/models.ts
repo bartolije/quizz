@@ -3,11 +3,32 @@ export type QuestionType = 'mcq' | 'free' | 'closest' | 'ordering'
 export type QuestionStatus = 'waiting' | 'running' | 'ended'
 export type SessionStatus  = 'waiting' | 'running' | 'ended'
 
+// Mode de partie : 'solo' = scoring individuel (défaut) · 'team' = scoring par équipe
+export type SessionMode = 'solo' | 'team'
+
+// Palette de couleurs d'équipe (hex → utilisé en style inline côté client, pas de
+// classe Tailwind dynamique qui serait purgée au build). Le serveur pioche dedans.
+export const TEAM_PALETTE = [
+  '#ef4444', // rouge
+  '#3b82f6', // bleu
+  '#10b981', // emeraude
+  '#f59e0b', // ambre
+  '#8b5cf6', // violet
+  '#ec4899', // rose
+] as const
+
+export interface Team {
+  id: string
+  name: string
+  color: string        // hex (cf. TEAM_PALETTE)
+}
+
 // Participant tel qu'exposé aux clients
 export interface Participant {
   id: string           // uuid stable, persiste à travers les reconnexions
   pseudo: string
   connected: boolean
+  teamId?: string      // mode équipe : équipe du participant (absent = sans équipe)
 }
 
 // Score d'un participant à un instant T
@@ -16,6 +37,16 @@ export interface ParticipantScore {
   pseudo: string
   score: number        // score cumulé
   delta: number        // points gagnés sur la dernière question
+  rank: number
+}
+
+// Score d'une équipe (somme des membres) à un instant T
+export interface TeamScore {
+  teamId: string
+  name: string
+  color: string
+  score: number        // somme des scores cumulés des membres
+  delta: number        // somme des points gagnés par les membres sur la dernière question
   rank: number
 }
 
@@ -58,6 +89,7 @@ export interface Session {
   quizId: string
   status: SessionStatus
   currentQuestionIndex: number
+  mode: SessionMode          // 'solo' (défaut) ou 'team'
 }
 
 // ─────────────────────────────────────────────────────────────

@@ -1,5 +1,5 @@
 import { v4 as uuid } from 'uuid'
-import type { Quiz, QuestionReport } from '@lya-quiz/shared'
+import type { Quiz, QuestionReport, SessionMode, Team } from '@lya-quiz/shared'
 import { SESSION_TOKEN_TTL_MS } from '@lya-quiz/shared'
 import { getDefaultQuiz, getQuiz } from './quiz-repo.js'
 import { logEvent } from './logger.js'
@@ -14,6 +14,7 @@ export interface ParticipantState {
   lastDelta: number         // points gagnés à la dernière question fermée
   correctTotal: number      // nb de questions réussies (pour le rapport de fin)
   disconnectedAt?: number   // timestamp, pour cleanup après TTL
+  teamId?: string           // mode équipe : équipe du participant (absent = sans équipe)
 }
 
 // Réponse en cours d'un participant à la question ouverte
@@ -36,6 +37,10 @@ export interface SessionState {
   results: QuestionReport[]                       // historique des questions fermées (rapport de fin)
   questionTimer: ReturnType<typeof setTimeout> | null
   quiz: Quiz | null   // seedé en mémoire en S4, viendra de la DB en S8
+  // Mode équipe (éphémère, par session)
+  mode: SessionMode                 // 'solo' (défaut) ou 'team'
+  teams: Map<string, Team>          // clé = teamId
+  teamsLocked: boolean              // true → les joueurs ne peuvent plus changer d'équipe
 }
 
 // Toutes les sessions actives en mémoire
@@ -71,6 +76,9 @@ export function createSession(quizId?: string): SessionState {
     questionTimer: null,
     // S8 : le quiz vient de la DB (quizId explicite, sinon le quiz par défaut).
     quiz: quizId ? getQuiz(quizId) : getDefaultQuiz(),
+    mode: 'solo',
+    teams: new Map(),
+    teamsLocked: false,
   }
   sessions.set(id, session)
   pinIndex.set(pin, id)

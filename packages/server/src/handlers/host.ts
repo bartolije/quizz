@@ -2,7 +2,12 @@ import type { Server, Socket } from 'socket.io'
 import type { ClientToServerEvents, ServerToClientEvents } from '@lya-quiz/shared'
 import { EVENTS } from '@lya-quiz/shared'
 import { getSessionByPin, createSession, getAllSessions, type SessionState } from '../state.js'
-import { getParticipantList, toPublicQuestion, getLeaderboard } from '../session-helpers.js'
+import {
+  getParticipantList,
+  toPublicQuestion,
+  getLeaderboard,
+  getTeamLeaderboard,
+} from '../session-helpers.js'
 import { logEvent } from '../logger.js'
 
 type QuizSocket = Socket<ClientToServerEvents, ServerToClientEvents>
@@ -34,6 +39,9 @@ export function handleHostJoin(
     participant: { id: 'host', pseudo: 'Host', connected: true },
     participants: getParticipantList(session),
     session: { status: session.status, pin: session.pin },
+    mode: session.mode,
+    teams: [...session.teams.values()],
+    teamsLocked: session.teamsLocked,
   })
 
   // Reprise host (S7) : si une question est ouverte (le host a rafraîchi en
@@ -91,5 +99,6 @@ export function handleHostEndQuiz(socket: QuizSocket, io: QuizServer): void {
   io.to(session.id).emit(EVENTS.LEADERBOARD_UPDATE, {
     scores: getLeaderboard(session),
     final: true,
+    ...(session.mode === 'team' ? { teamScores: getTeamLeaderboard(session) } : {}),
   })
 }

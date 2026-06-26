@@ -82,6 +82,9 @@ export function handleJoinSession(
     participant: toParticipant(participant),
     participants: getParticipantList(session),
     session: { status: session.status, pin: session.pin },
+    mode: session.mode,
+    teams: [...session.teams.values()],
+    teamsLocked: session.teamsLocked,
   })
 
   // Notifier les autres
@@ -161,6 +164,9 @@ function handleRejoinWithParticipant(
     myScore: participant.score,
     myRank,
     session: { status: session.status, pin: session.pin },
+    mode: session.mode,
+    teams: [...session.teams.values()],
+    teamsLocked: session.teamsLocked,
   })
 
   // Notifier les autres que ce participant est de retour

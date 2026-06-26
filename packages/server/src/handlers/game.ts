@@ -7,8 +7,14 @@ import {
   isCorrectFreeAnswer,
 } from '@lya-quiz/shared'
 import { getAllSessions, type SessionState } from '../state.js'
-import { getLeaderboard, toPublicQuestion } from '../session-helpers.js'
+import { getLeaderboard, getTeamLeaderboard, toPublicQuestion } from '../session-helpers.js'
 import { logEvent } from '../logger.js'
+
+// Champ teamScores des payloads (présent uniquement en mode équipe).
+// exactOptionalPropertyTypes : on spread {} en solo plutôt que teamScores:undefined.
+function teamScoresField(session: SessionState): { teamScores: ReturnType<typeof getTeamLeaderboard> } | Record<string, never> {
+  return session.mode === 'team' ? { teamScores: getTeamLeaderboard(session) } : {}
+}
 
 type QuizSocket = Socket<ClientToServerEvents, ServerToClientEvents>
 type QuizServer = Server<ClientToServerEvents, ServerToClientEvents>
@@ -70,6 +76,7 @@ export function handleNextQuestion(socket: QuizSocket, io: QuizServer): void {
     io.to(session.id).emit(EVENTS.LEADERBOARD_UPDATE, {
       scores: getLeaderboard(session),
       final: true,
+      ...teamScoresField(session),
     })
     logEvent('quiz_ended', { sessionId: session.id, questions: questions.length })
     return
@@ -115,6 +122,7 @@ export function handleShowLeaderboard(socket: QuizSocket, io: QuizServer): void 
   io.to(session.id).emit(EVENTS.LEADERBOARD_UPDATE, {
     scores: getLeaderboard(session),
     final: false,
+    ...teamScoresField(session),
   })
 }
 
@@ -241,6 +249,7 @@ export function closeQuestion(
       : []
 
   const scores = getLeaderboard(session)
+  const teamField = teamScoresField(session)
   const answeredCount = session.answers.size
   const correctCount = [...results.values()].filter((r) => r.correct).length
 
@@ -268,6 +277,7 @@ export function closeQuestion(
       myCorrect: results.get(p.id)?.correct ?? false,
       myScore: p.score,
       myDelta: p.lastDelta,
+      ...teamField,
     })
   }
 
@@ -282,6 +292,7 @@ export function closeQuestion(
     myCorrect: false,
     myScore: 0,
     myDelta: 0,
+    ...teamField,
   })
 
   logEvent('question_closed', {
