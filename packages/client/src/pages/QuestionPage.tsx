@@ -6,6 +6,7 @@ import { useRemaining } from '../hooks/useRemaining'
 import { choiceStyle } from '../mcq'
 import { TimePressure } from '../components/TimePressure'
 import { QuestionImage } from '../components/QuestionImage'
+import { OrderingList } from '../components/OrderingList'
 
 // Vue participant pendant une question (mobile). Le rendu dépend du type :
 // - mcq      : boutons couleur (énoncé sur la TV)
@@ -39,16 +40,6 @@ export function QuestionPage() {
     if (hasAnswered) return
     socket.emit(EVENTS.SUBMIT_ANSWER, { answer })
     markAnswered()
-  }
-
-  function move(i: number, dir: -1 | 1) {
-    setOrder((prev) => {
-      const j = i + dir
-      if (j < 0 || j >= prev.length) return prev
-      const next = [...prev]
-      ;[next[i], next[j]] = [next[j]!, next[i]!]
-      return next
-    })
   }
 
   return (
@@ -100,33 +91,10 @@ export function QuestionPage() {
           <div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-3">
             <p className="text-lg font-bold text-center px-2">{question.text}</p>
             <QuestionImage key={question.mediaUrl} url={question.mediaUrl} className="max-h-40 max-w-full" />
-            <p className="text-center text-gray-500 text-sm mb-1">Remets dans le bon ordre :</p>
-            <div className="space-y-2">
-              {order.map((item, i) => (
-                <div key={item} className="flex items-center gap-2 bg-gray-800 rounded-xl px-3 py-3">
-                  <span className="w-6 text-center text-gray-500 font-bold">{i + 1}</span>
-                  <span className="flex-1 font-medium">{item}</span>
-                  <button
-                    type="button"
-                    onClick={() => move(i, -1)}
-                    disabled={i === 0}
-                    aria-label="Monter"
-                    className="w-11 h-11 flex-shrink-0 rounded-lg bg-gray-700 active:bg-gray-600 disabled:opacity-30 text-xl"
-                  >
-                    ↑
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => move(i, 1)}
-                    disabled={i === order.length - 1}
-                    aria-label="Descendre"
-                    className="w-11 h-11 flex-shrink-0 rounded-lg bg-gray-700 active:bg-gray-600 disabled:opacity-30 text-xl"
-                  >
-                    ↓
-                  </button>
-                </div>
-              ))}
-            </div>
+            <p className="text-center text-gray-500 text-sm mb-1">
+              Glisse <span className="text-gray-300">⠿</span> ou utilise ↑/↓ pour remettre dans l'ordre :
+            </p>
+            <OrderingList order={order} onChange={setOrder} />
           </div>
           <button
             type="button"

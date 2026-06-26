@@ -99,6 +99,7 @@ React + Vite, routing react-router. Store global **Zustand** (`store/quiz-store.
 | `hooks/useParticipantEvents.ts` | abonnement aux events serveur → mise à jour du store |
 | `hooks/useRemaining.ts` | timer dérivé de `questionStartedAt` (ancré sur l'horloge **client**, anti-skew) |
 | `pages/QuestionPage.tsx` | rendu de la question selon le type (mcq/free/closest/ordering) |
+| `components/OrderingList.tsx` | liste réordonnable `ordering` : glisser-déposer (`@dnd-kit`, poignée ⠿) + boutons ↑/↓ en fallback |
 
 ## Flux temps réel
 

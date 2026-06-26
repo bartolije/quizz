@@ -18,13 +18,18 @@ Deux bugs remontés lors d'un test rapide à 3 joueurs, corrigés :
    hauteur calée sur le viewport (`h-[100dvh]`), contenu central scrollable
    (`overflow-y-auto` + `min-h-0`), bouton d'action en `flex-shrink-0` (toujours visible).
 
-## Limitation — pas de vrai drag & drop pour `ordering`
+## Drag & drop pour `ordering` (fait)
 
-Le réordonnancement se fait **uniquement** via les boutons ↑/↓. Il n'y a pas de
-glisser-déposer. C'était un choix de robustesse (le DnD tactile dans un conteneur
-scrollable entre en conflit avec le geste de scroll, ce qui va à l'encontre de la
-priorité « stabilité »). Si on veut l'ajouter un jour, privilégier `@dnd-kit` avec
-un *drag handle* dédié pour ne pas casser le scroll.
+Le réordonnancement se fait au **glisser-déposer** (via `@dnd-kit`) **et** via les
+boutons ↑/↓ (fallback). Composant : `client/src/components/OrderingList.tsx`.
+Points clés de robustesse (priorité « stabilité ») :
+- Seule la **poignée ⠿** porte les listeners de drag + `touch-none`
+  (`touch-action:none`) → le drag n'entre pas en conflit avec le scroll de la liste
+  (on scrolle en touchant ailleurs sur la ligne).
+- `PointerSensor` avec `activationConstraint.distance = 6` → un tap sur ↑/↓ n'est
+  pas interprété comme un début de drag.
+- `restrictToVerticalAxis` + `restrictToParentElement`, `KeyboardSensor` pour l'a11y.
+- `id` de tri = la valeur de l'item (les items d'un `ordering` sont uniques).
 
 ## Points d'attention (pas des bugs, à garder en tête)
 
