@@ -182,5 +182,10 @@ sont **éphémères, par session, en mémoire** — aucune persistance DB.
   `teamsLocked` (+ `participant.teamId`) → le joueur retrouve son équipe.
 - **Client** : store (`mode/teams/teamsLocked/myTeamId/teamLeaderboard` + `onTeamsUpdated`),
   composants `TeamPicker` (lobby), `HostTeamPanel` (host waiting : toggle, création,
-  verrou, auto-répartition, attribution par tap), `TeamStandings` (classement réutilisable
-  téléphone + TV). Pages lobby/host/TV/classements ont une variante équipe.
+  verrou, auto-répartition, **attribution en glisser-déposer** via `@dnd-kit` — zones
+  de dépôt par équipe + "sans équipe", pastilles joueurs déplaçables, ✕ pour retirer),
+  `TeamStandings` (classement réutilisable téléphone + TV). Pages lobby/host/TV/classements
+  ont une variante équipe.
+- **Contribution par question** : après chaque question, `teamScores[].delta` = points
+  gagnés par l'équipe sur CETTE question. Affiché sur la TV (rangée de pastilles "Équipe
+  +delta" sous la révélation) et côté participant (carte de son équipe dans `AnswerPage`).
