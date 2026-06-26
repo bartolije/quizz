@@ -35,9 +35,31 @@ seedIfEmpty()
 process.on('uncaughtException', (e) => logError('fatal_uncaught_exception', e))
 process.on('unhandledRejection', (e) => logError('fatal_unhandled_rejection', e))
 
-// Mot de passe de l'éditeur admin (à définir dans Railway via ADMIN_PASSWORD).
-const ADMIN_PASSWORD = process.env['ADMIN_PASSWORD'] ?? 'lyaquiz'
+// Mot de passe de l'éditeur admin. ANTI-TRICHE : l'éditeur expose les bonnes
+// réponses ; le repo étant public, on ne ship JAMAIS de mot de passe par défaut
+// en déploiement.
+// - En prod (Railway / NODE_ENV=production) : ADMIN_PASSWORD est OBLIGATOIRE ;
+//   sans lui, toutes les routes /api/admin renvoient 503 → éditeur inaccessible.
+// - En dev local : mot de passe de confort ('dev') si ADMIN_PASSWORD non défini,
+//   pour ouvrir /admin sans configuration.
+const IS_DEPLOYED =
+  process.env['NODE_ENV'] === 'production' ||
+  !!process.env['RAILWAY_ENVIRONMENT'] ||
+  !!process.env['RAILWAY_PROJECT_ID']
+const ADMIN_PASSWORD = process.env['ADMIN_PASSWORD'] ?? (IS_DEPLOYED ? '' : 'dev')
+
+if (IS_DEPLOYED && !ADMIN_PASSWORD) {
+  logWarn('admin_disabled_no_password', {
+    hint: "Définir ADMIN_PASSWORD (Railway) pour activer l'éditeur /admin.",
+  })
+}
+
 async function requireAdmin(req: FastifyRequest, reply: FastifyReply): Promise<void> {
+  if (!ADMIN_PASSWORD) {
+    // Déploiement sans mot de passe configuré → admin verrouillé.
+    await reply.code(503).send({ error: 'admin_disabled' })
+    return
+  }
   if (req.headers['x-admin-password'] !== ADMIN_PASSWORD) {
     await reply.code(401).send({ error: 'unauthorized' })
   }

@@ -34,6 +34,13 @@ un *drag handle* dédié pour ne pas casser le scroll.
 - **Sessions en mémoire** : un redéploiement / restart serveur perd les parties en
   cours (PIN, scores). Seuls les quiz (contenu) sont persistés. Acceptable pour
   l'usage interne, mais à connaître avant de redéployer en pleine session.
-- **CORS `*`** et `ADMIN_PASSWORD` par défaut (`lyaquiz`) : à durcir si exposition publique.
+- **Anti-triche** : le WebSocket n'envoie jamais les bonnes réponses avant la
+  révélation (`question_started` n'expose qu'une `QuestionPublic` sans `correctAnswers` ;
+  elles ne partent qu'à `question_ended`). L'éditeur `/admin` (qui, lui, expose les
+  réponses) est **verrouillé par défaut en prod** : `ADMIN_PASSWORD` est obligatoire,
+  plus aucun mot de passe par défaut shippé. Résiduel mineur : `GET /api/sessions/:id/report`
+  expose les `correctAnswers` des questions **déjà révélées** (pas les suivantes) sans
+  auth — pas un vecteur de triche en direct, mais à gater si besoin.
+- **CORS `*`** : à restreindre si exposition publique (n'empêche pas les appels directs).
 - **`dvh`** : `h-[100dvh]` suppose un navigateur récent (iOS 15.4+/Chrome 108+). OK
   pour les téléphones actuels ; à surveiller si un très vieux device pose souci.

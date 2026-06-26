@@ -41,7 +41,7 @@ les sessions de jeu sont en mémoire.
 | Variable | Effet | Défaut |
 |---|---|---|
 | `PORT` | port d'écoute serveur | `3001` |
-| `ADMIN_PASSWORD` | mot de passe de l'éditeur `/admin` (header `x-admin-password`) | `lyaquiz` ⚠️ à surcharger en prod |
+| `ADMIN_PASSWORD` | mot de passe de l'éditeur `/admin` (header `x-admin-password`). **Obligatoire en prod** : sans lui, `/api/admin/*` répond `503` (éditeur verrouillé). En dev local : `dev` par défaut. | — |
 | `DATABASE_PATH` | override du chemin SQLite | — |
 | `RAILWAY_VOLUME_MOUNT_PATH` | injectée par Railway si un Volume est attaché | — |
 | `RAILWAY_GIT_COMMIT_SHA` | exposée dans `/health.build` et le badge de version | `local` |
@@ -53,7 +53,12 @@ les sessions de jeu sont en mémoire.
   builds avec `NODE_ENV=production` les sauteraient → `.npmrc` force `include=dev`.
   Ne pas le retirer.
 - **Ordre de build** : `shared` d'abord, toujours (les deux autres en dépendent).
+- **Admin verrouillé par défaut en prod** (anti-triche) : `ADMIN_PASSWORD` doit être
+  défini dans Railway, sinon l'éditeur `/admin` est inaccessible (`503`). Aucun mot de
+  passe par défaut n'est shippé (le repo est public). Détecté via `NODE_ENV=production`
+  ou les variables `RAILWAY_*`.
 - **CORS** : `SOCKET_SERVER_CONFIG.cors.origin` est `'*'` — à restreindre si le
-  service devient public.
+  service devient public. (Note : le CORS ne protège pas des appels directs type
+  `curl`/devtools ; il ne limite que le JS cross-origin.)
 - **Cache** : `index.html` est servi `no-cache` (déploiement pris en compte sans
   hard-refresh) ; les assets hashés sont immuables.
