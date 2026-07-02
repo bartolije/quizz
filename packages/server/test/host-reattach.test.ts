@@ -74,8 +74,8 @@ describe('reconnexion host / TV', () => {
     // Le host reconnecté reçoit à nouveau le compteur live et la révélation
     const ack = waitFor<Ack>(host2, EVENTS.ANSWER_RECEIVED)
     const ended = waitFor<QEnded>(host2, EVENTS.QUESTION_ENDED)
-    alice.emit(EVENTS.SUBMIT_ANSWER, { answer: '4' })
-    bob.emit(EVENTS.SUBMIT_ANSWER, { answer: '3' })
+    alice.emit(EVENTS.SUBMIT_ANSWER, { answer: '4', questionIndex: 0 }, () => {})
+    bob.emit(EVENTS.SUBMIT_ANSWER, { answer: '3', questionIndex: 0 }, () => {})
 
     expect((await ack).answeredCount).toBeGreaterThanOrEqual(1)
     expect((await ended).answeredCount).toBe(2)

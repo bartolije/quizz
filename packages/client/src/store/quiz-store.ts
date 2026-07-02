@@ -11,6 +11,10 @@ import type {
 
 type AppView = 'join' | 'lobby' | 'question' | 'answer' | 'leaderboard' | 'ended'
 
+// État d'acheminement de la réponse (ack serveur, cf. submit-answer.ts) :
+// idle → sending → sent (ack reçu) | late (question fermée) | failed (retries épuisés)
+export type AnswerStatus = 'idle' | 'sending' | 'sent' | 'late' | 'failed'
+
 export interface LastResult {
   correct: boolean
   myAnswer: string | number | string[] | null
@@ -69,7 +73,9 @@ interface QuizStore {
   currentView: AppView
   currentQuestion: QuestionPublic | null
   questionStartedAt: number | null   // horloge CLIENT au moment de la réception (anti-skew)
-  hasAnswered: boolean
+  hasAnswered: boolean               // l'utilisateur a validé une réponse (pilote l'écran d'attente)
+  answerStatus: AnswerStatus         // acheminement réel de cette réponse (ack serveur)
+  pendingAnswer: string | number | string[] | null   // pour le bouton « Réessayer »
   lastResult: LastResult | null
   leaderboard: ParticipantScore[]
   prevRanks: Record<string, number>   // rangs au classement précédent (pour les flèches ↑/↓)
@@ -99,7 +105,10 @@ interface QuizStore {
     participants: Participant[]
   }) => void
   onQuestionStarted: (q: QuestionPublic) => void
-  markAnswered: () => void
+  beginAnswer: (answer: string | number | string[]) => void
+  answerDelivered: () => void
+  answerLate: () => void
+  answerFailed: () => void
   onQuestionEnded: (payload: QuestionEndedPayload) => void
   onLeaderboard: (scores: ParticipantScore[], final: boolean, teamScores?: TeamScore[]) => void
   onSessionRestored: (payload: SessionRestoredPayload) => void
@@ -128,6 +137,8 @@ const initialState = {
   currentQuestion: null,
   questionStartedAt: null,
   hasAnswered: false,
+  answerStatus: 'idle' as AnswerStatus,
+  pendingAnswer: null,
   lastResult: null,
   leaderboard: [],
   prevRanks: {},
@@ -173,10 +184,15 @@ export const useQuizStore = create<QuizStore>()((set) => ({
       currentQuestion: q,
       questionStartedAt: Date.now(),
       hasAnswered: false,
+      answerStatus: 'idle',
+      pendingAnswer: null,
       lastResult: null,
     }),
 
-  markAnswered: () => set({ hasAnswered: true }),
+  beginAnswer: (answer) => set({ hasAnswered: true, answerStatus: 'sending', pendingAnswer: answer }),
+  answerDelivered: () => set({ answerStatus: 'sent', pendingAnswer: null }),
+  answerLate: () => set({ answerStatus: 'late', pendingAnswer: null }),
+  answerFailed: () => set({ answerStatus: 'failed' }),
 
   onQuestionEnded: (payload) =>
     set({
@@ -229,6 +245,9 @@ export const useQuizStore = create<QuizStore>()((set) => ({
           // ancre le timer pour refléter le temps déjà écoulé côté serveur
           questionStartedAt: Date.now() - payload.timeElapsed * 1000,
           hasAnswered: payload.alreadyAnswered,
+          // le serveur est la source de vérité : répondu = bien enregistré
+          answerStatus: (payload.alreadyAnswered ? 'sent' : 'idle') as AnswerStatus,
+          pendingAnswer: null,
           lastResult: null,
         }
       }

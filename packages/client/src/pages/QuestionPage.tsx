@@ -1,7 +1,6 @@
 import { useState } from 'react'
-import { socket } from '../socket'
-import { EVENTS } from '@lya-quiz/shared'
 import { useQuizStore } from '../store/quiz-store'
+import { submitAnswerReliably } from '../submit-answer'
 import { useRemaining } from '../hooks/useRemaining'
 import { choiceStyle } from '../mcq'
 import { TimePressure } from '../components/TimePressure'
@@ -27,7 +26,8 @@ export function QuestionPage() {
   const question = useQuizStore((s) => s.currentQuestion)
   const startedAt = useQuizStore((s) => s.questionStartedAt)
   const hasAnswered = useQuizStore((s) => s.hasAnswered)
-  const markAnswered = useQuizStore((s) => s.markAnswered)
+  const answerStatus = useQuizStore((s) => s.answerStatus)
+  const pendingAnswer = useQuizStore((s) => s.pendingAnswer)
   const [text, setText] = useState('')
   const [order, setOrder] = useState<string[]>(() => [...(question?.choices ?? [])])
 
@@ -37,9 +37,10 @@ export function QuestionPage() {
   if (!question) return null
 
   function submit(answer: string | number | string[]) {
-    if (hasAnswered) return
-    socket.emit(EVENTS.SUBMIT_ANSWER, { answer })
-    markAnswered()
+    if (hasAnswered || !question) return
+    // Envoi fiable : ack serveur + retries (cf. submit-answer.ts). L'UI passe
+    // en « envoi… » immédiatement, puis « envoyée ✓ » à l'ack seulement.
+    void submitAnswerReliably(answer, question.index)
   }
 
   return (
@@ -60,9 +61,37 @@ export function QuestionPage() {
 
       {hasAnswered ? (
         <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center">
-          <div className="text-6xl">✓</div>
-          <p className="text-2xl font-bold">Réponse envoyée</p>
-          <p className="text-gray-400">En attente des autres…</p>
+          {answerStatus === 'sent' ? (
+            <>
+              <div className="text-6xl">✓</div>
+              <p className="text-2xl font-bold">Réponse envoyée</p>
+              <p className="text-gray-400">En attente des autres…</p>
+            </>
+          ) : answerStatus === 'late' ? (
+            <>
+              <div className="text-6xl">⏱</div>
+              <p className="text-2xl font-bold">Trop tard…</p>
+              <p className="text-gray-400">La question était déjà fermée.</p>
+            </>
+          ) : answerStatus === 'failed' ? (
+            <>
+              <div className="text-6xl">⚠️</div>
+              <p className="text-2xl font-bold">Réponse non envoyée</p>
+              <p className="text-gray-400">Problème de connexion.</p>
+              <button
+                type="button"
+                onClick={() => pendingAnswer !== null && submitAnswerReliably(pendingAnswer, question.index)}
+                className="mt-2 px-8 py-4 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-xl font-bold"
+              >
+                Réessayer
+              </button>
+            </>
+          ) : (
+            <>
+              <div className="w-10 h-10 border-2 border-gray-600 border-t-indigo-500 rounded-full animate-spin" />
+              <p className="text-2xl font-bold">Envoi de ta réponse…</p>
+            </>
+          )}
         </div>
       ) : question.type === 'mcq' ? (
         <div className="flex-1 flex flex-col min-h-0">

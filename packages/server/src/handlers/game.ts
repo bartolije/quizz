@@ -1,5 +1,5 @@
 import type { Server, Socket } from 'socket.io'
-import type { ClientToServerEvents, ServerToClientEvents } from '@lya-quiz/shared'
+import type { ClientToServerEvents, ServerToClientEvents, SubmitAnswerAck } from '@lya-quiz/shared'
 import {
   EVENTS,
   calculateScore,
@@ -128,20 +128,43 @@ export function handleShowLeaderboard(socket: QuizSocket, io: QuizServer): void 
 
 export function handleSubmitAnswer(
   socket: QuizSocket,
-  payload: { answer: string | number | string[] },
+  payload: { answer: string | number | string[]; questionIndex: number },
   io: QuizServer,
+  ack?: (res: SubmitAnswerAck) => void,
 ): void {
+  // L'ack vient du client (non fiable) : on le garde optionnel et typé défensif.
+  const respond = (res: SubmitAnswerAck): void => {
+    if (typeof ack === 'function') ack(res)
+  }
+
   const ctx = findParticipantContext(socket.id)
-  if (!ctx) return
+  if (!ctx) {
+    // socket pas (encore) rattaché à un participant — ex. réponse rejouée par le
+    // buffer Socket.io AVANT que rejoin_session ait réassocié le nouveau socket.
+    // Le client retente après le rejoin.
+    respond({ ok: false, status: 'not_in_session' })
+    return
+  }
   const { session, participantId } = ctx
 
-  if (session.questionStartedAt === null) return // pas de question ouverte
-  if (session.answers.has(participantId)) return // déjà répondu (la 1ʳᵉ réponse compte)
+  // Question fermée OU réponse retardée visant une autre question que l'actuelle
+  // (buffer rejoué après le passage à la question suivante) → refus explicite.
+  if (session.questionStartedAt === null || payload.questionIndex !== session.currentQuestionIndex) {
+    respond({ ok: false, status: 'question_closed' })
+    return
+  }
+  if (session.answers.has(participantId)) {
+    // Déjà répondu (la 1ʳᵉ réponse compte) — succès du point de vue du client :
+    // sa réponse est bien enregistrée (cas du retry après coupure).
+    respond({ ok: true, status: 'already_answered' })
+    return
+  }
 
   session.answers.set(participantId, {
     value: payload.answer,
     submittedAt: Date.now(),
   })
+  respond({ ok: true, status: 'accepted' })
 
   const participant = session.participants.get(participantId)
   const connected = connectedParticipants(session)

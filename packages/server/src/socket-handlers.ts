@@ -46,7 +46,7 @@ export function attachSocketHandlers(io: QuizServer): void {
     socket.on(EVENTS.HOST_NEXT_QUESTION, () => safe('host_next_question', () => handleNextQuestion(socket, io)))
     socket.on(EVENTS.HOST_SHOW_LEADERBOARD, () => safe('host_show_leaderboard', () => handleShowLeaderboard(socket, io)))
     socket.on(EVENTS.HOST_END_QUIZ, () => safe('host_end_quiz', () => handleHostEndQuiz(socket, io)))
-    socket.on(EVENTS.SUBMIT_ANSWER, (p) => safe('submit_answer', () => handleSubmitAnswer(socket, p, io)))
+    socket.on(EVENTS.SUBMIT_ANSWER, (p, ack) => safe('submit_answer', () => handleSubmitAnswer(socket, p, io, ack)))
 
     // Mode équipe
     socket.on(EVENTS.HOST_SET_MODE, (p) => safe('host_set_mode', () => handleSetMode(socket, p, io)))

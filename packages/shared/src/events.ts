@@ -13,6 +13,14 @@ import type {
 // Permet la ré-identification transparente après reconnexion
 export type SessionToken = string
 
+// Accusé de réception d'une réponse (callback Socket.io de submit_answer).
+// `already_answered` est un succès : la réponse est bien enregistrée côté
+// serveur (cas du retry après une coupure où le 1er envoi était passé).
+export interface SubmitAnswerAck {
+  ok: boolean
+  status: 'accepted' | 'already_answered' | 'question_closed' | 'not_in_session'
+}
+
 // ─────────────────────────────────────────────────────────────
 // EVENTS CLIENT → SERVEUR
 // ─────────────────────────────────────────────────────────────
@@ -33,9 +41,17 @@ export interface ClientToServerEvents {
 
   // Participant envoie sa réponse.
   // string : free/mcq · number : closest · string[] : ordering (items réordonnés)
-  submit_answer: (payload: {
-    answer: string | number | string[]
-  }) => void
+  // `questionIndex` : la question visée — le serveur rejette une réponse retardée
+  // (buffer rejoué après reconnexion) qui arriverait après le passage à la suivante.
+  // L'ack permet au client d'afficher un état d'envoi fiable + retry (le serveur
+  // déduplique par participant → ré-émettre est toujours sûr).
+  submit_answer: (
+    payload: {
+      answer: string | number | string[]
+      questionIndex: number
+    },
+    ack: (res: SubmitAnswerAck) => void,
+  ) => void
 
   // HOST ONLY — passer à la question suivante
   host_next_question: (payload: Record<string, never>) => void

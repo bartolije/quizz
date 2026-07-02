@@ -88,8 +88,8 @@ describe('boucle de jeu', () => {
     const endedAlice = waitFor<QEnded>(alice, EVENTS.QUESTION_ENDED)
     const endedBob = waitFor<QEnded>(bob, EVENTS.QUESTION_ENDED)
 
-    alice.emit(EVENTS.SUBMIT_ANSWER, { answer: '4' })
-    bob.emit(EVENTS.SUBMIT_ANSWER, { answer: '3' })
+    alice.emit(EVENTS.SUBMIT_ANSWER, { answer: '4', questionIndex: 0 }, () => {})
+    bob.emit(EVENTS.SUBMIT_ANSWER, { answer: '3', questionIndex: 0 }, () => {})
 
     // Tous les connectés ont répondu → fermeture anticipée sans attendre le timer
     const [ra, rb] = await Promise.all([endedAlice, endedBob])
@@ -114,9 +114,9 @@ describe('boucle de jeu', () => {
 
     const endedAlice = waitFor<QEnded>(alice, EVENTS.QUESTION_ENDED)
 
-    alice.emit(EVENTS.SUBMIT_ANSWER, { answer: '4' })
-    alice.emit(EVENTS.SUBMIT_ANSWER, { answer: '3' }) // ignoré : déjà répondu
-    bob.emit(EVENTS.SUBMIT_ANSWER, { answer: '5' })
+    alice.emit(EVENTS.SUBMIT_ANSWER, { answer: '4', questionIndex: 0 }, () => {})
+    alice.emit(EVENTS.SUBMIT_ANSWER, { answer: '3', questionIndex: 0 }, () => {}) // ignoré : déjà répondu
+    bob.emit(EVENTS.SUBMIT_ANSWER, { answer: '5', questionIndex: 0 }, () => {})
 
     const ra = await endedAlice
     expect(ra.myAnswer).toBe('4')
@@ -139,7 +139,7 @@ describe('reconnexion participant', () => {
     // AVANT de couper — sans ça la réponse peut se perdre dans la déconnexion
     // (c'est précisément la faiblesse « pas d'ack participant » corrigée en P0-3).
     const ackHost = waitFor(host, EVENTS.ANSWER_RECEIVED)
-    alice.emit(EVENTS.SUBMIT_ANSWER, { answer: '4' })
+    alice.emit(EVENTS.SUBMIT_ANSWER, { answer: '4', questionIndex: 0 }, () => {})
     await ackHost
     await new Promise<void>((resolve) => {
       alice.once('disconnect', () => resolve())
@@ -158,7 +158,7 @@ describe('reconnexion participant', () => {
 
     // la fin de question doit arriver sur le NOUVEAU socket
     const endedAlice2 = waitFor<QEnded>(alice2, EVENTS.QUESTION_ENDED)
-    bob.emit(EVENTS.SUBMIT_ANSWER, { answer: '3' })
+    bob.emit(EVENTS.SUBMIT_ANSWER, { answer: '3', questionIndex: 0 }, () => {})
     const ra = await endedAlice2
     expect(ra.myAnswer).toBe('4')
     expect(ra.myCorrect).toBe(true)

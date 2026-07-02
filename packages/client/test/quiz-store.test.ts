@@ -82,6 +82,53 @@ describe('quiz-store — boucle de jeu', () => {
   })
 })
 
+describe('quiz-store — acheminement de la réponse (ack)', () => {
+  it('beginAnswer → sending, answerDelivered → sent', () => {
+    useQuizStore.getState().onQuestionStarted(q(0))
+    useQuizStore.getState().beginAnswer('a')
+    let s = useQuizStore.getState()
+    expect(s.hasAnswered).toBe(true)
+    expect(s.answerStatus).toBe('sending')
+    expect(s.pendingAnswer).toBe('a')
+
+    useQuizStore.getState().answerDelivered()
+    s = useQuizStore.getState()
+    expect(s.answerStatus).toBe('sent')
+    expect(s.pendingAnswer).toBeNull()
+  })
+
+  it('answerLate / answerFailed (pendingAnswer conservé pour « Réessayer »)', () => {
+    useQuizStore.getState().onQuestionStarted(q(0))
+    useQuizStore.getState().beginAnswer('b')
+    useQuizStore.getState().answerFailed()
+    expect(useQuizStore.getState().answerStatus).toBe('failed')
+    expect(useQuizStore.getState().pendingAnswer).toBe('b')
+
+    useQuizStore.getState().answerLate()
+    expect(useQuizStore.getState().answerStatus).toBe('late')
+  })
+
+  it('nouvelle question → statut remis à idle', () => {
+    useQuizStore.getState().onQuestionStarted(q(0))
+    useQuizStore.getState().beginAnswer('a')
+    useQuizStore.getState().onQuestionStarted(q(1))
+    const s = useQuizStore.getState()
+    expect(s.hasAnswered).toBe(false)
+    expect(s.answerStatus).toBe('idle')
+    expect(s.pendingAnswer).toBeNull()
+  })
+
+  it('restore avec alreadyAnswered → sent (source de vérité serveur)', () => {
+    useQuizStore.getState().onSessionRestored({
+      ...restoredBase,
+      currentQuestion: q(2),
+      timeElapsed: 5,
+      alreadyAnswered: true,
+    })
+    expect(useQuizStore.getState().answerStatus).toBe('sent')
+  })
+})
+
 describe('quiz-store — session perdue (onSessionLost)', () => {
   it('reset complet + message pour /join (restart serveur en pleine partie)', () => {
     useQuizStore.getState().setJoined({
