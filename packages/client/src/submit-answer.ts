@@ -37,6 +37,13 @@ export async function submitAnswerReliably(
       }
       if (res.status === 'question_closed') {
         store().answerLate()
+        // Le serveur et nous ne sommes pas d'accord sur la question en cours
+        // (ex : restart serveur pendant la question → elle a été annulée pour
+        // être rejouée). On force une resynchronisation : session_restored va
+        // recaler la vue (lobby / révélation / question rejouée) au lieu de
+        // laisser le téléphone planté sur « Trop tard ».
+        const token = localStorage.getItem('lya_quiz_token')
+        if (token) socket.emit(EVENTS.REJOIN_SESSION, { sessionToken: token })
         return
       }
       if (res.status === 'not_in_session') {
