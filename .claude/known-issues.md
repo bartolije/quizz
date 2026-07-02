@@ -1,5 +1,17 @@
 # Limitations connues & retours de test — LYA QUIZ
 
+## Corrigé — retours de test (juillet 2026)
+
+1. **Lancement du quiz invisible côté téléphone** : entre le clic « Démarrer » du
+   host et la première question, rien ne changeait (le store ne suivait que le
+   statut `ended`). **Fix :** le store trace `sessionStatus` ; à `running`, le
+   lobby bascule sur un écran « 🚀 C'est parti ! » + petite vibration (Android).
+2. **Réordonnancement `ordering` peu visible via ↑/↓** : le déplacement marchait
+   mais la liste se re-rendait instantanément. **Fix :** animation FLIP maison
+   (Web Animations API, ~200 ms, `OrderingList.tsx`) — les lignes GLISSENT vers
+   leur nouvelle place. Sautée pendant un drag (dnd-kit anime déjà) et si
+   `prefers-reduced-motion`.
+
 ## Corrigé — tri par ordre & bouton d'action (test à 3, juin 2026)
 
 Deux bugs remontés lors d'un test rapide à 3 joueurs, corrigés :

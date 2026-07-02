@@ -35,7 +35,8 @@ export function useParticipantEvents(): void {
     const onJoin = (p: PJoin) => store().setParticipantJoined(p.participant)
     const onLeft = (p: PLeft) => store().setParticipantLeft(p.participantId)
     const onStatus = (p: Status) => {
-      if (p.status === 'ended') store().onQuizEnded()
+      if (p.status === 'running' && store().sessionStatus !== 'running') vibrate(60) // « c'est parti ! »
+      store().onStatusChanged(p.status)
     }
     const onLeaderboard = (p: Leaderboard) => store().onLeaderboard(p.scores, p.final, p.teamScores)
     const onRestored = (p: Restored) => store().onSessionRestored(p)

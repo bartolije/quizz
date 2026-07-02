@@ -19,11 +19,29 @@ export function LobbyPage() {
   const teams        = useQuizStore((s) => s.teams)
   const teamsLocked  = useQuizStore((s) => s.teamsLocked)
   const myTeamId     = useQuizStore((s) => s.myTeamId)
+  const status       = useQuizStore((s) => s.sessionStatus)
 
   const [vib, setVib] = useState(isVibrationEnabled())
 
   // Pas encore rejoint (refresh direct sur /lobby) → retour au join
   if (!myId) return <Navigate to="/join" replace />
+
+  // Le host a lancé le quiz : le téléphone le MONTRE (avant, rien ne changeait
+  // entre le clic « Démarrer » et la première question — les joueurs doutaient).
+  if (status === 'running') {
+    return (
+      <div className="h-[100dvh] bg-gray-950 flex flex-col items-center justify-center p-6 text-center gap-4">
+        <div className="text-7xl animate-bounce">🚀</div>
+        <h1 className="text-3xl font-black text-white">C&apos;est parti !</h1>
+        <p className="text-gray-400 text-lg">
+          Prépare-toi, la question arrive — garde ton téléphone en main.
+        </p>
+        <p className="text-gray-600 text-sm">
+          Tu joues en tant que <span className="text-gray-300 font-medium">{myPseudo}</span>
+        </p>
+      </div>
+    )
+  }
 
   const connected = participants.filter((p) => p.connected)
 

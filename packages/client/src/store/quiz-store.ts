@@ -65,6 +65,7 @@ interface QuizStore {
   // Session
   sessionPin: string | null
   sessionId: string | null
+  sessionStatus: SessionStatus   // 'waiting' | 'running' | 'ended' — pilote l'écran lobby
 
   // Participants
   participants: Participant[]
@@ -102,6 +103,8 @@ interface QuizStore {
     teams: Team[]
     teamsLocked: boolean
     myTeamId: string | null
+    // statut au moment du join (retardataire : la partie peut déjà être lancée)
+    sessionStatus?: SessionStatus
   }) => void
   setParticipantJoined: (p: Participant) => void
   setParticipantLeft: (participantId: string) => void
@@ -119,7 +122,7 @@ interface QuizStore {
   onQuestionEnded: (payload: QuestionEndedPayload) => void
   onLeaderboard: (scores: ParticipantScore[], final: boolean, teamScores?: TeamScore[]) => void
   onSessionRestored: (payload: SessionRestoredPayload) => void
-  onQuizEnded: () => void
+  onStatusChanged: (status: SessionStatus) => void
   onSessionLost: (notice: string) => void
   setView: (view: AppView) => void
   reset: () => void
@@ -134,6 +137,7 @@ const initialState = {
   myScore: 0,
   sessionPin: null,
   sessionId: null,
+  sessionStatus: 'waiting' as SessionStatus,
   participants: [],
   mode: 'solo' as SessionMode,
   teams: [],
@@ -155,8 +159,21 @@ const initialState = {
 export const useQuizStore = create<QuizStore>()((set) => ({
   ...initialState,
 
-  setJoined: ({ myId, myPseudo, sessionPin, sessionId, participants, mode, teams, teamsLocked, myTeamId }) =>
-    set({ myId, myPseudo, sessionPin, sessionId, participants, mode, teams, teamsLocked, myTeamId, currentView: 'lobby', fatalNotice: null }),
+  setJoined: ({ myId, myPseudo, sessionPin, sessionId, participants, mode, teams, teamsLocked, myTeamId, sessionStatus }) =>
+    set({
+      myId,
+      myPseudo,
+      sessionPin,
+      sessionId,
+      participants,
+      mode,
+      teams,
+      teamsLocked,
+      myTeamId,
+      sessionStatus: sessionStatus ?? 'waiting',
+      currentView: 'lobby',
+      fatalNotice: null,
+    }),
 
   // teams_updated : source de vérité de l'état équipe. On remplace participants +
   // état d'équipe et on recalcule myTeamId depuis la liste.
@@ -237,6 +254,7 @@ export const useQuizStore = create<QuizStore>()((set) => ({
         myId: payload.participant.id,
         myPseudo: payload.participant.pseudo,
         sessionPin: payload.session.pin,
+        sessionStatus: payload.session.status,
         participants: payload.participants,
         myScore: payload.myScore,
         // Mode équipe restauré
@@ -295,7 +313,15 @@ export const useQuizStore = create<QuizStore>()((set) => ({
       return { ...base, currentView: view }
     }),
 
-  onQuizEnded: () => set({ currentView: 'ended', questionStartedAt: null }),
+  // Changement de statut de session. 'running' rend le lancement VISIBLE sur le
+  // téléphone (écran « C'est parti ! » du lobby) — avant, rien ne bougeait entre
+  // le clic « Démarrer » du host et la première question.
+  onStatusChanged: (status) =>
+    set(
+      status === 'ended'
+        ? { sessionStatus: status, currentView: 'ended', questionStartedAt: null }
+        : { sessionStatus: status },
+    ),
 
   // La session n'existe plus côté serveur (restart en pleine partie, token
   // invalide) : reset complet + message explicatif affiché sur /join.

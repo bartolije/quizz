@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef } from 'react'
 import {
   DndContext,
   closestCenter,
@@ -33,18 +34,23 @@ function Row({
   index,
   total,
   onMove,
+  registerEl,
 }: {
   id: string
   index: number
   total: number
   onMove: (i: number, dir: -1 | 1) => void
+  registerEl: (id: string, el: HTMLDivElement | null) => void
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
   const style = { transform: CSS.Transform.toString(transform), transition }
 
   return (
     <div
-      ref={setNodeRef}
+      ref={(el) => {
+        setNodeRef(el)
+        registerEl(id, el)
+      }}
       style={style}
       className={`flex items-center gap-1.5 bg-gray-800 rounded-xl px-2 py-3 ${
         isDragging ? 'relative z-10 ring-2 ring-indigo-400 shadow-xl opacity-90' : ''
@@ -96,7 +102,44 @@ export function OrderingList({
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   )
 
+  // ── Animation FLIP des réordonnancements ──────────────────────
+  // Un déplacement via ↑/↓ re-rend la liste instantanément : sans animation, on
+  // ne VOIT pas les deux lignes s'échanger. On mémorise la position (top) de
+  // chaque ligne, et au render suivant on la fait glisser de son ancienne
+  // position vers la nouvelle (Web Animations API, aucun re-render).
+  // Pendant un drag, dnd-kit anime déjà → on saute le tour pour ne pas doubler.
+  const rowEls = useRef(new Map<string, HTMLDivElement>())
+  const prevTops = useRef(new Map<string, number>())
+  const skipFlipRef = useRef(false)
+
+  const registerEl = (id: string, el: HTMLDivElement | null): void => {
+    if (el) rowEls.current.set(id, el)
+    else rowEls.current.delete(id)
+  }
+
+  useLayoutEffect(() => {
+    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches
+    for (const [id, el] of rowEls.current) {
+      const newTop = el.getBoundingClientRect().top
+      const prevTop = prevTops.current.get(id)
+      if (
+        !skipFlipRef.current &&
+        !reduceMotion &&
+        prevTop !== undefined &&
+        Math.abs(prevTop - newTop) > 1
+      ) {
+        el.animate(
+          [{ transform: `translateY(${prevTop - newTop}px)` }, { transform: 'translateY(0)' }],
+          { duration: 200, easing: 'ease-out' },
+        )
+      }
+      prevTops.current.set(id, newTop)
+    }
+    skipFlipRef.current = false
+  }, [order])
+
   function handleDragEnd(e: DragEndEvent) {
+    skipFlipRef.current = true // dnd-kit a déjà animé le drag, pas de double glissement
     const { active, over } = e
     if (!over || active.id === over.id) return
     const from = order.indexOf(String(active.id))
@@ -121,7 +164,7 @@ export function OrderingList({
       <SortableContext items={order} strategy={verticalListSortingStrategy}>
         <div className="space-y-2">
           {order.map((item, i) => (
-            <Row key={item} id={item} index={i} total={order.length} onMove={move} />
+            <Row key={item} id={item} index={i} total={order.length} onMove={move} registerEl={registerEl} />
           ))}
         </div>
       </SortableContext>

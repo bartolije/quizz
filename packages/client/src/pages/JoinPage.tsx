@@ -75,6 +75,7 @@ export function JoinPage() {
         teams: payload.teams,
         teamsLocked: payload.teamsLocked,
         myTeamId: payload.participant.teamId ?? null,
+        sessionStatus: payload.session.status,
       })
       setLoading(false)
       loadingRef.current = false

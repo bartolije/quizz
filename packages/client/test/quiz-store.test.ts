@@ -76,6 +76,48 @@ describe('quiz-store — boucle de jeu', () => {
     expect(s.myScore).toBe(800)
   })
 
+  it('onStatusChanged(running) → statut visible (écran « C\'est parti ») sans changer de vue', () => {
+    useQuizStore.getState().setJoined({
+      myId: 'p1',
+      myPseudo: 'alice',
+      sessionPin: '1234',
+      sessionId: 's1',
+      participants: [],
+      mode: 'solo',
+      teams: [],
+      teamsLocked: false,
+      myTeamId: null,
+    })
+    expect(useQuizStore.getState().sessionStatus).toBe('waiting')
+
+    useQuizStore.getState().onStatusChanged('running')
+    const s = useQuizStore.getState()
+    expect(s.sessionStatus).toBe('running')
+    expect(s.currentView).toBe('lobby') // la vue lobby affiche « C'est parti ! »
+  })
+
+  it('onStatusChanged(ended) → podium', () => {
+    useQuizStore.getState().onStatusChanged('ended')
+    expect(useQuizStore.getState().currentView).toBe('ended')
+    expect(useQuizStore.getState().sessionStatus).toBe('ended')
+  })
+
+  it('retardataire : setJoined avec sessionStatus running', () => {
+    useQuizStore.getState().setJoined({
+      myId: 'p2',
+      myPseudo: 'bob',
+      sessionPin: '1234',
+      sessionId: 's1',
+      participants: [],
+      mode: 'solo',
+      teams: [],
+      teamsLocked: false,
+      myTeamId: null,
+      sessionStatus: 'running',
+    })
+    expect(useQuizStore.getState().sessionStatus).toBe('running')
+  })
+
   it('onLeaderboard intermédiaire → vue leaderboard ; final → podium', () => {
     useQuizStore.getState().onLeaderboard([], false)
     expect(useQuizStore.getState().currentView).toBe('leaderboard')
