@@ -34,6 +34,7 @@ interface HostSessionView {
   participants: Participant[]
   status: SessionStatus
   error: string | null
+  socketConnected: boolean   // false pendant une coupure → bandeau de reconnexion
   // Jeu (S4)
   currentQuestion: QuestionPublic | null
   questionStartedAt: number | null   // horloge client (réception) pour le timer
@@ -116,6 +117,19 @@ export function useHostSession(mode: HostMode): HostSessionView {
   const [teamLeaderboard, setTeamLeaderboard] = useState<TeamScore[]>([])
 
   const resolvedRef = useRef(false)
+
+  // État de la connexion Socket.io — pilote le bandeau « reconnexion » des vues host
+  const [socketConnected, setSocketConnected] = useState(socket.connected)
+  useEffect(() => {
+    const onConnect = () => setSocketConnected(true)
+    const onDisconnect = () => setSocketConnected(false)
+    socket.on('connect', onConnect)
+    socket.on('disconnect', onDisconnect)
+    return () => {
+      socket.off('connect', onConnect)
+      socket.off('disconnect', onDisconnect)
+    }
+  }, [])
 
   // Effet 1 — résolution one-shot (évite la double création en StrictMode dev)
   useEffect(() => {
@@ -233,10 +247,13 @@ export function useHostSession(mode: HostMode): HostSessionView {
     socket.on(EVENTS.LEADERBOARD_UPDATE, onLeaderboard)
     socket.on(EVENTS.TEAMS_UPDATED, onTeams)
 
+    // host_join à CHAQUE (re)connexion — pas seulement la première. À la moindre
+    // micro-coupure le serveur retire ce socket de hostSocketIds et des rooms
+    // (disconnect.ts) : sans ré-émission, boutons morts et TV figée sans erreur.
     const join = () => socket.emit(EVENTS.HOST_JOIN, { pin })
     if (!socket.connected) socket.connect()
     if (socket.connected) join()
-    else socket.once('connect', join)
+    socket.on('connect', join)
 
     return () => {
       socket.off(EVENTS.SESSION_JOINED, onJoined)
@@ -272,6 +289,7 @@ export function useHostSession(mode: HostMode): HostSessionView {
     participants,
     status,
     error,
+    socketConnected,
     currentQuestion,
     questionStartedAt,
     answeredCount,

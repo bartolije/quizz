@@ -4,6 +4,7 @@ import { useHostSession } from '../hooks/useHostSession'
 import { useRemaining } from '../hooks/useRemaining'
 import { fetchReport } from '../host-session'
 import { QrCode } from '../components/QrCode'
+import { ConnectionBanner } from '../components/ConnectionBanner'
 import { ReportView } from '../components/ReportView'
 import { QuestionImage } from '../components/QuestionImage'
 import { HostTeamPanel } from '../components/HostTeamPanel'
@@ -52,6 +53,7 @@ export function HostControlPage() {
 
   return (
     <div className="min-h-screen bg-gray-950 text-white flex flex-col">
+      <ConnectionBanner connected={s.socketConnected} />
       <header className="flex items-center justify-between px-8 py-5 border-b border-gray-800">
         <h1 className="text-2xl font-bold">LYA QUIZ</h1>
         <p className="text-gray-400">

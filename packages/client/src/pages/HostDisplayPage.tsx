@@ -5,6 +5,7 @@ import { QrCode } from '../components/QrCode'
 import { choiceStyle } from '../mcq'
 import { rankMovement, movementMark } from '../rank-movement'
 import { TimePressure } from '../components/TimePressure'
+import { ConnectionBanner } from '../components/ConnectionBanner'
 import { QuestionImage } from '../components/QuestionImage'
 import { TeamStandings } from '../components/TeamStandings'
 
@@ -81,7 +82,13 @@ export function HostDisplayPage() {
 
   const q = s.currentQuestion
   const total = s.totalCount || connected.length
-  const soundCtl = <SoundControl {...sound} />
+  // Overlays présents sur TOUTES les phases : contrôle audio + bandeau de coupure
+  const soundCtl = (
+    <>
+      <ConnectionBanner connected={s.socketConnected} />
+      <SoundControl {...sound} />
+    </>
+  )
 
   // ── Lobby (avant le démarrage) ───────────────────────────────
   if (phase === 'lobby') {

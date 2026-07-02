@@ -130,9 +130,16 @@ React + Vite, routing react-router. Store global **Zustand** (`store/quiz-store.
   reconnecte le socket ; `session_restored` repeuple identité + état. On ne renvoie
   vers `/join` QUE si le serveur dit `INVALID_TOKEN` / `SESSION_ENDED`. Pas de
   timeout : si le serveur est lent, Socket.io retente (`reconnectionAttempts: Infinity`).
+- **Host & TV** : `useHostSession` ré-émet `host_join { pin }` à **chaque** event
+  `connect` (pas seulement le premier — un `once` historique laissait boutons morts
+  et TV figée après une micro-coupure, cf. audit-2026-07). Le serveur re-répond
+  `session_joined` + `question_started` si une question est ouverte. Un bandeau
+  `ConnectionBanner` s'affiche sur les vues host pendant une coupure.
 - Côté config WS : `pingInterval 10s` / `pingTimeout 5s` (détecte les zombies),
   reconnexion 500ms→2s avec `randomizationFactor 0.3` (évite que N téléphones
-  reconnectent en même temps), `SESSION_TOKEN_TTL_MS = 30s` (fenêtre de reprise sans perte d'état).
+  reconnectent en même temps). NB : `SESSION_TOKEN_TTL_MS` et
+  `cleanupDisconnectedParticipants` ne sont branchés nulle part — la fenêtre de
+  reprise est en pratique **illimitée** (voulu : personne ne perd son score).
 
 ## API REST (serveur)
 
