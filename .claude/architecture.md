@@ -139,7 +139,9 @@ React + Vite, routing react-router. Store global **Zustand** (`store/quiz-store.
   et TV figée après une micro-coupure, cf. audit-2026-07). Le serveur re-répond
   `session_joined` + `question_started` si une question est ouverte. Un bandeau
   `ConnectionBanner` s'affiche sur les vues host pendant une coupure.
-- Côté config WS : `pingInterval 10s` / `pingTimeout 5s` (détecte les zombies),
+- Côté config WS : `pingInterval 10s` / `pingTimeout 10s` (détecte les zombies
+  sans faux positifs sur wifi saturé), `tryAllTransports: true` (vrai fallback
+  polling si le réseau bloque les WebSockets),
   reconnexion 500ms→2s avec `randomizationFactor 0.3` (évite que N téléphones
   reconnectent en même temps). NB : `SESSION_TOKEN_TTL_MS` et
   `cleanupDisconnectedParticipants` ne sont branchés nulle part — la fenêtre de
