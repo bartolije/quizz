@@ -9,6 +9,7 @@ import {
 import { getAllSessions, type SessionState } from '../state.js'
 import { getLeaderboard, getTeamLeaderboard, toPublicQuestion } from '../session-helpers.js'
 import { logEvent } from '../logger.js'
+import { saveSessionSnapshot, deleteSessionSnapshot } from '../session-snapshot.js'
 
 // Champ teamScores des payloads (présent uniquement en mode équipe).
 // exactOptionalPropertyTypes : on spread {} en solo plutôt que teamScores:undefined.
@@ -81,6 +82,7 @@ export function handleNextQuestion(socket: QuizSocket, io: QuizServer): void {
   // Plus de questions → fin du quiz
   if (nextIndex >= questions.length) {
     session.status = 'ended'
+    deleteSessionSnapshot(session.id) // partie finie : plus rien à restaurer
     io.to(session.id).emit(EVENTS.SESSION_STATUS_CHANGED, { status: 'ended' })
     io.to(session.id).emit(EVENTS.LEADERBOARD_UPDATE, {
       scores: getLeaderboard(session),
@@ -106,6 +108,8 @@ export function handleNextQuestion(socket: QuizSocket, io: QuizServer): void {
   session.questionTimer = setTimeout(() => {
     closeQuestion(session, io, 'timer')
   }, q.timeLimit * 1000)
+
+  saveSessionSnapshot(session) // un restart pendant la question la rejouera
 
   io.to(session.id).emit(EVENTS.QUESTION_STARTED, {
     question: toPublicQuestion(q, nextIndex, questions.length, session.currentShuffled ?? undefined),
@@ -367,4 +371,6 @@ export function closeQuestion(
     correctCount,
     closeReason: reason,
   })
+
+  saveSessionSnapshot(session) // scores figés → snapshot à jour pour un restart
 }

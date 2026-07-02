@@ -67,6 +67,15 @@ sqlite.exec(`
     media_url TEXT
   );
   CREATE INDEX IF NOT EXISTS idx_questions_quiz ON questions(quiz_id, ord);
+  -- Filet anti-restart : snapshot JSON de chaque session de jeu active
+  -- (cf. session-snapshot.ts). Restauré au boot, purgé à la fin du quiz.
+  CREATE TABLE IF NOT EXISTS session_snapshots (
+    id TEXT PRIMARY KEY,
+    data TEXT NOT NULL,
+    updated_at INTEGER NOT NULL
+  );
 `)
 
 export const db = drizzle(sqlite)
+// Accès brut pour les modules qui n'ont pas besoin de Drizzle (snapshots)
+export { sqlite }

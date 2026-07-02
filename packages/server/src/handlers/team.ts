@@ -13,6 +13,7 @@ import {
   getTeamsPayload,
 } from '../session-helpers.js'
 import { logEvent } from '../logger.js'
+import { saveSessionSnapshot } from '../session-snapshot.js'
 
 type QuizSocket = Socket<ClientToServerEvents, ServerToClientEvents>
 type QuizServer = Server<ClientToServerEvents, ServerToClientEvents>
@@ -20,8 +21,9 @@ type QuizServer = Server<ClientToServerEvents, ServerToClientEvents>
 const MAX_TEAMS = 6
 
 // Source de vérité unique de l'état équipe → rediffusée à toute la room à chaque
-// changement (mode, équipes, lock, assignations).
+// changement (mode, équipes, lock, assignations) + snapshot (survit à un restart).
 function broadcastTeams(session: SessionState, io: QuizServer): void {
+  saveSessionSnapshot(session)
   io.to(session.id).emit(EVENTS.TEAMS_UPDATED, getTeamsPayload(session))
 }
 

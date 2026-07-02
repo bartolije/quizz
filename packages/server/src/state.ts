@@ -107,6 +107,12 @@ export function getAllSessions(): SessionState[] {
   return [...sessions.values()]
 }
 
+// Ré-enregistre une session reconstruite depuis un snapshot (cf. session-snapshot.ts)
+export function restoreSession(session: SessionState): void {
+  sessions.set(session.id, session)
+  pinIndex.set(session.pin, session.id)
+}
+
 export function deleteSession(id: string): void {
   const session = sessions.get(id)
   if (session) {

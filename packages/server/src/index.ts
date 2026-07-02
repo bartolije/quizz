@@ -19,10 +19,17 @@ import {
   deleteQuiz,
   type QuizInput,
 } from './quiz-repo.js'
-import { logWarn, logError } from './logger.js'
+import { logWarn, logError, logEvent } from './logger.js'
+import { saveSessionSnapshot, restoreSessionsAtBoot } from './session-snapshot.js'
 
 // Au démarrage : crée les tables (import de db via quiz-repo) + seed si DB vide.
 seedIfEmpty()
+
+// Filet anti-restart : recharge les sessions de jeu snapshotées (Volume Railway).
+// Les téléphones se reconnectent tout seuls (leur token redevient valide) ; la
+// question interrompue est simplement rejouée par le host.
+const restoredCount = restoreSessionsAtBoot()
+if (restoredCount > 0) logEvent('sessions_restored_at_boot', { count: restoredCount })
 
 // Filets de sécurité : on logge les crashs au lieu de mourir en silence.
 process.on('uncaughtException', (e) => logError('fatal_uncaught_exception', e))
@@ -75,6 +82,7 @@ attachSocketHandlers(io)
 // l'éditeur avec un quizId). Sans quizId → quiz par défaut.
 app.post<{ Body: { quizId?: string } }>('/api/sessions', async (req) => {
   const session = createSession(req.body?.quizId)
+  saveSessionSnapshot(session)
   return { pin: session.pin, sessionId: session.id }
 })
 

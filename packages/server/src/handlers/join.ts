@@ -16,6 +16,7 @@ import {
   getLeaderboard,
 } from '../session-helpers.js'
 import { logEvent } from '../logger.js'
+import { saveSessionSnapshot } from '../session-snapshot.js'
 
 type QuizSocket = Socket<ClientToServerEvents, ServerToClientEvents>
 type QuizServer = Server<ClientToServerEvents, ServerToClientEvents>
@@ -84,6 +85,7 @@ export function handleJoinSession(
 
   session.participants.set(participant.id, participant)
   session.tokenIndex.set(newToken, participant.id)
+  saveSessionSnapshot(session) // le token doit survivre à un restart serveur
 
   // Rejoindre la room Socket.io de la session
   void socket.join(session.id)

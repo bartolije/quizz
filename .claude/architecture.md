@@ -57,8 +57,12 @@ HTTP** (`new Server(app.server, …)`) → un seul port pour HTTP + WebSocket.
 | `seed-quiz.ts` | quiz par défaut injecté si la base est vide |
 | `logger.ts` | logs structurés par événement (pino), `logWarn` / `logError` |
 
-Les sessions de jeu sont **en mémoire** (rapidité, éphémère). Seuls les **quiz**
-(contenu éditable) sont persistés en SQLite.
+Les sessions de jeu vivent **en mémoire** (rapidité) avec un **snapshot SQLite**
+(`session-snapshot.ts`, table `session_snapshots`) sauvegardé aux transitions clés
+(join, début/fin de question, statut, équipes) et restauré au boot : un restart ne
+perd plus les parties (tokens valides → reconnexion transparente ; la question
+ouverte au moment du crash est rejouée). Les **quiz** (contenu éditable) sont
+persistés à part (`quizzes`/`questions`).
 
 ### Robustesse serveur
 

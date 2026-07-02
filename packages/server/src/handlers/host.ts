@@ -9,6 +9,7 @@ import {
   getTeamLeaderboard,
 } from '../session-helpers.js'
 import { logEvent } from '../logger.js'
+import { saveSessionSnapshot, deleteSessionSnapshot } from '../session-snapshot.js'
 
 type QuizSocket = Socket<ClientToServerEvents, ServerToClientEvents>
 type QuizServer = Server<ClientToServerEvents, ServerToClientEvents>
@@ -23,6 +24,7 @@ export function handleHostJoin(
   // (le host crée la session en arrivant sur /host/control)
   if (!session) {
     session = createSession()
+    saveSessionSnapshot(session)
     // On ignore le PIN fourni et on utilise celui généré
     // Le host lira le PIN affiché sur son écran
   }
@@ -82,6 +84,7 @@ export function handleHostStartQuiz(socket: QuizSocket, io: QuizServer): void {
   for (const session of getAllSessions()) {
     if (session.hostSocketIds.has(socket.id)) {
       session.status = 'running'
+      saveSessionSnapshot(session)
       io.to(session.id).emit(EVENTS.SESSION_STATUS_CHANGED, { status: session.status })
       logEvent('quiz_started', { sessionId: session.id })
       return
@@ -101,6 +104,7 @@ export function handleHostEndQuiz(socket: QuizSocket, io: QuizServer): void {
   }
   session.questionStartedAt = null
   session.status = 'ended'
+  deleteSessionSnapshot(session.id) // partie finie : plus rien à restaurer
 
   io.to(session.id).emit(EVENTS.SESSION_STATUS_CHANGED, { status: 'ended' })
   io.to(session.id).emit(EVENTS.LEADERBOARD_UPDATE, {

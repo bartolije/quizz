@@ -36,9 +36,12 @@ Points clés de robustesse (priorité « stabilité ») :
 - **État local de `QuestionPage`** : tout nouvel état dépendant de la question doit
   rester compatible avec le remount par `key` (il repart de zéro à chaque question —
   c'est voulu).
-- **Sessions en mémoire** : un redéploiement / restart serveur perd les parties en
-  cours (PIN, scores). Seuls les quiz (contenu) sont persistés. Acceptable pour
-  l'usage interne, mais à connaître avant de redéployer en pleine session.
+- **Sessions snapshotées (depuis 07/2026)** : les parties en cours sont sauvegardées
+  dans SQLite (`session_snapshots`, cf. `session-snapshot.ts`) et restaurées au boot.
+  Un restart/redeploy ne perd plus PIN, participants ni scores — les téléphones se
+  reconnectent seuls (token) ; seule la question OUVERTE au moment du crash est
+  rejouée par le host. Éviter quand même un redeploy en pleine soirée (coupure de
+  quelques secondes pour tout le monde).
 - **Anti-triche** : le WebSocket n'envoie jamais les bonnes réponses avant la
   révélation (`question_started` n'expose qu'une `QuestionPublic` sans `correctAnswers` ;
   elles ne partent qu'à `question_ended`). L'éditeur `/admin` (qui, lui, expose les
