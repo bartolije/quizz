@@ -38,8 +38,17 @@ function findParticipantContext(
   return undefined
 }
 
-function connectedParticipants(session: SessionState) {
-  return [...session.participants.values()].filter((p) => p.connected)
+// Fenêtre de grâce pour la fermeture anticipée « tous ont répondu » : un joueur
+// déconnecté depuis moins de GRACE compte encore dans le dénominateur — sinon un
+// simple blip pendant que les autres répondent fermait la question sous ses pieds
+// pendant qu'il rechargeait. Au pire, le timer serveur borne l'attente.
+const DISCONNECT_GRACE_MS = 30_000
+
+function eligibleParticipants(session: SessionState) {
+  const now = Date.now()
+  return [...session.participants.values()].filter(
+    (p) => p.connected || (p.disconnectedAt !== undefined && now - p.disconnectedAt < DISCONNECT_GRACE_MS),
+  )
 }
 
 // Mélange (Fisher-Yates) en garantissant un ordre différent de l'original.
@@ -101,6 +110,7 @@ export function handleNextQuestion(socket: QuizSocket, io: QuizServer): void {
   io.to(session.id).emit(EVENTS.QUESTION_STARTED, {
     question: toPublicQuestion(q, nextIndex, questions.length, session.currentShuffled ?? undefined),
     startedAt: session.questionStartedAt,
+    timeElapsed: 0,
   })
   logEvent('question_started', {
     sessionId: session.id,
@@ -192,18 +202,19 @@ export function handleSubmitAnswer(
   respond({ ok: true, status: 'accepted' })
 
   const participant = session.participants.get(participantId)
-  const connected = connectedParticipants(session)
+  const eligible = eligibleParticipants(session)
 
   // Compteur live pour le host
   io.to(`host:${session.id}`).emit(EVENTS.ANSWER_RECEIVED, {
     participantId,
     pseudo: participant?.pseudo ?? '',
     answeredCount: session.answers.size,
-    totalCount: connected.length,
+    totalCount: eligible.length,
   })
 
-  // Fin anticipée : tous les connectés ont répondu
-  if (connected.length > 0 && session.answers.size >= connected.length) {
+  // Fin anticipée : tous les participants « éligibles » ont répondu (connectés
+  // + déconnectés récents en fenêtre de grâce, cf. eligibleParticipants)
+  if (eligible.length > 0 && session.answers.size >= eligible.length) {
     closeQuestion(session, io, 'all_answered')
   }
 }

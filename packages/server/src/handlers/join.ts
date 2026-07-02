@@ -100,6 +100,25 @@ export function handleJoinSession(
     teamsLocked: session.teamsLocked,
   })
 
+  // Retardataire en PLEINE question : lui rejouer la question en cours avec le
+  // temps déjà écoulé (sans ça il attendait dans le lobby et voyait « Raté ❌ »
+  // à la révélation d'une question qu'il n'avait jamais vue).
+  const quiz = session.quiz
+  const openQuestion =
+    session.questionStartedAt !== null ? quiz?.questions[session.currentQuestionIndex] : undefined
+  if (session.questionStartedAt !== null && quiz && openQuestion) {
+    socket.emit(EVENTS.QUESTION_STARTED, {
+      question: toPublicQuestion(
+        openQuestion,
+        session.currentQuestionIndex,
+        quiz.questions.length,
+        session.currentShuffled ?? undefined,
+      ),
+      startedAt: session.questionStartedAt,
+      timeElapsed: (Date.now() - session.questionStartedAt) / 1000,
+    })
+  }
+
   // Notifier les autres
   socket.to(session.id).emit(EVENTS.PARTICIPANT_JOINED, {
     participant: toParticipant(participant),

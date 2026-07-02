@@ -26,7 +26,7 @@ export function useParticipantEvents(): void {
     const store = useQuizStore.getState
     const onStarted = (p: QStarted) => {
       vibrate(80) // nouvelle question (Android ; no-op iOS)
-      store().onQuestionStarted(p.question)
+      store().onQuestionStarted(p.question, p.timeElapsed)
     }
     const onEnded = (p: QEnded) => {
       vibrate([60, 40, 60]) // fin de question

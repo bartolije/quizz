@@ -111,7 +111,7 @@ interface QuizStore {
     locked: boolean
     participants: Participant[]
   }) => void
-  onQuestionStarted: (q: QuestionPublic) => void
+  onQuestionStarted: (q: QuestionPublic, timeElapsed?: number) => void
   beginAnswer: (answer: string | number | string[]) => void
   answerDelivered: () => void
   answerLate: () => void
@@ -184,12 +184,13 @@ export const useQuizStore = create<QuizStore>()((set) => ({
     })),
 
   // question_started : on ancre le timer sur l'horloge CLIENT (réception = t0)
-  // pour éviter tout décalage d'horloge serveur/client.
-  onQuestionStarted: (q) =>
+  // pour éviter tout décalage d'horloge serveur/client. timeElapsed > 0 quand la
+  // question est rejouée (arrivant tardif) → chrono recalé, pas reparti à fond.
+  onQuestionStarted: (q, timeElapsed = 0) =>
     set({
       currentView: 'question',
       currentQuestion: q,
-      questionStartedAt: Date.now(),
+      questionStartedAt: Date.now() - timeElapsed * 1000,
       hasAnswered: false,
       answerStatus: 'idle',
       pendingAnswer: null,

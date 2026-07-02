@@ -173,7 +173,12 @@ export interface ServerToClientEvents {
   // Une question commence
   question_started: (payload: {
     question: QuestionPublic
-    startedAt: number   // timestamp serveur → le client calcule le timer depuis là
+    startedAt: number    // timestamp serveur (informatif — le client ancre sur SA réception)
+    // Secondes déjà écoulées sur cette question : 0 au coup d'envoi normal, > 0
+    // quand la question est REJOUÉE à un arrivant tardif ou à un host/TV qui se
+    // ré-attache — le client recale son chrono (Date.now() - timeElapsed*1000)
+    // au lieu de repartir à la valeur pleine.
+    timeElapsed: number
   }) => void
 
   // Une question se termine

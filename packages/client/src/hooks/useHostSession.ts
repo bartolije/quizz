@@ -206,7 +206,8 @@ export function useHostSession(mode: HostMode): HostSessionView {
 
     const onQuestion = (p: QStartedPayload) => {
       setCurrentQuestion(p.question)
-      setQuestionStartedAt(Date.now())
+      // timeElapsed > 0 = question rejouée après refresh/ré-attachement → chrono recalé
+      setQuestionStartedAt(Date.now() - (p.timeElapsed ?? 0) * 1000)
       setReveal(null)
       setAnsweredCount(0)
       setTotalCount(0)

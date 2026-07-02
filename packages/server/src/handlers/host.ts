@@ -45,13 +45,20 @@ export function handleHostJoin(
   })
 
   // Reprise host (S7) : si une question est ouverte (le host a rafraîchi en
-  // pleine partie), la lui renvoyer pour qu'il retrouve l'écran question.
+  // pleine partie ou s'est ré-attaché après une coupure), la lui renvoyer avec le
+  // temps déjà écoulé — le chrono affiché repart de la vraie valeur, pas du max.
   if (session.questionStartedAt !== null && session.quiz) {
     const q = session.quiz.questions[session.currentQuestionIndex]
     if (q) {
       socket.emit(EVENTS.QUESTION_STARTED, {
-        question: toPublicQuestion(q, session.currentQuestionIndex, session.quiz.questions.length),
+        question: toPublicQuestion(
+          q,
+          session.currentQuestionIndex,
+          session.quiz.questions.length,
+          session.currentShuffled ?? undefined,
+        ),
         startedAt: session.questionStartedAt,
+        timeElapsed: (Date.now() - session.questionStartedAt) / 1000,
       })
     }
   }
