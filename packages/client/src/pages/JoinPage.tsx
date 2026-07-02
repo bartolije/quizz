@@ -3,6 +3,10 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { socket } from '../socket'
 import { useQuizStore } from '../store/quiz-store'
 import { EVENTS } from '@lya-quiz/shared'
+import type { ServerToClientEvents } from '@lya-quiz/shared'
+
+type JoinedPayload = Parameters<ServerToClientEvents['session_joined']>[0]
+type ErrorPayload = Parameters<ServerToClientEvents['quiz_error']>[0]
 
 export function JoinPage() {
   const [searchParams] = useSearchParams()
@@ -19,8 +23,16 @@ export function JoinPage() {
   // Ref pour éviter la stale closure dans le setTimeout (le state `loading`
   // capturé à la fermeture serait toujours `false`).
   const loadingRef = useRef(false)
+  // Listeners de la tentative en cours : détachés dès qu'une réponse arrive (ou à
+  // l'unmount) — sinon chaque tentative ratée laissait des `once` orphelins qui se
+  // déclenchaient sur des events ultérieurs.
+  const cleanupRef = useRef<() => void>(() => {})
 
   const setJoined = useQuizStore((s) => s.setJoined)
+  // Message posé par onSessionLost (ex : restart serveur en pleine partie)
+  const fatalNotice = useQuizStore((s) => s.fatalNotice)
+
+  useEffect(() => () => cleanupRef.current(), [])
 
   // Reprise au reload : pas de QR (?pin absent) + un token présent → on retourne
   // directement dans la partie via /lobby (ParticipantApp tente la reconnexion).
@@ -48,8 +60,10 @@ export function JoinPage() {
       sessionToken: existingToken,
     })
 
-    // Écouter la confirmation (one-time)
-    socket.once(EVENTS.SESSION_JOINED, (payload) => {
+    // Écouter la confirmation — les DEUX listeners sont détachés dès que l'un
+    // répond (une tentative = une réponse, pas de once orphelin).
+    const onJoined = (payload: JoinedPayload) => {
+      cleanupRef.current()
       localStorage.setItem('lya_quiz_token', payload.sessionToken)
       setJoined({
         myId: payload.participant.id,
@@ -68,17 +82,26 @@ export function JoinPage() {
       // Les listeners temps réel (participants + questions) sont branchés par
       // ParticipantApp via useParticipantEvents — rien à faire ici.
       navigate('/lobby')
-    })
-
-    socket.once(EVENTS.QUIZ_ERROR, (err) => {
+    }
+    const onError = (err: ErrorPayload) => {
+      cleanupRef.current()
       setError(err.message)
       setLoading(false)
       loadingRef.current = false
-    })
+    }
+    cleanupRef.current()
+    cleanupRef.current = () => {
+      socket.off(EVENTS.SESSION_JOINED, onJoined)
+      socket.off(EVENTS.QUIZ_ERROR, onError)
+      cleanupRef.current = () => {}
+    }
+    socket.on(EVENTS.SESSION_JOINED, onJoined)
+    socket.on(EVENTS.QUIZ_ERROR, onError)
 
     // Timeout si le serveur ne répond pas (loadingRef évite la stale closure)
     setTimeout(() => {
       if (loadingRef.current) {
+        cleanupRef.current()
         setError('Impossible de joindre la session. Vérifie le PIN.')
         setLoading(false)
         loadingRef.current = false
@@ -92,6 +115,11 @@ export function JoinPage() {
       <p className="text-gray-400 mb-10 text-sm">Rejoins la session</p>
 
       <div className="w-full max-w-sm space-y-4">
+        {fatalNotice && (
+          <p className="text-amber-300 bg-amber-950/60 border border-amber-700 rounded-xl px-4 py-3 text-center text-sm">
+            {fatalNotice}
+          </p>
+        )}
         <input
           type="text"
           inputMode="numeric"

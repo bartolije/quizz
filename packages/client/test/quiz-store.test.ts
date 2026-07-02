@@ -82,6 +82,46 @@ describe('quiz-store — boucle de jeu', () => {
   })
 })
 
+describe('quiz-store — session perdue (onSessionLost)', () => {
+  it('reset complet + message pour /join (restart serveur en pleine partie)', () => {
+    useQuizStore.getState().setJoined({
+      myId: 'p1',
+      myPseudo: 'alice',
+      sessionPin: '1234',
+      sessionId: 's1',
+      participants: [],
+      mode: 'solo',
+      teams: [],
+      teamsLocked: false,
+      myTeamId: null,
+    })
+    useQuizStore.getState().onQuestionStarted(q(3))
+
+    useQuizStore.getState().onSessionLost('La partie a été réinitialisée.')
+    const s = useQuizStore.getState()
+    expect(s.currentView).toBe('join')   // → ParticipantApp redirige vers /join
+    expect(s.myId).toBeNull()
+    expect(s.currentQuestion).toBeNull()
+    expect(s.fatalNotice).toBe('La partie a été réinitialisée.')
+  })
+
+  it('le message est effacé au join suivant', () => {
+    useQuizStore.getState().onSessionLost('perdu')
+    useQuizStore.getState().setJoined({
+      myId: 'p2',
+      myPseudo: 'bob',
+      sessionPin: '5678',
+      sessionId: 's2',
+      participants: [],
+      mode: 'solo',
+      teams: [],
+      teamsLocked: false,
+      myTeamId: null,
+    })
+    expect(useQuizStore.getState().fatalNotice).toBeNull()
+  })
+})
+
 describe('quiz-store — reconnexion (onSessionRestored)', () => {
   it('question ouverte → vue question, timer recalé sur timeElapsed, réponse conservée', () => {
     const before = Date.now()

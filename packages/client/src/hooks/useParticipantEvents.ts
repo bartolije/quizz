@@ -13,6 +13,7 @@ type Status = Parameters<ServerToClientEvents['session_status_changed']>[0]
 type Leaderboard = Parameters<ServerToClientEvents['leaderboard_update']>[0]
 type Restored = Parameters<ServerToClientEvents['session_restored']>[0]
 type TeamsUpdated = Parameters<ServerToClientEvents['teams_updated']>[0]
+type QuizErr = Parameters<ServerToClientEvents['quiz_error']>[0]
 
 /**
  * Branche les listeners temps réel du participant pendant la partie.
@@ -39,6 +40,20 @@ export function useParticipantEvents(): void {
     const onLeaderboard = (p: Leaderboard) => store().onLeaderboard(p.scores, p.final, p.teamScores)
     const onRestored = (p: Restored) => store().onSessionRestored(p)
     const onTeams = (p: TeamsUpdated) => store().onTeamsUpdated(p)
+    // Session perdue EN PLEINE PARTIE (restart serveur → rejoin_session répond
+    // INVALID_TOKEN). Sans ce listener, le téléphone restait gelé pour toujours :
+    // ParticipantApp n'écoute cette erreur que pendant la phase de reprise (myId
+    // null). Guard sur myId pour ne pas doubler ce chemin-là.
+    const onFatal = (e: QuizErr) => {
+      if (e.code !== 'INVALID_TOKEN' && e.code !== 'SESSION_ENDED') return
+      if (!store().myId) return
+      localStorage.removeItem('lya_quiz_token')
+      store().onSessionLost(
+        e.code === 'SESSION_ENDED'
+          ? 'Cette session est terminée.'
+          : 'La partie a été réinitialisée côté serveur. Re-rejoins avec le PIN affiché à l’écran.',
+      )
+    }
 
     socket.on(EVENTS.QUESTION_STARTED, onStarted)
     socket.on(EVENTS.QUESTION_ENDED, onEnded)
@@ -48,6 +63,7 @@ export function useParticipantEvents(): void {
     socket.on(EVENTS.LEADERBOARD_UPDATE, onLeaderboard)
     socket.on(EVENTS.SESSION_RESTORED, onRestored)
     socket.on(EVENTS.TEAMS_UPDATED, onTeams)
+    socket.on(EVENTS.QUIZ_ERROR, onFatal)
 
     return () => {
       socket.off(EVENTS.QUESTION_STARTED, onStarted)
@@ -58,6 +74,7 @@ export function useParticipantEvents(): void {
       socket.off(EVENTS.LEADERBOARD_UPDATE, onLeaderboard)
       socket.off(EVENTS.SESSION_RESTORED, onRestored)
       socket.off(EVENTS.TEAMS_UPDATED, onTeams)
+      socket.off(EVENTS.QUIZ_ERROR, onFatal)
     }
   }, [])
 }

@@ -74,6 +74,10 @@ interface QuizStore {
   leaderboard: ParticipantScore[]
   prevRanks: Record<string, number>   // rangs au classement précédent (pour les flèches ↑/↓)
 
+  // Session perdue côté serveur (restart en pleine partie, token invalide…) :
+  // message affiché sur /join pour expliquer pourquoi on y est revenu.
+  fatalNotice: string | null
+
   // Actions
   setJoined: (params: {
     myId: string
@@ -100,6 +104,7 @@ interface QuizStore {
   onLeaderboard: (scores: ParticipantScore[], final: boolean, teamScores?: TeamScore[]) => void
   onSessionRestored: (payload: SessionRestoredPayload) => void
   onQuizEnded: () => void
+  onSessionLost: (notice: string) => void
   setView: (view: AppView) => void
   reset: () => void
 }
@@ -126,13 +131,14 @@ const initialState = {
   lastResult: null,
   leaderboard: [],
   prevRanks: {},
+  fatalNotice: null,
 } satisfies Partial<QuizStore>
 
 export const useQuizStore = create<QuizStore>()((set) => ({
   ...initialState,
 
   setJoined: ({ myId, myPseudo, sessionPin, sessionId, participants, mode, teams, teamsLocked, myTeamId }) =>
-    set({ myId, myPseudo, sessionPin, sessionId, participants, mode, teams, teamsLocked, myTeamId, currentView: 'lobby' }),
+    set({ myId, myPseudo, sessionPin, sessionId, participants, mode, teams, teamsLocked, myTeamId, currentView: 'lobby', fatalNotice: null }),
 
   // teams_updated : source de vérité de l'état équipe. On remplace participants +
   // état d'équipe et on recalcule myTeamId depuis la liste.
@@ -239,6 +245,12 @@ export const useQuizStore = create<QuizStore>()((set) => ({
     }),
 
   onQuizEnded: () => set({ currentView: 'ended', questionStartedAt: null }),
+
+  // La session n'existe plus côté serveur (restart en pleine partie, token
+  // invalide) : reset complet + message explicatif affiché sur /join.
+  // Sans ça, un restart serveur laissait tous les téléphones GELÉS en pleine
+  // partie (l'erreur INVALID_TOKEN n'était écoutée que pendant la reprise).
+  onSessionLost: (notice) => set({ ...initialState, fatalNotice: notice }),
 
   setView: (currentView) => set({ currentView }),
   reset: () => set(initialState),
