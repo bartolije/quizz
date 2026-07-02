@@ -4,6 +4,7 @@ import {
   EVENTS,
   calculateScore,
   calculateClosestScore,
+  computeClosestScale,
   isCorrectFreeAnswer,
 } from '@lya-quiz/shared'
 import { getAllSessions, type SessionState } from '../state.js'
@@ -299,16 +300,18 @@ export function closeQuestion(
     return Number.isFinite(n) ? n : null
   }
 
-  // 'closest' : pré-calcul de la valeur cible + écart max parmi les réponses
-  // numériques (sert de référence au scoring dégressif).
+  // 'closest' : pré-calcul de la valeur cible + échelle ROBUSTE (percentile des
+  // écarts — une réponse absurde n'écrase plus le barème, cf. computeClosestScale).
   let correctNum = 0
   let maxDeviation = 0
   if (q.type === 'closest') {
     correctNum = Number(q.correctAnswers[0])
+    const deviations: number[] = []
     for (const ans of session.answers.values()) {
       const n = toNum(ans.value)
-      if (n !== null) maxDeviation = Math.max(maxDeviation, Math.abs(correctNum - n))
+      if (n !== null) deviations.push(Math.abs(correctNum - n))
     }
+    maxDeviation = computeClosestScale(deviations)
   }
 
   // Scoring par type → { gained, correct } par participant

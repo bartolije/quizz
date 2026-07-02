@@ -170,10 +170,13 @@ en compte sans hard-refresh (les assets JS/CSS sont hashés donc immuables).
 
 - **Vitesse** (mcq/free/ordering) : `1000 * (timeLimit - elapsed) / timeLimit`,
   arrondi, borné 0–1000. Répondre vite = plus de points.
-- **closest** : le plus proche reçoit 1000 ; les autres `1000 * (1 - écart/écartMax)`,
-  où `écartMax` = plus grand écart observé parmi les participants.
+- **closest** : le plus proche reçoit 1000 ; les autres `1000 * (1 - écart/échelle)`,
+  où `échelle` = écart au ~80ᵉ percentile (`computeClosestScale`) — une réponse
+  absurde n'écrase plus le barème, elle sort de l'échelle et prend 0.
 - **free** : `normalizeAnswer` (trim, lowercase, sans accents/tirets/apostrophes/espaces)
-  puis égalité exacte OU Levenshtein ≤ 2 (tolère les fautes de frappe).
+  puis égalité exacte OU Levenshtein ≤ tolérance PROPORTIONNELLE
+  (`freeAnswerTolerance` : 0 faute ≤ 4 chars, 1 faute ≤ 7, 2 au-delà —
+  « 1898 » ne valide plus « 1998 »).
 
 ## Mode équipe
 

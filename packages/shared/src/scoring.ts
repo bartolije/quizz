@@ -16,14 +16,29 @@ export function calculateScore(timeLimit: number, elapsed: number): number {
 }
 
 /**
+ * Échelle de notation du « au plus proche » : écart au ~80ᵉ percentile des
+ * écarts observés. L'ancien barème (écart MAX) devenait binaire dès qu'une
+ * seule réponse absurde arrivait (ex : 999 999 999) : tous les écarts
+ * raisonnables représentaient ≈ 0 % de l'échelle → ~1000 pts pour tout le
+ * monde, plus aucune discrimination. Le percentile ignore les aberrants,
+ * qui sortent de l'échelle et prennent 0.
+ */
+export function computeClosestScale(deviations: number[]): number {
+  if (deviations.length === 0) return 0
+  const sorted = [...deviations].sort((a, b) => a - b)
+  const idx = Math.min(sorted.length - 1, Math.max(0, Math.round(0.8 * sorted.length) - 1))
+  return sorted[idx] ?? 0
+}
+
+/**
  * Score pour le mode "au plus proche" (numérique).
  * Le plus proche de la bonne réponse reçoit 1000 pts.
  * Les autres reçoivent un score relatif décroissant.
  *
  * @param correctValue  - la bonne valeur numérique
  * @param submitted     - la valeur soumise par le participant
- * @param maxDeviation  - l'écart max au-delà duquel on reçoit 0 pts
- *                        (calculé comme le max des écarts parmi tous les participants)
+ * @param maxDeviation  - l'écart au-delà duquel on reçoit 0 pts
+ *                        (échelle robuste : cf. computeClosestScale)
  */
 export function calculateClosestScore(
   correctValue: number,
@@ -90,10 +105,25 @@ export function levenshtein(a: string, b: string): number {
 }
 
 /**
+ * Tolérance de fautes de frappe PROPORTIONNELLE à la longueur de la bonne
+ * réponse (normalisée). Une tolérance fixe de 2 acceptait n'importe quoi sur
+ * les réponses courtes : « 1898 » validait « 1998 », « Lyo n'importe » ≈ « Lyon ».
+ *   ≤ 4 caractères → 0 faute (années, sigles, petits mots)
+ *   5–7 caractères → 1 faute
+ *   ≥ 8 caractères → 2 fautes
+ */
+export function freeAnswerTolerance(normalizedCorrectLength: number): number {
+  if (normalizedCorrectLength <= 4) return 0
+  if (normalizedCorrectLength <= 7) return 1
+  return 2
+}
+
+/**
  * Vérifie si une réponse soumise matche une des bonnes réponses acceptées.
  * Matching en deux passes :
  *   1. Égalité exacte après normalisation (rapide)
- *   2. Levenshtein ≤ 2 (tolère fautes de frappe)
+ *   2. Levenshtein ≤ tolérance proportionnelle (tolère les fautes de frappe
+ *      sans valider de fausses réponses courtes)
  *
  * @param submitted     - réponse brute du participant
  * @param correctAnswers - tableau de réponses acceptées (brutes, normalisées en interne)
@@ -110,13 +140,16 @@ export function isCorrectFreeAnswer(
     // Passe 1 : égalité exacte après normalisation
     if (normalizedSubmit === normalizedCorrect) return true
 
+    const tolerance = freeAnswerTolerance(normalizedCorrect.length)
+    if (tolerance === 0) continue
+
     // Garde : levenshtein(a,b) ≥ |len(a)−len(b)| — si l'écart de longueur dépasse
     // déjà la tolérance, inutile de payer le calcul plein-matrice (et une entrée
     // démesurée ne coûte plus rien).
-    if (Math.abs(normalizedSubmit.length - normalizedCorrect.length) > 2) continue
+    if (Math.abs(normalizedSubmit.length - normalizedCorrect.length) > tolerance) continue
 
-    // Passe 2 : tolérance fautes de frappe (Levenshtein ≤ 2)
-    if (levenshtein(normalizedSubmit, normalizedCorrect) <= 2) return true
+    // Passe 2 : tolérance fautes de frappe
+    if (levenshtein(normalizedSubmit, normalizedCorrect) <= tolerance) return true
   }
 
   return false
