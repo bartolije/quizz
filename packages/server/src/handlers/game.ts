@@ -114,6 +114,23 @@ export function handleNextQuestion(socket: QuizSocket, io: QuizServer): void {
 // PARTICIPANT : soumettre une réponse
 // ─────────────────────────────────────────────────────────────
 
+// Bornes serveur : une réponse vient d'un client non fiable. Sans elles, une
+// string de 1 Mo passait telle quelle dans le Levenshtein (synchrone, plein-
+// matrice) au moment du scoring → event loop bloquée pour toute la salle.
+const ANSWER_MAX_LEN = 200
+const ORDERING_MAX_ITEMS = 30
+
+function sanitizeAnswer(v: unknown): string | number | string[] | null {
+  if (typeof v === 'number') return Number.isFinite(v) ? v : null
+  if (typeof v === 'string') return v.slice(0, ANSWER_MAX_LEN)
+  if (Array.isArray(v)) {
+    if (v.length > ORDERING_MAX_ITEMS) return null
+    if (!v.every((x): x is string => typeof x === 'string' && x.length <= ANSWER_MAX_LEN)) return null
+    return v
+  }
+  return null
+}
+
 // ─────────────────────────────────────────────────────────────
 // HOST : afficher le classement intermédiaire (entre deux questions)
 // ─────────────────────────────────────────────────────────────
@@ -162,8 +179,14 @@ export function handleSubmitAnswer(
     return
   }
 
+  const answer = sanitizeAnswer(payload?.answer)
+  if (answer === null) {
+    respond({ ok: false, status: 'invalid_answer' })
+    return
+  }
+
   session.answers.set(participantId, {
-    value: payload.answer,
+    value: answer,
     submittedAt: Date.now(),
   })
   respond({ ok: true, status: 'accepted' })

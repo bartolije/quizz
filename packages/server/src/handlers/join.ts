@@ -20,14 +20,27 @@ import { logEvent } from '../logger.js'
 type QuizSocket = Socket<ClientToServerEvents, ServerToClientEvents>
 type QuizServer = Server<ClientToServerEvents, ServerToClientEvents>
 
+// Bornes serveur — le payload vient d'un client non fiable (DevTools ouverts…)
+const PSEUDO_MAX_LEN = 20
+
 export function handleJoinSession(
   socket: QuizSocket,
   payload: { pin: string; pseudo: string; sessionToken: string | null },
   io: QuizServer,
 ): void {
-  const { pin, pseudo, sessionToken } = payload
+  // Coercition + bornes : pin/pseudo peuvent être absents, d'un autre type, ou
+  // démesurés (pseudo de 1 Mo rediffusé à toute la salle → casse la TV).
+  const pin = String(payload?.pin ?? '').trim()
+  const pseudo = String(payload?.pseudo ?? '').trim().slice(0, PSEUDO_MAX_LEN)
+  const sessionToken =
+    typeof payload?.sessionToken === 'string' ? payload.sessionToken : null
 
-  const session = getSessionByPin(pin.trim())
+  if (!pseudo) {
+    socket.emit(EVENTS.QUIZ_ERROR, { code: 'INVALID_PSEUDO', message: 'Choisis un pseudo.' })
+    return
+  }
+
+  const session = getSessionByPin(pin)
 
   if (!session) {
     socket.emit(EVENTS.QUIZ_ERROR, { code: 'INVALID_PIN', message: 'Session introuvable.' })

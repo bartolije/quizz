@@ -30,6 +30,11 @@ export async function submitAnswerReliably(
         .timeout(ACK_TIMEOUT_MS)
         .emitWithAck(EVENTS.SUBMIT_ANSWER, { answer, questionIndex })
 
+      if (res.ok) {
+        // accepted | already_answered → la réponse est enregistrée côté serveur
+        store().answerDelivered()
+        return
+      }
       if (res.status === 'question_closed') {
         store().answerLate()
         return
@@ -40,8 +45,8 @@ export async function submitAnswerReliably(
         await sleep(RETRY_PAUSE_MS)
         continue
       }
-      // accepted | already_answered → la réponse est enregistrée côté serveur
-      store().answerDelivered()
+      // invalid_answer (ou statut inconnu) : re-émettre ne changera rien
+      store().answerFailed()
       return
     } catch {
       // timeout ou socket fermé : Socket.io retente la connexion en fond, on ré-émet

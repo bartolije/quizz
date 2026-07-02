@@ -71,4 +71,9 @@ describe('isCorrectFreeAnswer', () => {
   it('accepte via une des variantes', () => {
     expect(isCorrectFreeAnswer('NYC', ['New York', 'NYC'])).toBe(true)
   })
+  it('entrée démesurée : rejet rapide (garde de longueur avant Levenshtein)', () => {
+    const t0 = performance.now()
+    expect(isCorrectFreeAnswer('x'.repeat(100_000), ['Paris'])).toBe(false)
+    expect(performance.now() - t0).toBeLessThan(50) // pas de plein-matrice 100k×5
+  })
 })

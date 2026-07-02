@@ -18,7 +18,7 @@ export type SessionToken = string
 // serveur (cas du retry après une coupure où le 1er envoi était passé).
 export interface SubmitAnswerAck {
   ok: boolean
-  status: 'accepted' | 'already_answered' | 'question_closed' | 'not_in_session'
+  status: 'accepted' | 'already_answered' | 'question_closed' | 'not_in_session' | 'invalid_answer'
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -211,7 +211,7 @@ export interface ServerToClientEvents {
 
   // Erreur métier (pin invalide, pseudo déjà pris, session terminée...)
   quiz_error: (payload: {
-    code: 'INVALID_PIN' | 'PSEUDO_TAKEN' | 'SESSION_ENDED' | 'SESSION_FULL' | 'INVALID_TOKEN' | 'UNKNOWN'
+    code: 'INVALID_PIN' | 'PSEUDO_TAKEN' | 'INVALID_PSEUDO' | 'SESSION_ENDED' | 'SESSION_FULL' | 'INVALID_TOKEN' | 'UNKNOWN'
     message: string
   }) => void
 }

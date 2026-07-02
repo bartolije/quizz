@@ -110,6 +110,11 @@ export function isCorrectFreeAnswer(
     // Passe 1 : égalité exacte après normalisation
     if (normalizedSubmit === normalizedCorrect) return true
 
+    // Garde : levenshtein(a,b) ≥ |len(a)−len(b)| — si l'écart de longueur dépasse
+    // déjà la tolérance, inutile de payer le calcul plein-matrice (et une entrée
+    // démesurée ne coûte plus rien).
+    if (Math.abs(normalizedSubmit.length - normalizedCorrect.length) > 2) continue
+
     // Passe 2 : tolérance fautes de frappe (Levenshtein ≤ 2)
     if (levenshtein(normalizedSubmit, normalizedCorrect) <= 2) return true
   }
