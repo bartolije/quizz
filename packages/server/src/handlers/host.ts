@@ -1,7 +1,7 @@
 import type { Server, Socket } from 'socket.io'
 import type { ClientToServerEvents, ServerToClientEvents } from '@lya-quiz/shared'
 import { EVENTS } from '@lya-quiz/shared'
-import { getSessionByPin, createSession, getAllSessions, type SessionState } from '../state.js'
+import { getSessionByPin, getSessionById, getAllSessions, type SessionState } from '../state.js'
 import {
   getParticipantList,
   toPublicQuestion,
@@ -14,29 +14,15 @@ import { saveSessionSnapshot, deleteSessionSnapshot } from '../session-snapshot.
 type QuizSocket = Socket<ClientToServerEvents, ServerToClientEvents>
 type QuizServer = Server<ClientToServerEvents, ServerToClientEvents>
 
-export function handleHostJoin(
-  socket: QuizSocket,
-  payload: { pin: string },
-): void {
-  let session = getSessionByPin(payload.pin.trim())
-
-  // Si aucune session avec ce PIN, en créer une nouvelle
-  // (le host crée la session en arrivant sur /host/control)
-  if (!session) {
-    session = createSession()
-    saveSessionSnapshot(session)
-    // On ignore le PIN fourni et on utilise celui généré
-    // Le host lira le PIN affiché sur son écran
-  }
-
-  session.hostSocketIds.add(socket.id)
+// État courant + rejeu de la question ouverte — commun au host (control) et à
+// la TV (display). Le socket rejoint la room de session + la room host-only
+// (compteur answer_received, copie neutre de question_ended).
+function attachAndSendState(socket: QuizSocket, session: SessionState): void {
   void socket.join(session.id)
-  void socket.join(`host:${session.id}`)   // room host-only pour answer_received
-  logEvent('host_joined', { sessionId: session.id, pin: session.pin })
+  void socket.join(`host:${session.id}`)
 
-  // Envoyer l'état courant au host
   socket.emit(EVENTS.SESSION_JOINED, {
-    sessionToken: `host:${session.id}`,   // token factice pour le host
+    sessionToken: `host:${session.id}`,   // token factice (host/TV n'ont pas de token de reprise)
     sessionId: session.id,
     participant: { id: 'host', pseudo: 'Host', connected: true },
     participants: getParticipantList(session),
@@ -46,9 +32,9 @@ export function handleHostJoin(
     teamsLocked: session.teamsLocked,
   })
 
-  // Reprise host (S7) : si une question est ouverte (le host a rafraîchi en
-  // pleine partie ou s'est ré-attaché après une coupure), la lui renvoyer avec le
-  // temps déjà écoulé — le chrono affiché repart de la vraie valeur, pas du max.
+  // Reprise (S7) : si une question est ouverte (refresh ou ré-attachement en
+  // pleine partie), la renvoyer avec le temps déjà écoulé — le chrono affiché
+  // repart de la vraie valeur, pas du max.
   if (session.questionStartedAt !== null && session.quiz) {
     const q = session.quiz.questions[session.currentQuestionIndex]
     if (q) {
@@ -64,6 +50,59 @@ export function handleHostJoin(
       })
     }
   }
+}
+
+export function handleHostJoin(
+  socket: QuizSocket,
+  payload: { pin: string; hostKey: string },
+): void {
+  const session = getSessionByPin(String(payload?.pin ?? '').trim())
+
+  // Plus de création implicite : un PIN inconnu (session perdue, faute de
+  // frappe) est une ERREUR explicite — avant, ça créait en silence une nouvelle
+  // session avec le plus vieux quiz de la base, et le host pouvait animer la
+  // soirée sur le mauvais quiz sans s'en rendre compte.
+  if (!session) {
+    socket.emit(EVENTS.QUIZ_ERROR, {
+      code: 'INVALID_PIN',
+      message: 'Session introuvable. Crée une nouvelle session depuis /host/control.',
+    })
+    return
+  }
+
+  // Le PIN est PUBLIC (affiché en grand sur la TV) : seul le porteur du hostKey
+  // (retourné par POST /api/sessions, stocké côté host) peut piloter la partie.
+  if (payload?.hostKey !== session.hostKey) {
+    socket.emit(EVENTS.QUIZ_ERROR, {
+      code: 'INVALID_HOST_KEY',
+      message: 'Clé host invalide pour cette session.',
+    })
+    logEvent('host_join_rejected', { sessionId: session.id, socketId: socket.id })
+    return
+  }
+
+  session.hostSocketIds.add(socket.id)
+  logEvent('host_joined', { sessionId: session.id, pin: session.pin })
+  attachAndSendState(socket, session)
+}
+
+// TV / écran passif : lecture seule, capacité = connaître le sessionId (uuid
+// non devinable). Jamais ajouté à hostSocketIds → les events host_* émis par
+// ce socket sont ignorés par le serveur.
+export function handleDisplayJoin(
+  socket: QuizSocket,
+  payload: { sessionId: string },
+): void {
+  const session = getSessionById(String(payload?.sessionId ?? ''))
+  if (!session) {
+    socket.emit(EVENTS.QUIZ_ERROR, {
+      code: 'INVALID_PIN',
+      message: 'Session introuvable ou terminée.',
+    })
+    return
+  }
+  logEvent('display_joined', { sessionId: session.id })
+  attachAndSendState(socket, session)
 }
 
 export function handleHostDisconnect(

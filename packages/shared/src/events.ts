@@ -65,9 +65,21 @@ export interface ClientToServerEvents {
   // HOST ONLY — terminer le quiz manuellement
   host_end_quiz: (payload: Record<string, never>) => void
 
-  // HOST ONLY — s'identifier comme host de la session
+  // HOST ONLY — s'identifier comme host de la session.
+  // hostKey : secret retourné par POST /api/sessions (jamais affiché à l'écran).
+  // Sans lui, n'importe quel joueur pouvait prendre le contrôle avec le PIN
+  // affiché en grand sur la TV. Un PIN inconnu = erreur (plus de création
+  // silencieuse de session avec le plus vieux quiz de la base).
   host_join: (payload: {
     pin: string
+    hostKey: string
+  }) => void
+
+  // TV / écran passif — rejoint une session en LECTURE SEULE via son sessionId
+  // (uuid non devinable, résolu par ?session= ou le localStorage de la machine
+  // host). Reçoit les mêmes events que le host mais ne peut piloter la partie.
+  display_join: (payload: {
+    sessionId: string
   }) => void
 
   // ── MODE ÉQUIPE ──────────────────────────────────────────────
@@ -216,7 +228,7 @@ export interface ServerToClientEvents {
 
   // Erreur métier (pin invalide, pseudo déjà pris, session terminée...)
   quiz_error: (payload: {
-    code: 'INVALID_PIN' | 'PSEUDO_TAKEN' | 'INVALID_PSEUDO' | 'SESSION_ENDED' | 'SESSION_FULL' | 'INVALID_TOKEN' | 'UNKNOWN'
+    code: 'INVALID_PIN' | 'PSEUDO_TAKEN' | 'INVALID_PSEUDO' | 'SESSION_ENDED' | 'SESSION_FULL' | 'INVALID_TOKEN' | 'INVALID_HOST_KEY' | 'UNKNOWN'
     message: string
   }) => void
 }
@@ -236,6 +248,7 @@ export const EVENTS = {
   HOST_SHOW_LEADERBOARD: 'host_show_leaderboard',
   HOST_END_QUIZ:         'host_end_quiz',
   HOST_JOIN:             'host_join',
+  DISPLAY_JOIN:          'display_join',
 
   // Mode équipe
   HOST_SET_MODE:            'host_set_mode',

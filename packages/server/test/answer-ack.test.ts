@@ -29,9 +29,12 @@ async function joinAs(pseudo: string, pin: string): Promise<TestClient> {
   return c
 }
 
-async function hostStartFirstQuestion(pin: string, watcher: TestClient): Promise<TestClient> {
+async function hostStartFirstQuestion(
+  session: { pin: string; hostKey: string },
+  watcher: TestClient,
+): Promise<TestClient> {
   const host = srv.connect()
-  host.emit(EVENTS.HOST_JOIN, { pin })
+  host.emit(EVENTS.HOST_JOIN, { pin: session.pin, hostKey: session.hostKey })
   await waitFor<Joined>(host, EVENTS.SESSION_JOINED)
   host.emit(EVENTS.HOST_START_QUIZ, {})
   host.emit(EVENTS.HOST_NEXT_QUESTION, {})
@@ -51,7 +54,7 @@ describe('ack des réponses (submit_answer)', () => {
     const session = makeSession()
     const alice = await joinAs('alice', session.pin)
     await joinAs('bob', session.pin) // 2ᵉ joueur : évite la fermeture anticipée
-    await hostStartFirstQuestion(session.pin, alice)
+    await hostStartFirstQuestion(session, alice)
 
     expect(await submit(alice, '4', 0)).toEqual({ ok: true, status: 'accepted' })
     // Retry après coupure : la réponse est déjà là → succès, pas d'erreur
@@ -62,7 +65,7 @@ describe('ack des réponses (submit_answer)', () => {
     const session = makeSession()
     const alice = await joinAs('alice', session.pin)
     await joinAs('bob', session.pin)
-    await hostStartFirstQuestion(session.pin, alice)
+    await hostStartFirstQuestion(session, alice)
 
     // Réponse rejouée par un buffer qui visait une question précédente (index 7)
     const res = await submit(alice, '4', 7)
@@ -74,7 +77,7 @@ describe('ack des réponses (submit_answer)', () => {
     const session = makeSession()
     const alice = await joinAs('alice', session.pin)
     await joinAs('bob', session.pin)
-    const host = await hostStartFirstQuestion(session.pin, alice)
+    const host = await hostStartFirstQuestion(session, alice)
 
     host.emit(EVENTS.HOST_END_QUIZ, {})
     await waitFor(alice, EVENTS.SESSION_STATUS_CHANGED)

@@ -42,6 +42,7 @@ interface Snapshot {
   v: number
   id: string
   pin: string
+  hostKey?: string   // absent des snapshots antérieurs à 07/2026
   status: 'waiting' | 'running' | 'ended'
   currentQuestionIndex: number
   participants: SnapshotParticipant[]
@@ -74,6 +75,7 @@ export function serializeSession(session: SessionState): string {
     v: SNAPSHOT_VERSION,
     id: session.id,
     pin: session.pin,
+    hostKey: session.hostKey,
     status: session.status,
     currentQuestionIndex: openQuestion
       ? session.currentQuestionIndex - 1
@@ -127,6 +129,9 @@ export function deserializeSession(json: string): SessionState {
   return {
     id: snap.id,
     pin: snap.pin,
+    // Vieux snapshot sans hostKey : clé inconnaissable → le host recréera une
+    // session proprement (pas de session pilotable par n'importe qui).
+    hostKey: snap.hostKey ?? `perdu:${snap.id}`,
     status: snap.status,
     participants,
     tokenIndex,

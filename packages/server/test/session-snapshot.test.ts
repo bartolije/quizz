@@ -109,7 +109,7 @@ describe('snapshot — cycle complet restart serveur', () => {
     const { c: bob } = await joinAs('bob', session.pin)
 
     const host = srv.connect()
-    host.emit(EVENTS.HOST_JOIN, { pin: session.pin })
+    host.emit(EVENTS.HOST_JOIN, { pin: session.pin, hostKey: session.hostKey })
     await waitFor<Joined>(host, EVENTS.SESSION_JOINED)
     host.emit(EVENTS.HOST_START_QUIZ, {})
     host.emit(EVENTS.HOST_NEXT_QUESTION, {})

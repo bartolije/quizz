@@ -26,6 +26,7 @@ export interface PendingAnswer {
 export interface SessionState {
   id: string
   pin: string
+  hostKey: string   // secret du host (retourné par POST /api/sessions, exigé sur host_join)
   status: 'waiting' | 'running' | 'ended'
   participants: Map<string, ParticipantState>    // clé = participantId
   tokenIndex: Map<string, string>                // sessionToken → participantId
@@ -69,6 +70,7 @@ export function createSession(quizId?: string): SessionState {
   const session: SessionState = {
     id,
     pin,
+    hostKey: uuid(),
     status: 'waiting',
     participants: new Map(),
     tokenIndex: new Map(),

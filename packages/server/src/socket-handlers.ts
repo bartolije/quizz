@@ -2,7 +2,7 @@ import type { Server } from 'socket.io'
 import type { ClientToServerEvents, ServerToClientEvents } from '@lya-quiz/shared'
 import { EVENTS } from '@lya-quiz/shared'
 import { handleJoinSession, handleRejoinSession } from './handlers/join.js'
-import { handleHostJoin, handleHostStartQuiz, handleHostEndQuiz } from './handlers/host.js'
+import { handleHostJoin, handleDisplayJoin, handleHostStartQuiz, handleHostEndQuiz } from './handlers/host.js'
 import {
   handleNextQuestion,
   handleSubmitAnswer,
@@ -42,6 +42,7 @@ export function attachSocketHandlers(io: QuizServer): void {
     socket.on(EVENTS.JOIN_SESSION, (p) => safe('join_session', () => handleJoinSession(socket, p, io)))
     socket.on(EVENTS.REJOIN_SESSION, (p) => safe('rejoin_session', () => handleRejoinSession(socket, p, io)))
     socket.on(EVENTS.HOST_JOIN, (p) => safe('host_join', () => handleHostJoin(socket, p)))
+    socket.on(EVENTS.DISPLAY_JOIN, (p) => safe('display_join', () => handleDisplayJoin(socket, p)))
     socket.on(EVENTS.HOST_START_QUIZ, () => safe('host_start_quiz', () => handleHostStartQuiz(socket, io)))
     socket.on(EVENTS.HOST_NEXT_QUESTION, () => safe('host_next_question', () => handleNextQuestion(socket, io)))
     socket.on(EVENTS.HOST_SHOW_LEADERBOARD, () => safe('host_show_leaderboard', () => handleShowLeaderboard(socket, io)))

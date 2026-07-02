@@ -34,9 +34,9 @@ async function joinAs(pseudo: string, pin: string): Promise<{ c: TestClient; joi
 }
 
 // Rejoint une session comme host et attend la confirmation serveur.
-async function hostJoin(pin: string): Promise<TestClient> {
+async function hostJoin(session: { pin: string; hostKey: string }): Promise<TestClient> {
   const c = srv.connect()
-  c.emit(EVENTS.HOST_JOIN, { pin })
+  c.emit(EVENTS.HOST_JOIN, { pin: session.pin, hostKey: session.hostKey })
   await waitFor<Joined>(c, EVENTS.SESSION_JOINED)
   return c
 }
@@ -75,7 +75,7 @@ describe('boucle de jeu', () => {
     const session = makeSession()
     const { c: alice } = await joinAs('alice', session.pin)
     const { c: bob } = await joinAs('bob', session.pin)
-    const host = await hostJoin(session.pin)
+    const host = await hostJoin(session)
 
     host.emit(EVENTS.HOST_START_QUIZ, {})
     host.emit(EVENTS.HOST_NEXT_QUESTION, {})
@@ -106,7 +106,7 @@ describe('boucle de jeu', () => {
     const session = makeSession()
     const { c: alice } = await joinAs('alice', session.pin)
     const { c: bob } = await joinAs('bob', session.pin)
-    const host = await hostJoin(session.pin)
+    const host = await hostJoin(session)
 
     host.emit(EVENTS.HOST_START_QUIZ, {})
     host.emit(EVENTS.HOST_NEXT_QUESTION, {})
@@ -129,7 +129,7 @@ describe('reconnexion participant', () => {
     const session = makeSession()
     const { c: alice, joined } = await joinAs('alice', session.pin)
     const { c: bob } = await joinAs('bob', session.pin)
-    const host = await hostJoin(session.pin)
+    const host = await hostJoin(session)
 
     host.emit(EVENTS.HOST_START_QUIZ, {})
     host.emit(EVENTS.HOST_NEXT_QUESTION, {})
@@ -168,7 +168,7 @@ describe('reconnexion participant', () => {
     const session = makeSession()
     const { c: alice, joined } = await joinAs('alice', session.pin)
     const { c: bob } = await joinAs('bob', session.pin)
-    const host = await hostJoin(session.pin)
+    const host = await hostJoin(session)
 
     host.emit(EVENTS.HOST_START_QUIZ, {})
     host.emit(EVENTS.HOST_NEXT_QUESTION, {})

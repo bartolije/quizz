@@ -65,7 +65,7 @@ describe('validation des payloads — réponses', () => {
     await waitFor<Joined>(bob, EVENTS.SESSION_JOINED)
 
     const host = srv.connect()
-    host.emit(EVENTS.HOST_JOIN, { pin: session.pin })
+    host.emit(EVENTS.HOST_JOIN, { pin: session.pin, hostKey: session.hostKey })
     await waitFor<Joined>(host, EVENTS.SESSION_JOINED)
     host.emit(EVENTS.HOST_START_QUIZ, {})
     host.emit(EVENTS.HOST_NEXT_QUESTION, {})

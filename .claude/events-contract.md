@@ -11,7 +11,8 @@
 | `JOIN_SESSION` | `join_session` | `{ pin, pseudo, sessionToken: string\|null }` | participant (1er join, token `null`) |
 | `REJOIN_SESSION` | `rejoin_session` | `{ sessionToken }` | participant — **auto-émis sur chaque `connect`** |
 | `SUBMIT_ANSWER` | `submit_answer` | `{ answer: string\|number\|string[], questionIndex }` + **ack** `SubmitAnswerAck` | participant (string=mcq/free · number=closest · string[]=ordering). L'ack (`accepted`/`already_answered`/`question_closed`/`not_in_session`) permet l'envoi fiable avec retry (`submit-answer.ts`) ; `questionIndex` protège contre une réponse retardée comptée pour la question suivante |
-| `HOST_JOIN` | `host_join` | `{ pin }` | host (s'identifie) |
+| `HOST_JOIN` | `host_join` | `{ pin, hostKey }` | host (control). `hostKey` = secret retourné par `POST /api/sessions` — le PIN public ne suffit plus ; PIN inconnu = erreur (plus de création implicite) |
+| `DISPLAY_JOIN` | `display_join` | `{ sessionId }` | TV/écran passif, lecture seule (jamais dans `hostSocketIds`) |
 | `HOST_START_QUIZ` | `host_start_quiz` | `{}` | host |
 | `HOST_NEXT_QUESTION` | `host_next_question` | `{}` | host |
 | `HOST_SHOW_LEADERBOARD` | `host_show_leaderboard` | `{}` | host (classement intermédiaire) |

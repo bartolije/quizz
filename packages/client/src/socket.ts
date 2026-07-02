@@ -16,7 +16,12 @@ export const socket: Socket<ServerToClientEvents, ClientToServerEvents> =
 
 // Ré-identification automatique à chaque reconnexion Socket.io.
 // 'connect' est un event de cycle de vie Socket.io (pas un event métier).
+// JAMAIS sur les pages host/TV/admin : un token de participant qui traîne dans
+// le localStorage (ex : on a testé en tant que joueur sur le même Mac) ferait
+// du socket host un participant fantôme au classement.
 socket.on('connect', () => {
+  const path = window.location.pathname
+  if (path.startsWith('/host') || path.startsWith('/admin')) return
   const token = localStorage.getItem('lya_quiz_token')
   if (token) {
     socket.emit(EVENTS.REJOIN_SESSION, { sessionToken: token })

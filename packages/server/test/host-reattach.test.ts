@@ -42,7 +42,7 @@ describe('reconnexion host / TV', () => {
     const bob = await joinAs('bob', session.pin)
 
     const host1 = srv.connect()
-    host1.emit(EVENTS.HOST_JOIN, { pin: session.pin })
+    host1.emit(EVENTS.HOST_JOIN, { pin: session.pin, hostKey: session.hostKey })
     await waitFor<Joined>(host1, EVENTS.SESSION_JOINED)
 
     host1.emit(EVENTS.HOST_START_QUIZ, {})
@@ -61,7 +61,7 @@ describe('reconnexion host / TV', () => {
     const host2 = srv.connect()
     const rejoinedP = waitFor<Joined>(host2, EVENTS.SESSION_JOINED)
     const replayP = waitFor<QStarted>(host2, EVENTS.QUESTION_STARTED)
-    host2.emit(EVENTS.HOST_JOIN, { pin: session.pin })
+    host2.emit(EVENTS.HOST_JOIN, { pin: session.pin, hostKey: session.hostKey })
 
     const rejoined = await rejoinedP
     expect(rejoined.session.pin).toBe(session.pin)
@@ -86,7 +86,7 @@ describe('reconnexion host / TV', () => {
     const alice = await joinAs('alice', session.pin)
 
     const host1 = srv.connect()
-    host1.emit(EVENTS.HOST_JOIN, { pin: session.pin })
+    host1.emit(EVENTS.HOST_JOIN, { pin: session.pin, hostKey: session.hostKey })
     await waitFor<Joined>(host1, EVENTS.SESSION_JOINED)
 
     await new Promise<void>((resolve) => {

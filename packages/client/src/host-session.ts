@@ -7,6 +7,9 @@ const HOST_KEY = 'lya_host_session'
 export interface HostSession {
   sessionId: string
   pin: string
+  // Secret du host (retourné par POST /api/sessions) : exigé par host_join —
+  // le PIN affiché sur la TV ne suffit plus à prendre le contrôle de la partie.
+  hostKey?: string
 }
 
 export function readHostSession(): HostSession | null {
@@ -15,7 +18,11 @@ export function readHostSession(): HostSession | null {
     if (!raw) return null
     const parsed = JSON.parse(raw) as Partial<HostSession>
     if (typeof parsed.sessionId === 'string' && typeof parsed.pin === 'string') {
-      return { sessionId: parsed.sessionId, pin: parsed.pin }
+      return {
+        sessionId: parsed.sessionId,
+        pin: parsed.pin,
+        ...(typeof parsed.hostKey === 'string' ? { hostKey: parsed.hostKey } : {}),
+      }
     }
     return null
   } catch {
@@ -27,13 +34,17 @@ export function writeHostSession(s: HostSession): void {
   localStorage.setItem(HOST_KEY, JSON.stringify(s))
 }
 
+export function clearHostSession(): void {
+  localStorage.removeItem(HOST_KEY)
+}
+
 // POST /api/sessions → crée une nouvelle session.
 // apiUrl() : relatif en dev (proxy Vite), absolu vers Railway en prod.
 export async function createHostSession(): Promise<HostSession> {
   const res = await fetch(apiUrl('/api/sessions'), { method: 'POST' })
   if (!res.ok) throw new Error('Création de session impossible')
-  const data = (await res.json()) as { pin: string; sessionId: string }
-  return { sessionId: data.sessionId, pin: data.pin }
+  const data = (await res.json()) as { pin: string; sessionId: string; hostKey: string }
+  return { sessionId: data.sessionId, pin: data.pin, hostKey: data.hostKey }
 }
 
 export interface SessionInfo {

@@ -31,9 +31,12 @@ async function joinAs(pseudo: string, pin: string): Promise<{ c: TestClient; joi
   return { c, joined }
 }
 
-async function hostStart(pin: string, watcher: TestClient): Promise<TestClient> {
+async function hostStart(
+  session: { pin: string; hostKey: string },
+  watcher: TestClient,
+): Promise<TestClient> {
   const host = srv.connect()
-  host.emit(EVENTS.HOST_JOIN, { pin })
+  host.emit(EVENTS.HOST_JOIN, { pin: session.pin, hostKey: session.hostKey })
   await waitFor<Joined>(host, EVENTS.SESSION_JOINED)
   host.emit(EVENTS.HOST_START_QUIZ, {})
   host.emit(EVENTS.HOST_NEXT_QUESTION, {})
@@ -47,7 +50,7 @@ describe('fermeture anticipée — fenêtre de grâce des déconnectés', () => 
     const { c: alice } = await joinAs('alice', session.pin)
     const { c: bob, joined: bobJoined } = await joinAs('bob', session.pin)
     const { c: carol } = await joinAs('carol', session.pin)
-    await hostStart(session.pin, alice)
+    await hostStart(session, alice)
 
     // bob perd sa connexion en pleine question (blip wifi)
     await new Promise<void>((resolve) => {
@@ -76,7 +79,7 @@ describe('retardataire en pleine question', () => {
   it('reçoit la question en cours avec le temps déjà écoulé, et peut répondre', async () => {
     const session = makeSession()
     const { c: alice } = await joinAs('alice', session.pin)
-    await hostStart(session.pin, alice)
+    await hostStart(session, alice)
     await tick(300) // la question tourne depuis ~300 ms
 
     // dave scanne le QR APRÈS le lancement de la question

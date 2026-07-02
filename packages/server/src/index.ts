@@ -83,7 +83,8 @@ attachSocketHandlers(io)
 app.post<{ Body: { quizId?: string } }>('/api/sessions', async (req) => {
   const session = createSession(req.body?.quizId)
   saveSessionSnapshot(session)
-  return { pin: session.pin, sessionId: session.id }
+  // hostKey : secret du host — seul canal où il transite (jamais en broadcast)
+  return { pin: session.pin, sessionId: session.id, hostKey: session.hostKey }
 })
 
 // ── Éditeur admin (protégé par mot de passe via header x-admin-password) ──

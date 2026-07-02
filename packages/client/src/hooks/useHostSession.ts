@@ -14,6 +14,7 @@ import { socket } from '../socket'
 import {
   readHostSession,
   writeHostSession,
+  clearHostSession,
   createHostSession,
   fetchSessionInfo,
 } from '../host-session'
@@ -117,6 +118,10 @@ export function useHostSession(mode: HostMode): HostSessionView {
   const [teamLeaderboard, setTeamLeaderboard] = useState<TeamScore[]>([])
 
   const resolvedRef = useRef(false)
+  // Secret host (control) — jamais dans le state React, seulement pour host_join
+  const hostKeyRef = useRef<string | null>(null)
+  // Une seule tentative de récupération automatique (session perdue) par montage
+  const recoveredRef = useRef(false)
 
   // État de la connexion Socket.io — pilote le bandeau « reconnexion » des vues host
   const [socketConnected, setSocketConnected] = useState(socket.connected)
@@ -142,12 +147,15 @@ export function useHostSession(mode: HostMode): HostSessionView {
 
       try {
         if (mode === 'control') {
-          if (stored) {
+          if (stored?.hostKey) {
+            hostKeyRef.current = stored.hostKey
             setPin(stored.pin)
             setSessionId(stored.sessionId)
           } else {
+            // pas de session stockée (ou ancienne, sans hostKey) → nouvelle session
             const created = await createHostSession()
             writeHostSession(created)
+            hostKeyRef.current = created.hostKey ?? null
             setPin(created.pin)
             setSessionId(created.sessionId)
           }
@@ -175,7 +183,7 @@ export function useHostSession(mode: HostMode): HostSessionView {
     })()
   }, [mode])
 
-  // Effet 2 — listeners temps réel + host_join, rebranchés quand le pin change
+  // Effet 2 — listeners temps réel + (re)join, rebranchés quand la session change
   useEffect(() => {
     if (!pin) return
 
@@ -188,7 +196,11 @@ export function useHostSession(mode: HostMode): HostSessionView {
       setTeamMode(p.mode)
       setTeams(p.teams)
       setTeamsLocked(p.teamsLocked)
-      writeHostSession({ sessionId: p.sessionId, pin: p.session.pin })
+      // Seul le CONTROL persiste la session (avec son hostKey). La TV ne doit
+      // jamais écraser le hostKey stocké par un control sur la même machine.
+      if (mode === 'control' && hostKeyRef.current) {
+        writeHostSession({ sessionId: p.sessionId, pin: p.session.pin, hostKey: hostKeyRef.current })
+      }
     }
     const onTeams = (p: TeamsPayload) => {
       setTeamMode(p.mode)
@@ -248,15 +260,43 @@ export function useHostSession(mode: HostMode): HostSessionView {
     socket.on(EVENTS.LEADERBOARD_UPDATE, onLeaderboard)
     socket.on(EVENTS.TEAMS_UPDATED, onTeams)
 
-    // host_join à CHAQUE (re)connexion — pas seulement la première. À la moindre
+    // Session côté serveur introuvable / clé invalide (ex : snapshots purgés).
+    // Control : on repart proprement sur une NOUVELLE session (une seule fois).
+    // Display : message clair — la TV ne pilote rien, elle ne crée rien.
+    const onError = (e: { code?: string; message?: string }) => {
+      if (e.code !== 'INVALID_PIN' && e.code !== 'INVALID_HOST_KEY') return
+      if (mode === 'control' && !recoveredRef.current) {
+        recoveredRef.current = true
+        clearHostSession()
+        void createHostSession().then((created) => {
+          writeHostSession(created)
+          hostKeyRef.current = created.hostKey ?? null
+          setSessionId(created.sessionId)
+          setPin(created.pin) // → re-déclenche cet effet → host_join sur la nouvelle session
+        })
+        return
+      }
+      setError(e.message ?? 'Session introuvable.')
+    }
+    socket.on(EVENTS.QUIZ_ERROR, onError)
+
+    // (re)join à CHAQUE connexion — pas seulement la première. À la moindre
     // micro-coupure le serveur retire ce socket de hostSocketIds et des rooms
     // (disconnect.ts) : sans ré-émission, boutons morts et TV figée sans erreur.
-    const join = () => socket.emit(EVENTS.HOST_JOIN, { pin })
+    // control = host_join (pin + hostKey secret) · display = display_join (lecture seule)
+    const join = () => {
+      if (mode === 'control') {
+        socket.emit(EVENTS.HOST_JOIN, { pin, hostKey: hostKeyRef.current ?? '' })
+      } else if (sessionId) {
+        socket.emit(EVENTS.DISPLAY_JOIN, { sessionId })
+      }
+    }
     if (!socket.connected) socket.connect()
     if (socket.connected) join()
     socket.on('connect', join)
 
     return () => {
+      socket.off(EVENTS.QUIZ_ERROR, onError)
       socket.off(EVENTS.SESSION_JOINED, onJoined)
       socket.off(EVENTS.PARTICIPANT_JOINED, onJoin)
       socket.off(EVENTS.PARTICIPANT_LEFT, onLeft)
@@ -268,7 +308,7 @@ export function useHostSession(mode: HostMode): HostSessionView {
       socket.off(EVENTS.TEAMS_UPDATED, onTeams)
       socket.off('connect', join)
     }
-  }, [pin])
+  }, [pin, sessionId, mode])
 
   const start = () => socket.emit(EVENTS.HOST_START_QUIZ, {})
   const next = () => socket.emit(EVENTS.HOST_NEXT_QUESTION, {})
