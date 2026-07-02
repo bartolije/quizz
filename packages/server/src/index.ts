@@ -201,10 +201,14 @@ const clientDist = join(dirname(fileURLToPath(import.meta.url)), '../../client/d
 void app.register(fastifyStatic, {
   root: clientDist,
   wildcard: false,
-  // index.html en no-cache → un nouveau déploiement est pris en compte sans
-  // hard-refresh (les assets JS/CSS sont eux hashés donc immuables).
+  // index.html en no-store → JAMAIS caché (navigateur, heuristique, proxy/CDN) :
+  // un nouveau déploiement est pris en compte au refresh suivant, sans hard-refresh.
+  // Les assets /assets/* sont hashés par Vite → immuables, cache long (les 80
+  // téléphones ne les re-téléchargent pas à chaque visite).
   setHeaders: (res, path) => {
-    if (path.endsWith('.html')) res.setHeader('cache-control', 'no-cache')
+    if (path.endsWith('.html')) res.setHeader('cache-control', 'no-store')
+    else if (path.includes('/assets/'))
+      res.setHeader('cache-control', 'public, max-age=31536000, immutable')
   },
 })
 
@@ -216,7 +220,7 @@ app.setNotFoundHandler((req, reply) => {
     void reply.code(404).send({ error: 'not_found' })
     return
   }
-  void reply.header('cache-control', 'no-cache').sendFile('index.html')
+  void reply.header('cache-control', 'no-store').sendFile('index.html')
 })
 
 const PORT = Number(process.env['PORT'] ?? 3001)
