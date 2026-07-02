@@ -1,17 +1,22 @@
 {
   "name": "lya-quiz",
   "private": true,
-  "workspaces": ["packages/*"],
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
     "build:shared": "npm run build --workspace=packages/shared",
     "dev": "npm run build:shared && concurrently \"npm run dev:server\" \"npm run dev:client\"",
     "dev:server": "npm run dev --workspace=packages/server",
     "dev:client": "npm run dev --workspace=packages/client",
     "build": "npm run build:shared && npm run build --workspace=packages/server && npm run build --workspace=packages/client",
-    "typecheck": "npm run build:shared && tsc --noEmit -p packages/shared/tsconfig.json && tsc --noEmit -p packages/server/tsconfig.json && tsc --noEmit -p packages/client/tsconfig.json"
+    "typecheck": "npm run build:shared && tsc --noEmit -p packages/shared/tsconfig.json && tsc --noEmit -p packages/server/tsconfig.json && tsc --noEmit -p packages/client/tsconfig.json && tsc --noEmit -p tsconfig.vitest.json",
+    "test": "npm run build:shared && vitest run",
+    "test:watch": "npm run build:shared && vitest"
   },
   "devDependencies": {
     "concurrently": "^8.2.0",
-    "typescript": "^5.4.0"
+    "typescript": "^5.4.0",
+    "vitest": "^4.1.9"
   }
 }

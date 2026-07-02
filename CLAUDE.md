@@ -23,7 +23,8 @@ jamais fragiliser ça. Détail du mécanisme : [`.claude/architecture.md`](.clau
    `packages/shared/src/events.ts`. Client ET serveur importent `EVENTS` depuis
    `@lya-quiz/shared`. Idem pour les types de payloads.
 2. **TypeScript strict** (`strict`, `noUncheckedIndexedAccess`,
-   `exactOptionalPropertyTypes`). `npm run typecheck` doit passer avant tout commit.
+   `exactOptionalPropertyTypes`). `npm run typecheck` **et** `npm test` doivent
+   passer avant tout commit.
 3. **Monorepo npm workspaces** : `shared` est la dépendance des deux autres et doit
    être **buildé** avant (`npm run build:shared`). Les scripts le font déjà.
 4. **Commit ET push après chaque étape validée** (l'utilisateur y tient). Messages
@@ -44,9 +45,14 @@ jamais fragiliser ça. Détail du mécanisme : [`.claude/architecture.md`](.clau
 ```bash
 npm install          # installe + build shared
 npm run dev          # serveur :3001 + client :5173 (proxy Vite /api + /socket.io)
-npm run typecheck    # tsc --noEmit sur les 3 packages (à lancer avant commit)
+npm run typecheck    # tsc --noEmit sur les 3 packages + tests (avant commit)
+npm test             # vitest : packages/*/test (intégration Socket.io réelle incluse)
 npm run build        # build shared → server → client
 ```
+
+Les tests vivent dans `packages/*/test/` (hors `src` → jamais dans les builds).
+Côté serveur, ils bootent un vrai serveur Socket.io éphémère câblé via
+`socket-handlers.ts` (le câblage exact de `index.ts`) avec SQLite en mémoire.
 
 Tester depuis un téléphone en dev : le client tape en same-origin, le proxy Vite
 route vers `:3001` → ouvrir `http://<ip-du-mac>:5173` sur le tél (pas besoin de
