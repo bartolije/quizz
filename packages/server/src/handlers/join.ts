@@ -152,8 +152,21 @@ function handleRejoinWithParticipant(
   const timeElapsed = session.questionStartedAt
     ? (Date.now() - session.questionStartedAt) / 1000
     : 0
-  const myRank =
-    getLeaderboard(session).find((s) => s.participantId === participant.id)?.rank ?? 1
+  const scores = getLeaderboard(session)
+  const myRank = scores.find((s) => s.participantId === participant.id)?.rank ?? 1
+
+  // Résultat individuel de la dernière question fermée : rejoué au participant
+  // qui reconnecte ENTRE deux questions (sinon il resterait figé sur une
+  // question périmée — voire raterait le podium si c'était la dernière).
+  const lastResult =
+    currentQuestion === null && session.lastCorrectAnswers !== null
+      ? {
+          correctAnswers: session.lastCorrectAnswers,
+          myAnswer: session.answers.get(participant.id)?.value ?? null,
+          myCorrect: session.lastQuestionResults?.get(participant.id)?.correct ?? false,
+          myDelta: session.lastQuestionResults?.get(participant.id)?.gained ?? 0,
+        }
+      : null
 
   socket.emit(EVENTS.SESSION_RESTORED, {
     participant: toParticipant(participant),
@@ -163,6 +176,8 @@ function handleRejoinWithParticipant(
     alreadyAnswered: session.answers.has(participant.id),
     myScore: participant.score,
     myRank,
+    scores,
+    lastResult,
     session: { status: session.status, pin: session.pin },
     mode: session.mode,
     teams: [...session.teams.values()],

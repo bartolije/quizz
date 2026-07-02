@@ -35,6 +35,11 @@ export interface SessionState {
   answers: Map<string, PendingAnswer>            // réponses de la question courante (clé = participantId)
   currentShuffled: string[] | null               // items mélangés de la question 'ordering' en cours
   results: QuestionReport[]                       // historique des questions fermées (rapport de fin)
+  // Résultat individuel de la DERNIÈRE question fermée (clé = participantId) —
+  // sert à rejouer la révélation à un participant qui reconnecte entre deux
+  // questions (session_restored.lastResult). Vidé au démarrage de la suivante.
+  lastQuestionResults: Map<string, { gained: number; correct: boolean }> | null
+  lastCorrectAnswers: string[] | null            // bonnes réponses de cette même dernière question
   questionTimer: ReturnType<typeof setTimeout> | null
   quiz: Quiz | null   // seedé en mémoire en S4, viendra de la DB en S8
   // Mode équipe (éphémère, par session)
@@ -73,6 +78,8 @@ export function createSession(quizId?: string): SessionState {
     answers: new Map(),
     currentShuffled: null,
     results: [],
+    lastQuestionResults: null,
+    lastCorrectAnswers: null,
     questionTimer: null,
     // S8 : le quiz vient de la DB (quizId explicite, sinon le quiz par défaut).
     quiz: quizId ? getQuiz(quizId) : getDefaultQuiz(),

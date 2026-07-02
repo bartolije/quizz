@@ -43,6 +43,13 @@ interface SessionRestoredPayload {
   timeElapsed: number
   alreadyAnswered: boolean
   myScore: number
+  scores: ParticipantScore[]
+  lastResult: {
+    correctAnswers: string[]
+    myAnswer: string | number | string[] | null
+    myCorrect: boolean
+    myDelta: number
+  } | null
   session: { pin: string; status: SessionStatus }
   mode: SessionMode
   teams: Team[]
@@ -251,16 +258,40 @@ export const useQuizStore = create<QuizStore>()((set) => ({
           lastResult: null,
         }
       }
-      // Pas de question ouverte :
-      // - reload (vue 'join') → on entre dans le lobby (ou l'écran de fin) ;
-      // - simple blip (déjà en jeu) → on NE perturbe PAS la vue courante.
-      const view: AppView =
-        state.currentView === 'join'
-          ? payload.session.status === 'ended'
-            ? 'ended'
-            : 'lobby'
-          : state.currentView
-      return { ...identity, currentView: view }
+      // Pas de question ouverte : recaler la vue sur l'état SERVEUR.
+      const base = {
+        ...identity,
+        currentQuestion: null,
+        questionStartedAt: null,
+        leaderboard: payload.scores,
+      }
+      // Quiz terminé pendant la coupure → podium (quel que soit l'écran d'avant).
+      if (payload.session.status === 'ended') {
+        return { ...base, currentView: 'ended' as AppView }
+      }
+      // On était sur une question désormais fermée → rejouer la révélation
+      // (résultat individuel renvoyé par le serveur) au lieu de rester figé
+      // sur une question périmée jusqu'à la suivante.
+      if (state.currentView === 'question') {
+        if (payload.lastResult) {
+          return {
+            ...base,
+            currentView: 'answer' as AppView,
+            lastResult: {
+              correct: payload.lastResult.myCorrect,
+              myAnswer: payload.lastResult.myAnswer,
+              myScore: payload.myScore,
+              myDelta: payload.lastResult.myDelta,
+              correctAnswers: payload.lastResult.correctAnswers,
+            },
+          }
+        }
+        return { ...base, currentView: 'lobby' as AppView }
+      }
+      // Reload (vue 'join') → lobby ; simple blip ailleurs (révélation,
+      // classement…) → on garde la vue courante.
+      const view: AppView = state.currentView === 'join' ? 'lobby' : state.currentView
+      return { ...base, currentView: view }
     }),
 
   onQuizEnded: () => set({ currentView: 'ended', questionStartedAt: null }),

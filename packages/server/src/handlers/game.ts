@@ -87,6 +87,8 @@ export function handleNextQuestion(socket: QuizSocket, io: QuizServer): void {
 
   session.currentQuestionIndex = nextIndex
   session.answers.clear()
+  session.lastQuestionResults = null
+  session.lastCorrectAnswers = null
   session.questionStartedAt = Date.now()
   // 'ordering' : items mélangés une fois (même mélange pour tous + reconnexion cohérente)
   session.currentShuffled = q.type === 'ordering' ? shuffleDistinct(q.correctAnswers) : null
@@ -270,6 +272,11 @@ export function closeQuestion(
           count: [...session.answers.values()].filter((a) => a.value === choice).length,
         }))
       : []
+
+  // Mémorise le résultat individuel pour la reprise entre deux questions
+  // (session_restored.lastResult, cf. join.ts)
+  session.lastQuestionResults = results
+  session.lastCorrectAnswers = q.correctAnswers
 
   const scores = getLeaderboard(session)
   const teamField = teamScoresField(session)

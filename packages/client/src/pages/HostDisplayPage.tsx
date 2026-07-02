@@ -61,7 +61,9 @@ export function HostDisplayPage() {
           ? 'reveal'
           : s.currentQuestion && s.questionStartedAt
             ? 'question'
-            : 'lobby'
+            : s.status === 'running'
+              ? 'interlude' // partie en cours sans question ouverte (ex : TV rafraîchie) — pas de QR géant
+              : 'lobby'
 
   const sound = useHostSound(phase)
 
@@ -89,6 +91,23 @@ export function HostDisplayPage() {
       <SoundControl {...sound} />
     </>
   )
+
+  // ── Interlude (partie en cours, pas de question ouverte — ex : TV rafraîchie
+  // entre deux questions). Écran neutre, le flux normal reprend au prochain event.
+  if (phase === 'interlude') {
+    return (
+      <div className="min-h-screen bg-gray-950 text-white flex flex-col items-center justify-center p-10 gap-6">
+        {soundCtl}
+        <h1 className="text-5xl font-black tracking-tight">LYA QUIZ</h1>
+        <p className="text-3xl text-gray-300">Prochaine question dans un instant…</p>
+        <p className="text-gray-500 text-2xl">
+          PIN <span className="font-mono font-bold text-gray-300 tracking-widest">{s.pin}</span>
+          {' · '}
+          {connected.length} participant{connected.length > 1 ? 's' : ''}
+        </p>
+      </div>
+    )
+  }
 
   // ── Lobby (avant le démarrage) ───────────────────────────────
   if (phase === 'lobby') {

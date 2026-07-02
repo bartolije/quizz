@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { enableSound, setMuted, playLoop, stopLoop, playOnce } from '../sound'
 
-type Phase = 'lobby' | 'question' | 'reveal' | 'leaderboard' | 'ended'
+type Phase = 'lobby' | 'question' | 'reveal' | 'leaderboard' | 'ended' | 'interlude'
 
 function applyPhase(phase: Phase): void {
   switch (phase) {
     case 'lobby':
+    case 'interlude': // entre deux questions (ex : TV rafraîchie) — ambiance lobby
     case 'leaderboard':
       playLoop('lobby')
       break

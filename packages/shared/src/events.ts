@@ -123,6 +123,19 @@ export interface ServerToClientEvents {
     alreadyAnswered: boolean                  // le participant a-t-il déjà répondu à la question en cours
     myScore: number
     myRank: number
+    // Classement courant — nécessaire pour restaurer le podium / le classement
+    // à un participant qui reconnecte hors d'une question ouverte.
+    scores: ParticipantScore[]
+    // Résultat individuel de la DERNIÈRE question fermée (null si aucune question
+    // fermée depuis le début, ou si une question est ouverte). Permet de rejouer
+    // la révélation à un joueur qui reconnecte entre deux questions au lieu de
+    // le laisser figé sur une question périmée.
+    lastResult: {
+      correctAnswers: string[]
+      myAnswer: string | number | string[] | null
+      myCorrect: boolean
+      myDelta: number
+    } | null
     session: Pick<Session, 'status' | 'pin'>
     // Mode équipe restauré (le participant retrouve son équipe)
     mode: SessionMode

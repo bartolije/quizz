@@ -125,7 +125,11 @@ React + Vite, routing react-router. Store global **Zustand** (`store/quiz-store.
   event `connect` Socket.io (cycle de vie, pas métier).
 - Le serveur répond `session_restored` avec : même `participantId`, participants,
   **question en cours** (`currentQuestion`), `timeElapsed` (→ le client recale le
-  timer : `questionStartedAt = Date.now() - timeElapsed*1000`), `alreadyAnswered`, `myScore`.
+  timer : `questionStartedAt = Date.now() - timeElapsed*1000`), `alreadyAnswered`,
+  `myScore`, `scores` (classement courant) et `lastResult` (résultat individuel de
+  la dernière question fermée). Hors question ouverte, le client bascule sur la
+  bonne vue : révélation si la question affichée est périmée, podium si le quiz
+  s'est terminé pendant la coupure, vue conservée pour un simple blip.
 - Reprise au **reload complet** (store vidé mais token présent) : `ParticipantApp`
   reconnecte le socket ; `session_restored` repeuple identité + état. On ne renvoie
   vers `/join` QUE si le serveur dit `INVALID_TOKEN` / `SESSION_ENDED`. Pas de

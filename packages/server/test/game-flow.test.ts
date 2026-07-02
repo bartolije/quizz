@@ -164,6 +164,41 @@ describe('reconnexion participant', () => {
     expect(ra.myCorrect).toBe(true)
   })
 
+  it('rejoin ENTRE deux questions : classement + résultat de la dernière question rejoués', async () => {
+    const session = makeSession()
+    const { c: alice, joined } = await joinAs('alice', session.pin)
+    const { c: bob } = await joinAs('bob', session.pin)
+    const host = await hostJoin(session.pin)
+
+    host.emit(EVENTS.HOST_START_QUIZ, {})
+    host.emit(EVENTS.HOST_NEXT_QUESTION, {})
+    await waitFor<QStarted>(alice, EVENTS.QUESTION_STARTED)
+
+    // les deux répondent → question fermée (fermeture anticipée)
+    const ended = waitFor<QEnded>(alice, EVENTS.QUESTION_ENDED)
+    alice.emit(EVENTS.SUBMIT_ANSWER, { answer: '4', questionIndex: 0 }, () => {})
+    bob.emit(EVENTS.SUBMIT_ANSWER, { answer: '3', questionIndex: 0 }, () => {})
+    await ended
+
+    // alice se déconnecte APRÈS la fermeture, reconnecte pendant l'entre-deux
+    await new Promise<void>((resolve) => {
+      alice.once('disconnect', () => resolve())
+      alice.disconnect()
+    })
+    const alice2 = srv.connect()
+    alice2.emit(EVENTS.REJOIN_SESSION, { sessionToken: joined.sessionToken })
+    const restored = await waitFor<Restored>(alice2, EVENTS.SESSION_RESTORED)
+
+    expect(restored.currentQuestion).toBeNull()
+    expect(restored.scores.length).toBe(2)
+    expect(restored.lastResult).not.toBeNull()
+    expect(restored.lastResult?.correctAnswers).toEqual(['4'])
+    expect(restored.lastResult?.myAnswer).toBe('4')
+    expect(restored.lastResult?.myCorrect).toBe(true)
+    expect(restored.lastResult?.myDelta).toBeGreaterThan(0)
+    expect(restored.myScore).toBe(restored.lastResult?.myDelta)
+  })
+
   it('token inconnu → INVALID_TOKEN', async () => {
     const c = srv.connect()
     c.emit(EVENTS.REJOIN_SESSION, { sessionToken: 'token-inexistant' })

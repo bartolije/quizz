@@ -18,6 +18,8 @@ const restoredBase = {
   timeElapsed: 0,
   alreadyAnswered: false,
   myScore: 0,
+  scores: [],
+  lastResult: null,
   session: { pin: '1234', status: 'running' as const },
   mode: 'solo' as const,
   teams: [],
@@ -199,5 +201,42 @@ describe('quiz-store — reconnexion (onSessionRestored)', () => {
       session: { pin: '1234', status: 'ended' },
     })
     expect(useQuizStore.getState().currentView).toBe('ended')
+  })
+
+  it('reconnexion sur une question PÉRIMÉE → révélation rejouée (pas de question figée)', () => {
+    // le joueur était en pleine question…
+    useQuizStore.getState().onQuestionStarted(q(2))
+    useQuizStore.getState().beginAnswer('a')
+    // …coupure ; pendant ce temps la question a été fermée côté serveur
+    useQuizStore.getState().onSessionRestored({
+      ...restoredBase,
+      currentQuestion: null,
+      myScore: 700,
+      lastResult: { correctAnswers: ['a'], myAnswer: 'a', myCorrect: true, myDelta: 700 },
+    })
+    const s = useQuizStore.getState()
+    expect(s.currentView).toBe('answer')     // révélation, pas la question périmée
+    expect(s.lastResult?.correct).toBe(true)
+    expect(s.lastResult?.myDelta).toBe(700)
+    expect(s.currentQuestion).toBeNull()
+  })
+
+  it('reconnexion en vue question, quiz TERMINÉ pendant la coupure → podium avec classement', () => {
+    useQuizStore.getState().onQuestionStarted(q(4))
+    useQuizStore.getState().onSessionRestored({
+      ...restoredBase,
+      currentQuestion: null,
+      session: { pin: '1234', status: 'ended' },
+      scores: [{ participantId: 'p1', pseudo: 'alice', score: 1500, delta: 0, rank: 1 }],
+    })
+    const s = useQuizStore.getState()
+    expect(s.currentView).toBe('ended')
+    expect(s.leaderboard).toHaveLength(1)
+  })
+
+  it('simple blip sur le classement (pas de question ouverte) → vue conservée', () => {
+    useQuizStore.getState().onLeaderboard([], false)
+    useQuizStore.getState().onSessionRestored({ ...restoredBase, currentQuestion: null })
+    expect(useQuizStore.getState().currentView).toBe('leaderboard')
   })
 })
