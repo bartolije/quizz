@@ -2,9 +2,16 @@ import type { Server } from 'socket.io'
 import type { ClientToServerEvents, ServerToClientEvents } from '@lya-quiz/shared'
 import { EVENTS } from '@lya-quiz/shared'
 import { handleJoinSession, handleRejoinSession } from './handlers/join.js'
-import { handleHostJoin, handleDisplayJoin, handleHostStartQuiz, handleHostEndQuiz } from './handlers/host.js'
+import {
+  handleHostJoin,
+  handleDisplayJoin,
+  handleHostStartQuiz,
+  handleHostEndQuiz,
+  handleKickParticipant,
+} from './handlers/host.js'
 import {
   handleNextQuestion,
+  handleReplayLastQuestion,
   handleSubmitAnswer,
   handleShowLeaderboard,
 } from './handlers/game.js'
@@ -47,6 +54,8 @@ export function attachSocketHandlers(io: QuizServer): void {
     socket.on(EVENTS.HOST_NEXT_QUESTION, () => safe('host_next_question', () => handleNextQuestion(socket, io)))
     socket.on(EVENTS.HOST_SHOW_LEADERBOARD, () => safe('host_show_leaderboard', () => handleShowLeaderboard(socket, io)))
     socket.on(EVENTS.HOST_END_QUIZ, () => safe('host_end_quiz', () => handleHostEndQuiz(socket, io)))
+    socket.on(EVENTS.HOST_KICK_PARTICIPANT, (p) => safe('host_kick_participant', () => handleKickParticipant(socket, p, io)))
+    socket.on(EVENTS.HOST_REPLAY_LAST_QUESTION, () => safe('host_replay_last_question', () => handleReplayLastQuestion(socket, io)))
     socket.on(EVENTS.SUBMIT_ANSWER, (p, ack) => safe('submit_answer', () => handleSubmitAnswer(socket, p, io, ack)))
 
     // Mode équipe

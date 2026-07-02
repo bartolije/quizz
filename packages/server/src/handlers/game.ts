@@ -73,7 +73,14 @@ function shuffleDistinct(items: string[]): string[] {
 
 export function handleNextQuestion(socket: QuizSocket, io: QuizServer): void {
   const session = findSessionByHostSocket(socket.id)
-  if (!session || !session.quiz) return
+  if (!session) return
+  startNextQuestion(session, io)
+}
+
+// Cœur du lancement de question — appelé par handleNextQuestion (host) et par
+// handleReplayLastQuestion (relance immédiate après annulation).
+function startNextQuestion(session: SessionState, io: QuizServer): void {
+  if (!session.quiz) return
   if (session.questionStartedAt !== null) return // une question est déjà ouverte
 
   const questions = session.quiz.questions
@@ -122,6 +129,43 @@ export function handleNextQuestion(socket: QuizSocket, io: QuizServer): void {
     type: q.type,
     timeLimit: q.timeLimit,
   })
+}
+
+// ─────────────────────────────────────────────────────────────
+// HOST : rejouer la dernière question fermée (filet anti-fausse-manip)
+// ─────────────────────────────────────────────────────────────
+
+export function handleReplayLastQuestion(socket: QuizSocket, io: QuizServer): void {
+  const session = findSessionByHostSocket(socket.id)
+  if (!session || !session.quiz) return
+  if (session.status !== 'running') return
+  if (session.questionStartedAt !== null) return   // pas pendant une question ouverte
+  if (session.currentQuestionIndex < 0) return
+  // Rien à annuler (ex : reprise post-restart, la question interrompue n'a
+  // jamais été fermée → il suffit de faire « question suivante »).
+  if (!session.lastQuestionResults) return
+
+  // Reprendre les points accordés à la fermeture de cette question
+  for (const [pid, r] of session.lastQuestionResults) {
+    const p = session.participants.get(pid)
+    if (!p) continue
+    p.score -= r.gained
+    if (r.correct) p.correctTotal = Math.max(0, p.correctTotal - 1)
+    p.lastDelta = 0
+  }
+  session.results.pop() // retire l'entrée du rapport de fin
+  session.lastQuestionResults = null
+  session.lastCorrectAnswers = null
+  session.answers.clear()
+  session.currentQuestionIndex -= 1
+
+  logEvent('question_replayed', {
+    sessionId: session.id,
+    questionIndex: session.currentQuestionIndex + 1,
+  })
+
+  // Relance immédiate de la même question (état neuf pour tout le monde)
+  startNextQuestion(session, io)
 }
 
 // ─────────────────────────────────────────────────────────────

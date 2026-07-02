@@ -88,6 +88,7 @@ export function HostControlPage() {
               lockTeams={s.lockTeams}
               assign={s.assign}
               autobalance={s.autobalance}
+              onKick={s.kick}
             />
           </div>
         )}
@@ -197,6 +198,17 @@ export function HostControlPage() {
                     <span className="font-medium flex-1">{sc.pseudo}</span>
                     {sc.delta > 0 && <span className="text-emerald-400 text-sm">+{sc.delta}</span>}
                     <span className="font-mono font-bold tabular-nums">{sc.score}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (window.confirm(`Retirer ${sc.pseudo} de la partie ?`)) s.kick(sc.participantId)
+                      }}
+                      className="px-2 py-1 rounded-lg text-gray-600 hover:text-red-400 hover:bg-gray-800 transition-colors"
+                      title={`Retirer ${sc.pseudo}`}
+                      aria-label={`Retirer ${sc.pseudo}`}
+                    >
+                      ✕
+                    </button>
                   </li>
                 )
               })}
@@ -280,6 +292,16 @@ export function HostControlPage() {
         )}
         {phase === 'reveal' && (
           <>
+            {/* Filet anti-fausse-manip : annule les points de la question et la relance */}
+            <button
+              onClick={() => {
+                if (window.confirm('Annuler les points de cette question et la rejouer ?')) s.replayLast()
+              }}
+              className="px-5 py-4 rounded-2xl bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold transition-colors"
+              title="Annuler les points de cette question et la relancer"
+            >
+              ↩︎ Rejouer
+            </button>
             {/* Classement = optionnel (slide à la demande), pas imposé à chaque question */}
             <button
               onClick={s.showLeaderboard}
@@ -296,12 +318,23 @@ export function HostControlPage() {
           </>
         )}
         {phase === 'leaderboard' && (
-          <button
-            onClick={s.next}
-            className="px-10 py-4 rounded-2xl bg-indigo-600 hover:bg-indigo-500 font-bold text-lg transition-colors"
-          >
-            {isLastQuestion ? 'Voir le podium →' : 'Question suivante →'}
-          </button>
+          <>
+            <button
+              onClick={() => {
+                if (window.confirm('Annuler les points de cette question et la rejouer ?')) s.replayLast()
+              }}
+              className="px-5 py-4 rounded-2xl bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold transition-colors"
+              title="Annuler les points de cette question et la relancer"
+            >
+              ↩︎ Rejouer
+            </button>
+            <button
+              onClick={s.next}
+              className="px-10 py-4 rounded-2xl bg-indigo-600 hover:bg-indigo-500 font-bold text-lg transition-colors"
+            >
+              {isLastQuestion ? 'Voir le podium →' : 'Question suivante →'}
+            </button>
+          </>
         )}
         </div>
       </footer>

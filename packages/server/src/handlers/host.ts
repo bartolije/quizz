@@ -7,6 +7,7 @@ import {
   toPublicQuestion,
   getLeaderboard,
   getTeamLeaderboard,
+  getTeamsPayload,
 } from '../session-helpers.js'
 import { logEvent } from '../logger.js'
 import { saveSessionSnapshot, deleteSessionSnapshot } from '../session-snapshot.js'
@@ -114,6 +115,45 @@ export function handleHostDisconnect(
   if (session) {
     session.hostSocketIds.delete(socketId)
   }
+}
+
+// Éjecter un participant (troll, doublon de pseudo…). Retiré de la session
+// (score compris), token invalidé (il ne peut pas re-rentrer par reconnexion
+// automatique — il peut re-rejoindre par PIN + pseudo si c'était une erreur).
+export function handleKickParticipant(
+  socket: QuizSocket,
+  payload: { participantId: string },
+  io: QuizServer,
+): void {
+  const session = getAllSessions().find((s) => s.hostSocketIds.has(socket.id))
+  if (!session) return
+  const participant = session.participants.get(String(payload?.participantId ?? ''))
+  if (!participant) return
+
+  session.participants.delete(participant.id)
+  session.tokenIndex.delete(participant.sessionToken)
+  session.answers.delete(participant.id) // sa réponse à la question en cours ne compte plus
+
+  // Prévenir l'éjecté (s'il est connecté) et le sortir de la room
+  const target = io.sockets.sockets.get(participant.socketId)
+  if (target) {
+    target.emit(EVENTS.QUIZ_ERROR, {
+      code: 'KICKED',
+      message: "Tu as été retiré de la partie par l'animateur.",
+    })
+    void target.leave(session.id)
+  }
+
+  // participant_left (compat) + état complet (teams_updated remplace la liste
+  // des participants côté clients → l'éjecté disparaît vraiment des écrans)
+  io.to(session.id).emit(EVENTS.PARTICIPANT_LEFT, { participantId: participant.id })
+  io.to(session.id).emit(EVENTS.TEAMS_UPDATED, getTeamsPayload(session))
+  saveSessionSnapshot(session)
+  logEvent('participant_kicked', {
+    sessionId: session.id,
+    participantId: participant.id,
+    pseudo: participant.pseudo,
+  })
 }
 
 // Le host lance le quiz : on passe la session en 'running' et on diffuse le

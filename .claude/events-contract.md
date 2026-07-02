@@ -17,6 +17,8 @@
 | `HOST_NEXT_QUESTION` | `host_next_question` | `{}` | host |
 | `HOST_SHOW_LEADERBOARD` | `host_show_leaderboard` | `{}` | host (classement intermédiaire) |
 | `HOST_END_QUIZ` | `host_end_quiz` | `{}` | host |
+| `HOST_KICK_PARTICIPANT` | `host_kick_participant` | `{ participantId }` | host — éjecte (score retiré, token invalidé, l'éjecté reçoit `quiz_error KICKED`) |
+| `HOST_REPLAY_LAST_QUESTION` | `host_replay_last_question` | `{}` | host — annule les points de la dernière question fermée et la relance aussitôt |
 | `HOST_SET_MODE` | `host_set_mode` | `{ mode: 'solo'\|'team' }` | host (waiting only) |
 | `HOST_ADD_TEAM` | `host_add_team` | `{ name }` | host (waiting only) |
 | `HOST_REMOVE_TEAM` | `host_remove_team` | `{ teamId }` | host (waiting only) |

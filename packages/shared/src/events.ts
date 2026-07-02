@@ -65,6 +65,15 @@ export interface ClientToServerEvents {
   // HOST ONLY — terminer le quiz manuellement
   host_end_quiz: (payload: Record<string, never>) => void
 
+  // HOST ONLY — éjecter un participant (troll, doublon). Il est retiré de la
+  // session (score compris), son token est invalidé, il reçoit quiz_error KICKED.
+  host_kick_participant: (payload: { participantId: string }) => void
+
+  // HOST ONLY — filet anti-fausse-manip : annule la DERNIÈRE question fermée
+  // (points repris, entrée du rapport retirée) et la relance immédiatement.
+  // Disponible entre la révélation et la question suivante uniquement.
+  host_replay_last_question: (payload: Record<string, never>) => void
+
   // HOST ONLY — s'identifier comme host de la session.
   // hostKey : secret retourné par POST /api/sessions (jamais affiché à l'écran).
   // Sans lui, n'importe quel joueur pouvait prendre le contrôle avec le PIN
@@ -228,7 +237,7 @@ export interface ServerToClientEvents {
 
   // Erreur métier (pin invalide, pseudo déjà pris, session terminée...)
   quiz_error: (payload: {
-    code: 'INVALID_PIN' | 'PSEUDO_TAKEN' | 'INVALID_PSEUDO' | 'SESSION_ENDED' | 'SESSION_FULL' | 'INVALID_TOKEN' | 'INVALID_HOST_KEY' | 'UNKNOWN'
+    code: 'INVALID_PIN' | 'PSEUDO_TAKEN' | 'INVALID_PSEUDO' | 'SESSION_ENDED' | 'SESSION_FULL' | 'INVALID_TOKEN' | 'INVALID_HOST_KEY' | 'KICKED' | 'UNKNOWN'
     message: string
   }) => void
 }
@@ -249,6 +258,8 @@ export const EVENTS = {
   HOST_END_QUIZ:         'host_end_quiz',
   HOST_JOIN:             'host_join',
   DISPLAY_JOIN:          'display_join',
+  HOST_KICK_PARTICIPANT:     'host_kick_participant',
+  HOST_REPLAY_LAST_QUESTION: 'host_replay_last_question',
 
   // Mode équipe
   HOST_SET_MODE:            'host_set_mode',

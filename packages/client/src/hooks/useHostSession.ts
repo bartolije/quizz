@@ -56,6 +56,8 @@ interface HostSessionView {
   next: () => void
   showLeaderboard: () => void
   endQuiz: () => void
+  kick: (participantId: string) => void
+  replayLast: () => void
   // Actions host mode équipe
   setMode: (mode: SessionMode) => void
   addTeam: (name: string) => void
@@ -314,6 +316,8 @@ export function useHostSession(mode: HostMode): HostSessionView {
   const next = () => socket.emit(EVENTS.HOST_NEXT_QUESTION, {})
   const showLeaderboard = () => socket.emit(EVENTS.HOST_SHOW_LEADERBOARD, {})
   const endQuiz = () => socket.emit(EVENTS.HOST_END_QUIZ, {})
+  const kick = (participantId: string) => socket.emit(EVENTS.HOST_KICK_PARTICIPANT, { participantId })
+  const replayLast = () => socket.emit(EVENTS.HOST_REPLAY_LAST_QUESTION, {})
 
   // Actions host mode équipe
   const changeMode = (m: SessionMode) => socket.emit(EVENTS.HOST_SET_MODE, { mode: m })
@@ -348,6 +352,8 @@ export function useHostSession(mode: HostMode): HostSessionView {
     next,
     showLeaderboard,
     endQuiz,
+    kick,
+    replayLast,
     setMode: changeMode,
     addTeam,
     removeTeam,

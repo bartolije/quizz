@@ -45,13 +45,15 @@ export function useParticipantEvents(): void {
     // ParticipantApp n'écoute cette erreur que pendant la phase de reprise (myId
     // null). Guard sur myId pour ne pas doubler ce chemin-là.
     const onFatal = (e: QuizErr) => {
-      if (e.code !== 'INVALID_TOKEN' && e.code !== 'SESSION_ENDED') return
+      if (e.code !== 'INVALID_TOKEN' && e.code !== 'SESSION_ENDED' && e.code !== 'KICKED') return
       if (!store().myId) return
       localStorage.removeItem('lya_quiz_token')
       store().onSessionLost(
-        e.code === 'SESSION_ENDED'
-          ? 'Cette session est terminée.'
-          : 'La partie a été réinitialisée côté serveur. Re-rejoins avec le PIN affiché à l’écran.',
+        e.code === 'KICKED'
+          ? "Tu as été retiré de la partie par l'animateur."
+          : e.code === 'SESSION_ENDED'
+            ? 'Cette session est terminée.'
+            : 'La partie a été réinitialisée côté serveur. Re-rejoins avec le PIN affiché à l’écran.',
       )
     }
 

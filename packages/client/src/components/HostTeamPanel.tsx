@@ -106,6 +106,7 @@ export function HostTeamPanel({
   lockTeams,
   assign,
   autobalance,
+  onKick,
 }: {
   mode: SessionMode
   teams: Team[]
@@ -117,6 +118,7 @@ export function HostTeamPanel({
   lockTeams: (locked: boolean) => void
   assign: (participantId: string, teamId: string | null) => void
   autobalance: () => void
+  onKick?: (participantId: string) => void
 }) {
   const [name, setName] = useState('')
   const [draggingId, setDraggingId] = useState<string | null>(null)
@@ -182,7 +184,20 @@ export function HostTeamPanel({
             {connected.map((p) => (
               <li key={p.id} className="flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-800">
                 <span className="w-2 h-2 rounded-full bg-green-400 flex-shrink-0" />
-                <span className="font-medium">{p.pseudo}</span>
+                <span className="font-medium flex-1">{p.pseudo}</span>
+                {onKick && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (window.confirm(`Retirer ${p.pseudo} de la partie ?`)) onKick(p.id)
+                    }}
+                    className="px-2 py-1 rounded-lg text-gray-500 hover:text-red-400 hover:bg-gray-700 transition-colors"
+                    title={`Retirer ${p.pseudo}`}
+                    aria-label={`Retirer ${p.pseudo}`}
+                  >
+                    ✕
+                  </button>
+                )}
               </li>
             ))}
           </ul>
