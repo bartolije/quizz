@@ -133,6 +133,9 @@ export interface ServerToClientEvents {
     mode: SessionMode
     teams: Team[]
     teamsLocked: boolean
+    // Envoyé au host/TV uniquement : titre du quiz chargé (le host vérifie d'un
+    // coup d'œil qu'il anime le BON quiz — pas celui de démo).
+    quizTitle?: string
   }) => void
 
   // Confirmation de rejoin réussi après reconnexion
@@ -217,6 +220,11 @@ export interface ServerToClientEvents {
     myDelta: number
     // Mode équipe uniquement : classement des équipes après cette question
     teamScores?: TeamScore[]
+    // Copie host/TV uniquement : image de la PROCHAINE question, préchargée par
+    // la TV pendant la révélation (sinon TV + 80 téléphones la téléchargent au
+    // coup d'envoi, chrono déjà lancé). Jamais envoyée aux participants
+    // (l'image peut trahir la question suivante).
+    nextMediaUrl?: string
   }) => void
 
   // HOST ONLY — un participant a répondu (pas la réponse, juste l'ack)

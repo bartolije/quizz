@@ -100,8 +100,10 @@ export function getDefaultQuiz(): Quiz | null {
 export function createQuiz(input: QuizInput): string {
   const id = uuid()
   const now = Date.now()
-  db.transaction((tx) => {
-    tx.insert(quizzes)
+  // Tout-ou-rien : les questions DANS la transaction — un crash au milieu ne
+  // peut plus laisser un quiz sans questions en base.
+  db.transaction(() => {
+    db.insert(quizzes)
       .values({
         id,
         title: input.title,
@@ -110,22 +112,24 @@ export function createQuiz(input: QuizInput): string {
         updatedAt: now,
       })
       .run()
+    insertQuestions(id, input.questions)
   })
-  insertQuestions(id, input.questions)
   return id
 }
 
 export function replaceQuiz(id: string, input: QuizInput): boolean {
   const exists = db.select({ id: quizzes.id }).from(quizzes).where(eq(quizzes.id, id)).get()
   if (!exists) return false
-  db.transaction((tx) => {
-    tx.update(quizzes)
+  // Tout-ou-rien : delete + réinsertion dans la MÊME transaction — un crash ne
+  // peut plus vider le quiz de la soirée entre les deux.
+  db.transaction(() => {
+    db.update(quizzes)
       .set({ title: input.title, defaultTimeLimit: input.defaultTimeLimit, updatedAt: Date.now() })
       .where(eq(quizzes.id, id))
       .run()
-    tx.delete(questions).where(eq(questions.quizId, id)).run()
+    db.delete(questions).where(eq(questions.quizId, id)).run()
+    insertQuestions(id, input.questions)
   })
-  insertQuestions(id, input.questions)
   return true
 }
 

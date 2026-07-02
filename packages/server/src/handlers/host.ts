@@ -31,6 +31,7 @@ function attachAndSendState(socket: QuizSocket, session: SessionState): void {
     mode: session.mode,
     teams: [...session.teams.values()],
     teamsLocked: session.teamsLocked,
+    ...(session.quiz ? { quizTitle: session.quiz.title } : {}),
   })
 
   // Reprise (S7) : si une question est ouverte (refresh ou ré-attachement en

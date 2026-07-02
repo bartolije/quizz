@@ -36,6 +36,7 @@ interface HostSessionView {
   status: SessionStatus
   error: string | null
   socketConnected: boolean   // false pendant une coupure → bandeau de reconnexion
+  quizTitle: string | null   // titre du quiz chargé (contrôle visuel : le BON quiz ?)
   // Jeu (S4)
   currentQuestion: QuestionPublic | null
   questionStartedAt: number | null   // horloge client (réception) pour le timer
@@ -98,6 +99,7 @@ export function useHostSession(mode: HostMode): HostSessionView {
   const [participants, setParticipants] = useState<Participant[]>([])
   const [status, setStatus] = useState<SessionStatus>('waiting')
   const [error, setError] = useState<string | null>(null)
+  const [quizTitle, setQuizTitle] = useState<string | null>(null)
 
   // État du jeu (S4)
   const [currentQuestion, setCurrentQuestion] = useState<QuestionPublic | null>(null)
@@ -198,6 +200,7 @@ export function useHostSession(mode: HostMode): HostSessionView {
       setTeamMode(p.mode)
       setTeams(p.teams)
       setTeamsLocked(p.teamsLocked)
+      setQuizTitle(p.quizTitle ?? null)
       // Seul le CONTROL persiste la session (avec son hostKey). La TV ne doit
       // jamais écraser le hostKey stocké par un control sur la même machine.
       if (mode === 'control' && hostKeyRef.current) {
@@ -242,6 +245,12 @@ export function useHostSession(mode: HostMode): HostSessionView {
       })
       if (p.teamScores) setTeamLeaderboard(p.teamScores)
       setQuestionStartedAt(null) // stoppe le timer ; on garde currentQuestion pour la révélation
+      // Préchauffe l'image de la PROCHAINE question pendant la révélation
+      // (payload host-only) : à l'affichage, elle sort du cache navigateur.
+      if (p.nextMediaUrl) {
+        const img = new Image()
+        img.src = p.nextMediaUrl
+      }
     }
     const onLeaderboard = (p: LbPayload) => {
       setPrevRanks(ranksOf(leaderboardRef.current)) // rangs d'avant cette MAJ
@@ -335,6 +344,7 @@ export function useHostSession(mode: HostMode): HostSessionView {
     status,
     error,
     socketConnected,
+    quizTitle,
     currentQuestion,
     questionStartedAt,
     answeredCount,

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { GameReport } from '@lya-quiz/shared'
 import { useHostSession } from '../hooks/useHostSession'
 import { useRemaining } from '../hooks/useRemaining'
-import { fetchReport } from '../host-session'
+import { fetchReport, clearHostSession } from '../host-session'
 import { QrCode } from '../components/QrCode'
 import { ConnectionBanner } from '../components/ConnectionBanner'
 import { ReportView } from '../components/ReportView'
@@ -55,7 +55,12 @@ export function HostControlPage() {
     <div className="min-h-screen bg-gray-950 text-white flex flex-col">
       <ConnectionBanner connected={s.socketConnected} />
       <header className="flex items-center justify-between px-8 py-5 border-b border-gray-800">
-        <h1 className="text-2xl font-bold">LYA QUIZ</h1>
+        <h1 className="text-2xl font-bold">
+          LYA QUIZ
+          {s.quizTitle && (
+            <span className="ml-3 text-base font-medium text-indigo-300">· {s.quizTitle}</span>
+          )}
+        </h1>
         <p className="text-gray-400">
           Session ·{' '}
           <span className="text-white font-mono font-bold tracking-widest">{s.pin}</span>
@@ -246,6 +251,17 @@ export function HostControlPage() {
               className="mt-4 px-6 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500 font-bold"
             >
               📊 Voir le rapport détaillé
+            </button>
+            {/* Repartir sur une partie neuve sans fouiller le localStorage à la main */}
+            <button
+              onClick={() => {
+                if (!window.confirm('Créer une nouvelle session ? (le rapport reste accessible via son URL)')) return
+                clearHostSession()
+                window.location.reload()
+              }}
+              className="px-6 py-3 rounded-2xl bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold"
+            >
+              ➕ Nouvelle session
             </button>
           </div>
         )}

@@ -73,6 +73,41 @@ describe('kick participant', () => {
   })
 })
 
+describe('infos host (titre du quiz, préchargement image)', () => {
+  it('session_joined host porte le titre du quiz ; question_ended host porte nextMediaUrl', async () => {
+    const session = makeSession([
+      { type: 'mcq', text: 'Q1', choices: ['a', 'b'], correctAnswers: ['a'], timeLimit: 30 },
+      {
+        type: 'mcq',
+        text: 'Q2 avec image',
+        choices: ['c', 'd'],
+        correctAnswers: ['c'],
+        timeLimit: 30,
+        mediaUrl: 'https://exemple.test/q2.jpg',
+      },
+    ])
+    const { c: alice } = await joinAs('alice', session.pin)
+
+    const host = srv.connect()
+    const joinedP = waitFor<Joined>(host, EVENTS.SESSION_JOINED)
+    host.emit(EVENTS.HOST_JOIN, { pin: session.pin, hostKey: session.hostKey })
+    expect((await joinedP).quizTitle).toBe('Quiz test')
+
+    host.emit(EVENTS.HOST_START_QUIZ, {})
+    host.emit(EVENTS.HOST_NEXT_QUESTION, {})
+    await waitFor<QStarted>(alice, EVENTS.QUESTION_STARTED)
+
+    // fermeture de Q1 → le host reçoit l'URL de l'image de Q2 (préchargement TV)
+    const endedHost = waitFor<QEnded & { nextMediaUrl?: string }>(host, EVENTS.QUESTION_ENDED)
+    const endedAlice = waitFor<QEnded & { nextMediaUrl?: string }>(alice, EVENTS.QUESTION_ENDED)
+    alice.emit(EVENTS.SUBMIT_ANSWER, { answer: 'a', questionIndex: 0 }, () => {})
+
+    expect((await endedHost).nextMediaUrl).toBe('https://exemple.test/q2.jpg')
+    // …mais JAMAIS les participants (l'image peut trahir la question suivante)
+    expect((await endedAlice).nextMediaUrl).toBeUndefined()
+  })
+})
+
 describe('rejouer la dernière question', () => {
   it('points repris, rapport nettoyé, question relancée immédiatement', async () => {
     const session = makeSession()

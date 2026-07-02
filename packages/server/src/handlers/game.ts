@@ -396,7 +396,9 @@ export function closeQuestion(
     })
   }
 
-  // Vue host (pas de "my")
+  // Vue host (pas de "my"). nextMediaUrl : la TV précharge l'image de la
+  // prochaine question pendant la révélation (jamais envoyé aux participants).
+  const nextMediaUrl = quiz.questions[session.currentQuestionIndex + 1]?.mediaUrl
   io.to(`host:${session.id}`).emit(EVENTS.QUESTION_ENDED, {
     correctAnswers: q.correctAnswers,
     scores,
@@ -408,6 +410,7 @@ export function closeQuestion(
     myScore: 0,
     myDelta: 0,
     ...teamField,
+    ...(nextMediaUrl ? { nextMediaUrl } : {}),
   })
 
   logEvent('question_closed', {
