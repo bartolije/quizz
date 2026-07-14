@@ -122,6 +122,24 @@ export function handleJoinSession(
     })
   }
 
+  // Retardataire en mode BUZZER : lui envoyer la question en cours + l'état buzzer
+  // (owner_oral / steal / locked) → son téléphone affiche le bon écran/buzzer au
+  // lieu de rester en « prépare-toi ». (En 'revealed'/idle, rien à rejouer.)
+  if (
+    quiz?.gameType === 'buzzer' &&
+    session.buzz &&
+    session.buzz.phase !== 'idle' &&
+    session.buzz.phase !== 'revealed'
+  ) {
+    const bq = quiz.questions[session.currentQuestionIndex]
+    if (bq) {
+      socket.emit(EVENTS.BUZZ_QUESTION_STARTED, {
+        question: toPublicQuestion(bq, session.currentQuestionIndex, quiz.questions.length),
+        buzz: session.buzz,
+      })
+    }
+  }
+
   // Notifier les autres
   socket.to(session.id).emit(EVENTS.PARTICIPANT_JOINED, {
     participant: toParticipant(participant),

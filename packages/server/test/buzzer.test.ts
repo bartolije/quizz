@@ -64,6 +64,13 @@ function waitThemes(
   })
 }
 
+// Déconnecte un client et attend la confirmation (pour les tests de reconnexion).
+const disc = (c: TestClient): Promise<void> =>
+  new Promise((res) => {
+    c.once('disconnect', () => res())
+    c.disconnect()
+  })
+
 beforeAll(async () => {
   srv = await startTestServer()
 })
@@ -327,5 +334,91 @@ describe('buzzer — reconnexion', () => {
     expect(restored.currentQuestion).toBeNull() // pas de question "classique" en mode buzzer
     expect(restored.buzz?.phase).toBe('steal')
     expect(restored.buzz?.armed).toBe(true)
+  })
+})
+
+describe('buzzer — stabilité (retardataire, reconnexion, anti-buzz)', () => {
+  it('retardataire en pleine question buzzer : reçoit la question + l\'état', async () => {
+    const session = makeBuzzerSession(CULTURE_QS)
+    const host = await hostJoin(session)
+    host.emit(EVENTS.HOST_START_QUIZ, {})
+    host.emit(EVENTS.HOST_NEXT_QUESTION, {})
+    await waitFor<BuzzStarted>(host, EVENTS.BUZZ_QUESTION_STARTED)
+
+    // Un joueur qui arrive APRÈS le lancement doit tout de même recevoir la
+    // question en cours + le buzzer armé (sinon il reste coincé en « prépare-toi »).
+    const late = srv.connect()
+    const started = waitFor<BuzzStarted>(late, EVENTS.BUZZ_QUESTION_STARTED) // écouté AVANT le join
+    late.emit(EVENTS.JOIN_SESSION, { pin: session.pin, pseudo: 'retardataire', sessionToken: null })
+    const s = await started
+    expect(s.buzz.phase).toBe('steal')
+    expect(s.buzz.armed).toBe(true)
+    expect(s.question.text).toBe("Capitale de l'Espagne ?")
+  })
+
+  it('reconnexion du buzzeur verrouillé : il retrouve la parole', async () => {
+    const session = makeBuzzerSession(CULTURE_QS)
+    const { c: alice, joined } = await joinAs('alice', session.pin)
+    const host = await hostJoin(session)
+    host.emit(EVENTS.HOST_START_QUIZ, {})
+    host.emit(EVENTS.HOST_NEXT_QUESTION, {})
+    await waitFor<BuzzStarted>(alice, EVENTS.BUZZ_QUESTION_STARTED)
+
+    const locked = waitBuzz(alice, (st) => st.lockedBy?.pseudo === 'alice')
+    alice.emit(EVENTS.BUZZ, {})
+    await locked
+    await disc(alice)
+
+    const alice2 = srv.connect()
+    alice2.emit(EVENTS.REJOIN_SESSION, { sessionToken: joined.sessionToken })
+    const restored = await waitFor<Restored>(alice2, EVENTS.SESSION_RESTORED)
+    expect(restored.buzz?.phase).toBe('locked')
+    expect(restored.buzz?.lockedBy?.participantId).toBe(joined.participant.id)
+  })
+
+  it('reconnexion de l\'owner pendant son tour (owner_oral)', async () => {
+    const session = makeBuzzerSession(PERSO_QS)
+    const { c: alice, joined: ja } = await joinAs('alice', session.pin)
+    await joinAs('bob', session.pin)
+    const host = await hostJoin(session)
+    host.emit(EVENTS.HOST_START_QUIZ, {})
+    const bound = waitThemes(host, (t) => t.owners.find((o) => o.ownerName === 'Papa')?.participantId === ja.participant.id)
+    host.emit(EVENTS.HOST_ASSIGN_OWNER, { ownerName: 'Papa', participantId: ja.participant.id })
+    await bound
+
+    const st = waitFor<BuzzStarted>(alice, EVENTS.BUZZ_QUESTION_STARTED)
+    host.emit(EVENTS.HOST_START_THEME, { ownerName: 'Papa' })
+    await st
+    await disc(alice)
+
+    const alice2 = srv.connect()
+    alice2.emit(EVENTS.REJOIN_SESSION, { sessionToken: ja.sessionToken })
+    const restored = await waitFor<Restored>(alice2, EVENTS.SESSION_RESTORED)
+    expect(restored.buzz?.phase).toBe('owner_oral')
+    expect(restored.buzz?.ownerParticipantId).toBe(ja.participant.id)
+  })
+
+  it('un buzz est ignoré tant que l\'owner répond (owner_oral non armé)', async () => {
+    const session = makeBuzzerSession(PERSO_QS)
+    const { c: alice, joined: ja } = await joinAs('alice', session.pin)
+    const { c: bob } = await joinAs('bob', session.pin)
+    const host = await hostJoin(session)
+    host.emit(EVENTS.HOST_START_QUIZ, {})
+    const bound = waitThemes(host, (t) => t.owners.find((o) => o.ownerName === 'Papa')?.participantId === ja.participant.id)
+    host.emit(EVENTS.HOST_ASSIGN_OWNER, { ownerName: 'Papa', participantId: ja.participant.id })
+    await bound
+
+    const st = waitFor<BuzzStarted>(alice, EVENTS.BUZZ_QUESTION_STARTED)
+    host.emit(EVENTS.HOST_START_THEME, { ownerName: 'Papa' })
+    await st
+
+    // bob tente de buzzer pendant que l'owner (alice) a la parole → doit être ignoré :
+    // l'arbitrage « correct » attribue alors les points à l'OWNER, pas à bob.
+    bob.emit(EVENTS.BUZZ, {})
+    await tick()
+    const ended = waitFor<BuzzEnded>(host, EVENTS.BUZZ_QUESTION_ENDED)
+    host.emit(EVENTS.HOST_ADJUDICATE, { correct: true })
+    const e = await ended
+    expect(e.scorer?.participantId).toBe(ja.participant.id)
   })
 })
