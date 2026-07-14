@@ -38,6 +38,11 @@ export function toPublicQuestion(
     timeLimit: q.timeLimit,
     index,
     total,
+    // Mode buzzer : difficulté / section / owner exposés pour l'affichage TV+host
+    // (jamais correctAnswers — révélées seulement à buzz_question_ended).
+    ...(q.difficulty ? { difficulty: q.difficulty } : {}),
+    ...(q.section ? { section: q.section } : {}),
+    ...(q.ownerName ? { ownerName: q.ownerName } : {}),
   }
 }
 

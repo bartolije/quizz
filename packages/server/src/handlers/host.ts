@@ -53,6 +53,18 @@ function attachAndSendState(socket: QuizSocket, session: SessionState): void {
       })
     }
   }
+
+  // Mode buzzer : ré-attacher la question buzzer en cours (host/TV qui reconnecte
+  // ou refresh) → il retrouve l'énoncé + l'état buzzer (armé/verrouillé, qui a buzzé).
+  if (session.quiz?.gameType === 'buzzer' && session.buzz && session.buzz.phase !== 'idle') {
+    const q = session.quiz.questions[session.currentQuestionIndex]
+    if (q) {
+      socket.emit(EVENTS.BUZZ_QUESTION_STARTED, {
+        question: toPublicQuestion(q, session.currentQuestionIndex, session.quiz.questions.length),
+        buzz: session.buzz,
+      })
+    }
+  }
 }
 
 export function handleHostJoin(
@@ -184,6 +196,7 @@ export function handleHostEndQuiz(socket: QuizSocket, io: QuizServer): void {
     session.questionTimer = null
   }
   session.questionStartedAt = null
+  session.buzz = null               // mode buzzer : plus de question active
   session.status = 'ended'
   deleteSessionSnapshot(session.id) // partie finie : plus rien à restaurer
 

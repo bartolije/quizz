@@ -2,7 +2,7 @@ import { createServer } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import { Server } from 'socket.io'
 import { io as ioc, type Socket as ClientSocket } from 'socket.io-client'
-import type { ClientToServerEvents, ServerToClientEvents } from '@lya-quiz/shared'
+import type { ClientToServerEvents, ServerToClientEvents, Question } from '@lya-quiz/shared'
 import { attachSocketHandlers, type QuizServer } from '../src/socket-handlers.js'
 import { createSession, type SessionState } from '../src/state.js'
 import { createQuiz, type QuizInput } from '../src/quiz-repo.js'
@@ -59,6 +59,24 @@ export function makeSession(questions?: QuizInput['questions']): SessionState {
     ],
   })
   return createSession(quizId)
+}
+
+// Session en mode buzzer (partie famille) avec un quiz en mémoire (le contenu
+// buzzer n'est pas encore persisté en base — cf. Phase 4). On crée une session
+// normale puis on lui greffe un quiz gameType='buzzer'.
+export function makeBuzzerSession(questions: Question[]): SessionState {
+  const s = makeSession()
+  s.quiz = {
+    id: 'buzz-test',
+    title: 'Quiz famille test',
+    defaultTimeLimit: 0,
+    createdAt: 0,
+    gameType: 'buzzer',
+    questions,
+  }
+  s.currentQuestionIndex = -1
+  s.buzz = null
+  return s
 }
 
 // Attend un event (une seule occurrence) avec timeout — évite les tests qui pendent.

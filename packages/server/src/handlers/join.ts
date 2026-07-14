@@ -218,7 +218,7 @@ function handleRejoinWithParticipant(
     teams: [...session.teams.values()],
     teamsLocked: session.teamsLocked,
     gameType: session.quiz?.gameType ?? 'classic',
-    buzz: null,   // mode buzzer câblé en Phase 1 ; classic → toujours null
+    buzz: session.buzz,   // mode buzzer : état courant → le tél retrouve son buzzer ; classic → null
   })
 
   // Notifier les autres que ce participant est de retour

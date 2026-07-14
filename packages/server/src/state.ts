@@ -1,5 +1,5 @@
 import { v4 as uuid } from 'uuid'
-import type { Quiz, QuestionReport, SessionMode, Team } from '@lya-quiz/shared'
+import type { BuzzState, Quiz, QuestionReport, SessionMode, Team } from '@lya-quiz/shared'
 import { SESSION_TOKEN_TTL_MS } from '@lya-quiz/shared'
 import { getDefaultQuiz, getQuiz } from './quiz-repo.js'
 import { logEvent } from './logger.js'
@@ -47,6 +47,9 @@ export interface SessionState {
   mode: SessionMode                 // 'solo' (défaut) ou 'team'
   teams: Map<string, Team>          // clé = teamId
   teamsLocked: boolean              // true → les joueurs ne peuvent plus changer d'équipe
+  // Mode buzzer (partie famille) — le gameType vit sur session.quiz
+  buzz: BuzzState | null            // état de la question buzzer en cours (null = aucune)
+  ownerBindings: Map<string, string> // ownerName → participantId (round perso), rebindable
 }
 
 // Toutes les sessions actives en mémoire
@@ -88,6 +91,8 @@ export function createSession(quizId?: string): SessionState {
     mode: 'solo',
     teams: new Map(),
     teamsLocked: false,
+    buzz: null,
+    ownerBindings: new Map(),
   }
   sessions.set(id, session)
   pinIndex.set(pin, id)

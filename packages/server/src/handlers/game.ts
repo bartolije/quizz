@@ -11,6 +11,7 @@ import { getAllSessions, type SessionState } from '../state.js'
 import { getLeaderboard, getTeamLeaderboard, toPublicQuestion } from '../session-helpers.js'
 import { logEvent } from '../logger.js'
 import { saveSessionSnapshot, deleteSessionSnapshot } from '../session-snapshot.js'
+import { startNextBuzzerQuestion } from './buzzer.js'
 
 // Champ teamScores des payloads (présent uniquement en mode équipe).
 // exactOptionalPropertyTypes : on spread {} en solo plutôt que teamScores:undefined.
@@ -75,6 +76,11 @@ function shuffleDistinct(items: string[]): string[] {
 export function handleNextQuestion(socket: QuizSocket, io: QuizServer): void {
   const session = findSessionByHostSocket(socket.id)
   if (!session) return
+  // Partie famille : la question suivante suit la machine à états buzzer.
+  if (session.quiz?.gameType === 'buzzer') {
+    startNextBuzzerQuestion(session, io)
+    return
+  }
   startNextQuestion(session, io)
 }
 

@@ -70,6 +70,9 @@ export function serializeSession(session: SessionState): string {
   // tombe qu'à sa fermeture → aucun point n'est perdu, le host relance simplement
   // la question interrompue.
   const openQuestion = session.questionStartedAt !== null
+  // Mode buzzer : une question buzzer non révélée est aussi « à rejouer » au boot
+  // (pas de timer, mais l'état buzzer est transient → on la relance, index décrémenté).
+  const openBuzzer = session.buzz !== null && session.buzz.phase !== 'revealed'
 
   const snap: Snapshot = {
     v: SNAPSHOT_VERSION,
@@ -77,7 +80,7 @@ export function serializeSession(session: SessionState): string {
     pin: session.pin,
     hostKey: session.hostKey,
     status: session.status,
-    currentQuestionIndex: openQuestion
+    currentQuestionIndex: openQuestion || openBuzzer
       ? session.currentQuestionIndex - 1
       : session.currentQuestionIndex,
     participants: [...session.participants.values()].map((p) => ({
@@ -148,6 +151,8 @@ export function deserializeSession(json: string): SessionState {
     mode: snap.mode,
     teams: new Map(snap.teams.map((t) => [t.id, t])),
     teamsLocked: snap.teamsLocked,
+    buzz: null,               // aucune question buzzer active après un restart (rejouée)
+    ownerBindings: new Map(), // bindings owner→participant refaits au (re)join
   }
 }
 
