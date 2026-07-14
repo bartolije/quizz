@@ -3,15 +3,16 @@
 // no-op silencieux (aucun crash). L'audio doit être débloqué par un geste
 // utilisateur (bouton « Activer le son ») à cause des politiques navigateurs.
 
-export type Track = 'lobby' | 'question' | 'reveal' | 'podium'
+export type Track = 'lobby' | 'question' | 'reveal' | 'podium' | 'buzz'
 
 const FILES: Record<Track, string> = {
   lobby: '/sounds/lobby.mp3',
   question: '/sounds/question.mp3',
   reveal: '/sounds/reveal.mp3',
   podium: '/sounds/podium.mp3',
+  buzz: '/sounds/buzz.mp3', // « quelqu'un a buzzé » (fichier optionnel → no-op si absent)
 }
-const VOLUME: Record<Track, number> = { lobby: 0.35, question: 0.4, reveal: 0.6, podium: 0.6 }
+const VOLUME: Record<Track, number> = { lobby: 0.35, question: 0.4, reveal: 0.6, podium: 0.6, buzz: 0.7 }
 
 let enabled = false
 let muted = false

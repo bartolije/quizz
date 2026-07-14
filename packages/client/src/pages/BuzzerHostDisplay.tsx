@@ -1,4 +1,5 @@
 import type { HostSessionView } from '../hooks/useHostSession'
+import { useBuzzerSound } from '../hooks/useBuzzerSound'
 import { QrCode } from '../components/QrCode'
 import { ConnectionBanner } from '../components/ConnectionBanner'
 
@@ -15,11 +16,23 @@ export function BuzzerHostDisplay({ s }: { s: HostSessionView }) {
   const q = s.buzzQuestion
   const diff = q?.difficulty ? DIFF[q.difficulty] : null
   const shell = 'h-[100dvh] bg-gray-950 text-white flex flex-col'
+  const sound = useBuzzerSound(s.status, s.buzz)
+
+  const soundCtl = (
+    <div className="fixed top-4 right-4 z-40">
+      {!sound.on ? (
+        <button onClick={sound.enable} className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 font-bold text-white">🔊 Activer le son</button>
+      ) : (
+        <button onClick={sound.toggleMute} className="px-3 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-2xl" title={sound.muted ? 'Activer' : 'Couper'}>{sound.muted ? '🔇' : '🔊'}</button>
+      )}
+    </div>
+  )
 
   if (s.status === 'waiting') {
     return (
       <div className={`${shell} items-center justify-center gap-8`}>
         <ConnectionBanner connected={s.socketConnected} />
+        {soundCtl}
         <h1 className="text-5xl font-black">Rejoins la partie 🎙️</h1>
         <div className="bg-white p-5 rounded-3xl"><QrCode value={joinUrl} size={280} /></div>
         <p className="text-8xl font-black tracking-widest font-mono">{s.pin}</p>
@@ -32,6 +45,7 @@ export function BuzzerHostDisplay({ s }: { s: HostSessionView }) {
     const [first, second, third] = s.leaderboard
     return (
       <div className={`${shell} items-center justify-center gap-6`}>
+        {soundCtl}
         <div className="text-7xl">🏆</div>
         <h1 className="text-5xl font-black">Podium</h1>
         <ol className="w-full max-w-xl space-y-3 mt-4">
@@ -50,6 +64,7 @@ export function BuzzerHostDisplay({ s }: { s: HostSessionView }) {
   return (
     <div className={shell}>
       <ConnectionBanner connected={s.socketConnected} />
+      {soundCtl}
       <div className="flex-1 flex flex-col items-center justify-center gap-8 p-10 text-center">
         {!b || !q ? (
           <p className="text-4xl text-gray-400">Prêts pour la prochaine question…</p>

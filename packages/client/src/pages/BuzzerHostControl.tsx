@@ -188,7 +188,17 @@ export function BuzzerHostControl({ s }: { s: HostSessionView }) {
               </div>
             ) : (
               <div className="flex items-center gap-3 text-lg">
-                {b.phase === 'owner_oral' && <span>🗣️ Au tour de <b className="text-indigo-300">{b.ownerName ?? '—'}</b> (à l'oral)</span>}
+                {b.phase === 'owner_oral' && (
+                  <span>
+                    🗣️ Au tour de <b className="text-indigo-300">{b.ownerName ?? '—'}</b> (à l'oral)
+                    {(() => {
+                      const owner = b.ownerParticipantId ? s.participants.find((p) => p.id === b.ownerParticipantId) : null
+                      if (!owner) return <span className="ml-2 text-amber-400 text-sm">⚠️ thème non attribué — passe ou attribue-le</span>
+                      if (!owner.connected) return <span className="ml-2 text-amber-400 text-sm">⚠️ {owner.pseudo} est déconnecté·e</span>
+                      return null
+                    })()}
+                  </span>
+                )}
                 {b.phase === 'steal' && b.armed && <span className="text-rose-300">🔔 Buzzer ouvert — attends un buzz…</span>}
                 {b.phase === 'steal' && !b.armed && <span className="text-amber-300">⏸️ Vol raté — rouvre le buzzer ou passe.</span>}
                 {b.phase === 'locked' && <span className="text-emerald-300">🎤 <b>{b.lockedBy?.pseudo}</b> a la parole</span>}

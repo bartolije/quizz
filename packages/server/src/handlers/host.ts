@@ -151,6 +151,8 @@ export function handleKickParticipant(
   session.participants.delete(participant.id)
   session.tokenIndex.delete(participant.sessionToken)
   session.answers.delete(participant.id) // sa réponse à la question en cours ne compte plus
+  // Mode buzzer : libérer les thèmes dont il était propriétaire (binding périmé)
+  for (const [k, v] of session.ownerBindings) if (v === participant.id) session.ownerBindings.delete(k)
 
   // Prévenir l'éjecté (s'il est connecté) et le sortir de la room
   const target = io.sockets.sockets.get(participant.socketId)
@@ -166,6 +168,7 @@ export function handleKickParticipant(
   // des participants côté clients → l'éjecté disparaît vraiment des écrans)
   io.to(session.id).emit(EVENTS.PARTICIPANT_LEFT, { participantId: participant.id })
   io.to(session.id).emit(EVENTS.TEAMS_UPDATED, getTeamsPayload(session))
+  if (session.quiz?.gameType === 'buzzer') io.to(session.id).emit(EVENTS.BUZZ_THEMES, buildThemes(session))
   saveSessionSnapshot(session)
   logEvent('participant_kicked', {
     sessionId: session.id,
