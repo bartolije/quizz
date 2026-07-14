@@ -32,6 +32,7 @@ export const quizzes = sqliteTable('quizzes', {
   defaultTimeLimit: integer('default_time_limit').notNull(),
   createdAt: integer('created_at').notNull(),
   updatedAt: integer('updated_at').notNull(),
+  gameType: text('game_type'), // 'classic' | 'buzzer' | null (=classic) — partie famille
 })
 
 export const questions = sqliteTable('questions', {
@@ -44,6 +45,10 @@ export const questions = sqliteTable('questions', {
   timeLimit: integer('time_limit').notNull(),
   ord: integer('ord').notNull(),
   mediaUrl: text('media_url'),
+  // Mode buzzer (nullable → questions classiques inchangées)
+  difficulty: text('difficulty'), // 'facile' | 'moyen' | 'difficile' | null
+  section: text('section'),       // 'perso' | 'culture' | null
+  ownerName: text('owner_name'),  // slot joueur propriétaire du thème (section perso)
 })
 
 // Création idempotente des tables (évite drizzle-kit en prod).
@@ -75,6 +80,20 @@ sqlite.exec(`
     updated_at INTEGER NOT NULL
   );
 `)
+
+// Migration idempotente : ajoute les colonnes du mode buzzer aux bases déjà
+// créées (Volume Railway) sans drizzle-kit. ALTER TABLE ADD COLUMN est additif ;
+// on ne l'exécute que si la colonne manque (sinon SQLite lève "duplicate column").
+function ensureColumn(table: string, column: string, decl: string): void {
+  const cols = sqlite.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]
+  if (!cols.some((c) => c.name === column)) {
+    sqlite.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${decl}`)
+  }
+}
+ensureColumn('quizzes', 'game_type', 'TEXT')
+ensureColumn('questions', 'difficulty', 'TEXT')
+ensureColumn('questions', 'section', 'TEXT')
+ensureColumn('questions', 'owner_name', 'TEXT')
 
 export const db = drizzle(sqlite)
 // Accès brut pour les modules qui n'ont pas besoin de Drizzle (snapshots)

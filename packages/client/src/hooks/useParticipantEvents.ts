@@ -14,6 +14,9 @@ type Leaderboard = Parameters<ServerToClientEvents['leaderboard_update']>[0]
 type Restored = Parameters<ServerToClientEvents['session_restored']>[0]
 type TeamsUpdated = Parameters<ServerToClientEvents['teams_updated']>[0]
 type QuizErr = Parameters<ServerToClientEvents['quiz_error']>[0]
+type BuzzStarted = Parameters<ServerToClientEvents['buzz_question_started']>[0]
+type BuzzStateP = Parameters<ServerToClientEvents['buzz_state']>[0]
+type BuzzEnded = Parameters<ServerToClientEvents['buzz_question_ended']>[0]
 
 /**
  * Branche les listeners temps réel du participant pendant la partie.
@@ -41,6 +44,17 @@ export function useParticipantEvents(): void {
     const onLeaderboard = (p: Leaderboard) => store().onLeaderboard(p.scores, p.final, p.teamScores)
     const onRestored = (p: Restored) => store().onSessionRestored(p)
     const onTeams = (p: TeamsUpdated) => store().onTeamsUpdated(p)
+    // Mode buzzer
+    const onBuzzStarted = (p: BuzzStarted) => {
+      vibrate(80) // nouvelle question (Android)
+      store().onBuzzQuestionStarted(p.question, p.buzz)
+    }
+    const onBuzzState = (p: BuzzStateP) => {
+      // Vibration quand JE prends la parole (mon buzz a gagné)
+      if (p.lockedBy?.participantId === store().myId) vibrate([40, 30, 40])
+      store().onBuzzState(p)
+    }
+    const onBuzzEnded = (p: BuzzEnded) => store().onBuzzQuestionEnded(p)
     // Session perdue EN PLEINE PARTIE (restart serveur → rejoin_session répond
     // INVALID_TOKEN). Sans ce listener, le téléphone restait gelé pour toujours :
     // ParticipantApp n'écoute cette erreur que pendant la phase de reprise (myId
@@ -66,6 +80,9 @@ export function useParticipantEvents(): void {
     socket.on(EVENTS.LEADERBOARD_UPDATE, onLeaderboard)
     socket.on(EVENTS.SESSION_RESTORED, onRestored)
     socket.on(EVENTS.TEAMS_UPDATED, onTeams)
+    socket.on(EVENTS.BUZZ_QUESTION_STARTED, onBuzzStarted)
+    socket.on(EVENTS.BUZZ_STATE, onBuzzState)
+    socket.on(EVENTS.BUZZ_QUESTION_ENDED, onBuzzEnded)
     socket.on(EVENTS.QUIZ_ERROR, onFatal)
 
     return () => {
@@ -77,6 +94,9 @@ export function useParticipantEvents(): void {
       socket.off(EVENTS.LEADERBOARD_UPDATE, onLeaderboard)
       socket.off(EVENTS.SESSION_RESTORED, onRestored)
       socket.off(EVENTS.TEAMS_UPDATED, onTeams)
+      socket.off(EVENTS.BUZZ_QUESTION_STARTED, onBuzzStarted)
+      socket.off(EVENTS.BUZZ_STATE, onBuzzState)
+      socket.off(EVENTS.BUZZ_QUESTION_ENDED, onBuzzEnded)
       socket.off(EVENTS.QUIZ_ERROR, onFatal)
     }
   }, [])

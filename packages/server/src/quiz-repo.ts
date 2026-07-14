@@ -1,6 +1,6 @@
 import { v4 as uuid } from 'uuid'
 import { eq, asc, sql } from 'drizzle-orm'
-import type { Quiz, Question, QuestionType } from '@lya-quiz/shared'
+import type { Quiz, Question, QuestionType, Difficulty, QuestionSection, GameType } from '@lya-quiz/shared'
 import { db, quizzes, questions } from './db.js'
 import { SEED_QUIZ } from './seed-quiz.js'
 
@@ -12,11 +12,16 @@ export interface QuestionInput {
   correctAnswers: string[]
   timeLimit: number
   mediaUrl?: string
+  // Mode buzzer (optionnels)
+  difficulty?: Difficulty
+  section?: QuestionSection
+  ownerName?: string
 }
 export interface QuizInput {
   title: string
   defaultTimeLimit: number
   questions: QuestionInput[]
+  gameType?: GameType
 }
 
 export interface QuizSummary {
@@ -38,6 +43,9 @@ function rowToQuestion(r: QuestionRow): Question {
     correctAnswers: JSON.parse(r.correctAnswers) as string[],
     timeLimit: r.timeLimit,
     ...(r.mediaUrl ? { mediaUrl: r.mediaUrl } : {}),
+    ...(r.difficulty ? { difficulty: r.difficulty as Difficulty } : {}),
+    ...(r.section ? { section: r.section as QuestionSection } : {}),
+    ...(r.ownerName ? { ownerName: r.ownerName } : {}),
   }
 }
 
@@ -54,6 +62,9 @@ function insertQuestions(quizId: string, items: QuestionInput[]): void {
         timeLimit: q.timeLimit,
         ord: i,
         mediaUrl: q.mediaUrl ?? null,
+        difficulty: q.difficulty ?? null,
+        section: q.section ?? null,
+        ownerName: q.ownerName ?? null,
       })
       .run()
   })
@@ -87,6 +98,7 @@ export function getQuiz(id: string): Quiz | null {
     defaultTimeLimit: qz.defaultTimeLimit,
     createdAt: qz.createdAt,
     questions: qs.map(rowToQuestion),
+    ...(qz.gameType ? { gameType: qz.gameType as GameType } : {}),
   }
 }
 
@@ -110,6 +122,7 @@ export function createQuiz(input: QuizInput): string {
         defaultTimeLimit: input.defaultTimeLimit,
         createdAt: now,
         updatedAt: now,
+        gameType: input.gameType ?? null,
       })
       .run()
     insertQuestions(id, input.questions)
@@ -124,7 +137,12 @@ export function replaceQuiz(id: string, input: QuizInput): boolean {
   // peut plus vider le quiz de la soirée entre les deux.
   db.transaction(() => {
     db.update(quizzes)
-      .set({ title: input.title, defaultTimeLimit: input.defaultTimeLimit, updatedAt: Date.now() })
+      .set({
+        title: input.title,
+        defaultTimeLimit: input.defaultTimeLimit,
+        updatedAt: Date.now(),
+        gameType: input.gameType ?? null,
+      })
       .where(eq(quizzes.id, id))
       .run()
     db.delete(questions).where(eq(questions.quizId, id)).run()
@@ -137,6 +155,26 @@ export function deleteQuiz(id: string): void {
   db.transaction((tx) => {
     tx.delete(questions).where(eq(questions.quizId, id)).run()
     tx.delete(quizzes).where(eq(quizzes.id, id)).run()
+  })
+}
+
+// Quiz famille (mode buzzer) de démonstration — inséré une seule fois s'il
+// n'existe aucun quiz buzzer, pour pouvoir lancer/tester une partie tout de
+// suite. Le vrai contenu sera écrit à la main via l'éditeur (Phase 4).
+// (Questions de culture G ; le round perso arrive avec son UI en Phase 2.)
+export function seedBuzzerDemoIfMissing(): void {
+  const rows = db.select({ gameType: quizzes.gameType }).from(quizzes).all()
+  if (rows.some((r) => r.gameType === 'buzzer')) return
+  createQuiz({
+    title: 'Quiz famille (démo buzzer)',
+    defaultTimeLimit: 0,
+    gameType: 'buzzer',
+    questions: [
+      { type: 'free', text: 'Combien de pattes a une araignée ?', correctAnswers: ['8', 'huit'], timeLimit: 0, difficulty: 'facile', section: 'culture' },
+      { type: 'free', text: "Quelle est la capitale de l'Australie ?", correctAnswers: ['Canberra'], timeLimit: 0, difficulty: 'moyen', section: 'culture' },
+      { type: 'free', text: 'En quelle année est tombé le mur de Berlin ?', correctAnswers: ['1989'], timeLimit: 0, difficulty: 'moyen', section: 'culture' },
+      { type: 'free', text: "Quel élément chimique a pour symbole « Fe » ?", correctAnswers: ['Fer', 'Iron'], timeLimit: 0, difficulty: 'difficile', section: 'culture' },
+    ],
   })
 }
 

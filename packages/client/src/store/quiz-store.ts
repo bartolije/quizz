@@ -1,5 +1,8 @@
 import { create } from 'zustand'
 import type {
+  BuzzState,
+  Difficulty,
+  GameType,
   Participant,
   ParticipantScore,
   QuestionPublic,
@@ -21,6 +24,13 @@ export interface LastResult {
   myScore: number
   myDelta: number
   correctAnswers: string[]
+}
+
+// Mode buzzer : révélation d'une question (qui a marqué, réponse, difficulté)
+export interface BuzzResult {
+  correctAnswers: string[]
+  difficulty: Difficulty | null
+  scorer: { participantId: string; pseudo: string; points: number } | null
 }
 
 // Payload de question_ended côté serveur (dérivé du contrat)
@@ -54,6 +64,8 @@ interface SessionRestoredPayload {
   mode: SessionMode
   teams: Team[]
   teamsLocked: boolean
+  gameType: GameType
+  buzz: BuzzState | null
 }
 
 interface QuizStore {
@@ -76,6 +88,12 @@ interface QuizStore {
   teamsLocked: boolean
   myTeamId: string | null
   teamLeaderboard: TeamScore[]
+
+  // Mode buzzer (partie famille)
+  gameType: GameType
+  buzz: BuzzState | null
+  buzzQuestion: QuestionPublic | null
+  buzzResult: BuzzResult | null
 
   // Quiz en cours
   currentView: AppView
@@ -103,6 +121,7 @@ interface QuizStore {
     teams: Team[]
     teamsLocked: boolean
     myTeamId: string | null
+    gameType: GameType
     // statut au moment du join (retardataire : la partie peut déjà être lancée)
     sessionStatus?: SessionStatus
   }) => void
@@ -121,6 +140,10 @@ interface QuizStore {
   answerFailed: () => void
   onQuestionEnded: (payload: QuestionEndedPayload) => void
   onLeaderboard: (scores: ParticipantScore[], final: boolean, teamScores?: TeamScore[]) => void
+  // Mode buzzer
+  onBuzzQuestionStarted: (question: QuestionPublic, buzz: BuzzState) => void
+  onBuzzState: (buzz: BuzzState) => void
+  onBuzzQuestionEnded: (payload: { correctAnswers: string[]; difficulty: Difficulty | null; scorer: BuzzResult['scorer']; scores: ParticipantScore[] }) => void
   onSessionRestored: (payload: SessionRestoredPayload) => void
   onStatusChanged: (status: SessionStatus) => void
   onSessionLost: (notice: string) => void
@@ -144,6 +167,10 @@ const initialState = {
   teamsLocked: false,
   myTeamId: null,
   teamLeaderboard: [],
+  gameType: 'classic' as GameType,
+  buzz: null,
+  buzzQuestion: null,
+  buzzResult: null,
   currentView: 'join' as AppView,
   currentQuestion: null,
   questionStartedAt: null,
@@ -159,7 +186,7 @@ const initialState = {
 export const useQuizStore = create<QuizStore>()((set) => ({
   ...initialState,
 
-  setJoined: ({ myId, myPseudo, sessionPin, sessionId, participants, mode, teams, teamsLocked, myTeamId, sessionStatus }) =>
+  setJoined: ({ myId, myPseudo, sessionPin, sessionId, participants, mode, teams, teamsLocked, myTeamId, gameType, sessionStatus }) =>
     set({
       myId,
       myPseudo,
@@ -170,6 +197,7 @@ export const useQuizStore = create<QuizStore>()((set) => ({
       teams,
       teamsLocked,
       myTeamId,
+      gameType,
       sessionStatus: sessionStatus ?? 'waiting',
       currentView: 'lobby',
       fatalNotice: null,
@@ -234,6 +262,29 @@ export const useQuizStore = create<QuizStore>()((set) => ({
       },
     }),
 
+  // ── Mode buzzer ──────────────────────────────────────────────
+  // Nouvelle question buzzer : mémorise l'énoncé + l'état initial, efface la
+  // révélation précédente. (La vue est pilotée par BuzzerParticipant à partir de
+  // buzz/sessionStatus, pas par currentView.)
+  onBuzzQuestionStarted: (question, buzz) =>
+    set({ buzzQuestion: question, buzz, buzzResult: null }),
+
+  // État buzzer rediffusé complet → on remplace (le client applique le dernier état).
+  onBuzzState: (buzz) => set({ buzz }),
+
+  // Révélation d'une question buzzer : qui a marqué + réponse + classement.
+  onBuzzQuestionEnded: (payload) =>
+    set((state) => ({
+      buzzResult: {
+        correctAnswers: payload.correctAnswers,
+        difficulty: payload.difficulty,
+        scorer: payload.scorer,
+      },
+      leaderboard: payload.scores,
+      prevRanks: ranksOf(state.leaderboard),
+      myScore: payload.scores.find((s) => s.participantId === state.myId)?.score ?? state.myScore,
+    })),
+
   // leaderboard_update : final=false → écran classement intermédiaire,
   // final=true → podium de fin. prevRanks = rangs du classement précédent.
   onLeaderboard: (scores, final, teamScores) =>
@@ -262,6 +313,9 @@ export const useQuizStore = create<QuizStore>()((set) => ({
         teams: payload.teams,
         teamsLocked: payload.teamsLocked,
         myTeamId: payload.participant.teamId ?? null,
+        // Mode buzzer restauré (le tél retrouve son buzzer)
+        gameType: payload.gameType,
+        buzz: payload.buzz,
       }
       if (payload.currentQuestion) {
         return {

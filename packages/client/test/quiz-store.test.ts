@@ -24,6 +24,8 @@ const restoredBase = {
   mode: 'solo' as const,
   teams: [],
   teamsLocked: false,
+  gameType: 'classic' as const,
+  buzz: null,
 }
 
 beforeEach(() => {
@@ -42,6 +44,7 @@ describe('quiz-store — boucle de jeu', () => {
       teams: [],
       teamsLocked: false,
       myTeamId: null,
+      gameType: 'classic',
     })
     const s = useQuizStore.getState()
     expect(s.currentView).toBe('lobby')
@@ -87,6 +90,7 @@ describe('quiz-store — boucle de jeu', () => {
       teams: [],
       teamsLocked: false,
       myTeamId: null,
+      gameType: 'classic',
     })
     expect(useQuizStore.getState().sessionStatus).toBe('waiting')
 
@@ -113,6 +117,7 @@ describe('quiz-store — boucle de jeu', () => {
       teams: [],
       teamsLocked: false,
       myTeamId: null,
+      gameType: 'classic',
       sessionStatus: 'running',
     })
     expect(useQuizStore.getState().sessionStatus).toBe('running')
@@ -185,6 +190,7 @@ describe('quiz-store — session perdue (onSessionLost)', () => {
       teams: [],
       teamsLocked: false,
       myTeamId: null,
+      gameType: 'classic',
     })
     useQuizStore.getState().onQuestionStarted(q(3))
 
@@ -208,6 +214,7 @@ describe('quiz-store — session perdue (onSessionLost)', () => {
       teams: [],
       teamsLocked: false,
       myTeamId: null,
+      gameType: 'classic',
     })
     expect(useQuizStore.getState().fatalNotice).toBeNull()
   })

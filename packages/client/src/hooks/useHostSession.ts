@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import type {
+  BuzzState,
+  Difficulty,
+  GameType,
   Participant,
   ParticipantScore,
   QuestionPublic,
@@ -29,7 +32,14 @@ export interface RevealState {
   correctCount: number
 }
 
-interface HostSessionView {
+// Mode buzzer : révélation d'une question (qui a marqué)
+export interface BuzzReveal {
+  correctAnswers: string[]
+  difficulty: Difficulty | null
+  scorer: { participantId: string; pseudo: string; points: number } | null
+}
+
+export interface HostSessionView {
   pin: string | null
   sessionId: string | null
   participants: Participant[]
@@ -53,12 +63,21 @@ interface HostSessionView {
   teams: Team[]
   teamsLocked: boolean
   teamLeaderboard: TeamScore[]
+  // Mode buzzer (partie famille)
+  gameType: GameType
+  buzz: BuzzState | null
+  buzzQuestion: QuestionPublic | null
+  buzzReveal: BuzzReveal | null
   start: () => void
   next: () => void
   showLeaderboard: () => void
   endQuiz: () => void
   kick: (participantId: string) => void
   replayLast: () => void
+  // Actions host mode buzzer
+  adjudicate: (correct: boolean) => void
+  reopenBuzzer: () => void
+  passQuestion: () => void
   // Actions host mode équipe
   setMode: (mode: SessionMode) => void
   addTeam: (name: string) => void
@@ -81,6 +100,9 @@ type AckPayload = Parameters<ServerToClientEvents['answer_received']>[0]
 type QEndedPayload = Parameters<ServerToClientEvents['question_ended']>[0]
 type LbPayload = Parameters<ServerToClientEvents['leaderboard_update']>[0]
 type TeamsPayload = Parameters<ServerToClientEvents['teams_updated']>[0]
+type BuzzStartedPayload = Parameters<ServerToClientEvents['buzz_question_started']>[0]
+type BuzzStatePayload = Parameters<ServerToClientEvents['buzz_state']>[0]
+type BuzzEndedPayload = Parameters<ServerToClientEvents['buzz_question_ended']>[0]
 
 function upsert(list: Participant[], p: Participant): Participant[] {
   return list.some((x) => x.id === p.id)
@@ -120,6 +142,12 @@ export function useHostSession(mode: HostMode): HostSessionView {
   const [teams, setTeams] = useState<Team[]>([])
   const [teamsLocked, setTeamsLocked] = useState(false)
   const [teamLeaderboard, setTeamLeaderboard] = useState<TeamScore[]>([])
+
+  // Mode buzzer (partie famille)
+  const [gameType, setGameType] = useState<GameType>('classic')
+  const [buzz, setBuzz] = useState<BuzzState | null>(null)
+  const [buzzQuestion, setBuzzQuestion] = useState<QuestionPublic | null>(null)
+  const [buzzReveal, setBuzzReveal] = useState<BuzzReveal | null>(null)
 
   const resolvedRef = useRef(false)
   // Secret host (control) — jamais dans le state React, seulement pour host_join
@@ -200,6 +228,7 @@ export function useHostSession(mode: HostMode): HostSessionView {
       setTeamMode(p.mode)
       setTeams(p.teams)
       setTeamsLocked(p.teamsLocked)
+      setGameType(p.gameType)
       setQuizTitle(p.quizTitle ?? null)
       // Seul le CONTROL persiste la session (avec son hostKey). La TV ne doit
       // jamais écraser le hostKey stocké par un control sur la même machine.
@@ -261,6 +290,22 @@ export function useHostSession(mode: HostMode): HostSessionView {
       if (p.teamScores) setTeamLeaderboard(p.teamScores)
     }
 
+    // Mode buzzer
+    const onBuzzStarted = (p: BuzzStartedPayload) => {
+      setBuzzQuestion(p.question)
+      setBuzz(p.buzz)
+      setBuzzReveal(null)
+      setShowingLeaderboard(false)
+      setLeaderboardFinal(false)
+    }
+    const onBuzzState = (p: BuzzStatePayload) => setBuzz(p)
+    const onBuzzEnded = (p: BuzzEndedPayload) => {
+      setBuzzReveal({ correctAnswers: p.correctAnswers, difficulty: p.difficulty, scorer: p.scorer })
+      setPrevRanks(ranksOf(leaderboardRef.current))
+      leaderboardRef.current = p.scores
+      setLeaderboard(p.scores)
+    }
+
     socket.on(EVENTS.SESSION_JOINED, onJoined)
     socket.on(EVENTS.PARTICIPANT_JOINED, onJoin)
     socket.on(EVENTS.PARTICIPANT_LEFT, onLeft)
@@ -270,6 +315,9 @@ export function useHostSession(mode: HostMode): HostSessionView {
     socket.on(EVENTS.QUESTION_ENDED, onEnded)
     socket.on(EVENTS.LEADERBOARD_UPDATE, onLeaderboard)
     socket.on(EVENTS.TEAMS_UPDATED, onTeams)
+    socket.on(EVENTS.BUZZ_QUESTION_STARTED, onBuzzStarted)
+    socket.on(EVENTS.BUZZ_STATE, onBuzzState)
+    socket.on(EVENTS.BUZZ_QUESTION_ENDED, onBuzzEnded)
 
     // Session côté serveur introuvable / clé invalide (ex : snapshots purgés).
     // Control : on repart proprement sur une NOUVELLE session (une seule fois).
@@ -317,6 +365,9 @@ export function useHostSession(mode: HostMode): HostSessionView {
       socket.off(EVENTS.QUESTION_ENDED, onEnded)
       socket.off(EVENTS.LEADERBOARD_UPDATE, onLeaderboard)
       socket.off(EVENTS.TEAMS_UPDATED, onTeams)
+      socket.off(EVENTS.BUZZ_QUESTION_STARTED, onBuzzStarted)
+      socket.off(EVENTS.BUZZ_STATE, onBuzzState)
+      socket.off(EVENTS.BUZZ_QUESTION_ENDED, onBuzzEnded)
       socket.off('connect', join)
     }
   }, [pin, sessionId, mode])
@@ -327,6 +378,11 @@ export function useHostSession(mode: HostMode): HostSessionView {
   const endQuiz = () => socket.emit(EVENTS.HOST_END_QUIZ, {})
   const kick = (participantId: string) => socket.emit(EVENTS.HOST_KICK_PARTICIPANT, { participantId })
   const replayLast = () => socket.emit(EVENTS.HOST_REPLAY_LAST_QUESTION, {})
+
+  // Actions host mode buzzer
+  const adjudicate = (correct: boolean) => socket.emit(EVENTS.HOST_ADJUDICATE, { correct })
+  const reopenBuzzer = () => socket.emit(EVENTS.HOST_REOPEN_BUZZER, {})
+  const passQuestion = () => socket.emit(EVENTS.HOST_PASS_QUESTION, {})
 
   // Actions host mode équipe
   const changeMode = (m: SessionMode) => socket.emit(EVENTS.HOST_SET_MODE, { mode: m })
@@ -358,12 +414,19 @@ export function useHostSession(mode: HostMode): HostSessionView {
     teams,
     teamsLocked,
     teamLeaderboard,
+    gameType,
+    buzz,
+    buzzQuestion,
+    buzzReveal,
     start,
     next,
     showLeaderboard,
     endQuiz,
     kick,
     replayLast,
+    adjudicate,
+    reopenBuzzer,
+    passQuestion,
     setMode: changeMode,
     addTeam,
     removeTeam,

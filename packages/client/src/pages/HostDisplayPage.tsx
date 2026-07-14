@@ -8,6 +8,7 @@ import { TimePressure } from '../components/TimePressure'
 import { ConnectionBanner } from '../components/ConnectionBanner'
 import { QuestionImage } from '../components/QuestionImage'
 import { TeamStandings } from '../components/TeamStandings'
+import { BuzzerHostDisplay } from './BuzzerHostDisplay'
 
 // Contrôle audio (fixe, coin haut-droit). Visible sur tous les écrans TV.
 function SoundControl({
@@ -80,6 +81,11 @@ export function HostDisplayPage() {
         Chargement…
       </div>
     )
+  }
+
+  // Partie famille (buzzer) : TV dédiée (passive).
+  if (s.gameType === 'buzzer') {
+    return <BuzzerHostDisplay s={s} />
   }
 
   const q = s.currentQuestion

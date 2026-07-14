@@ -9,6 +9,7 @@ import { ReportView } from '../components/ReportView'
 import { QuestionImage } from '../components/QuestionImage'
 import { HostTeamPanel } from '../components/HostTeamPanel'
 import { TeamStandings } from '../components/TeamStandings'
+import { BuzzerHostControl } from './BuzzerHostControl'
 import { choiceStyle } from '../mcq'
 import { rankMovement, movementMark } from '../rank-movement'
 
@@ -32,6 +33,11 @@ export function HostControlPage() {
         Création de la session…
       </div>
     )
+  }
+
+  // Partie famille (buzzer) : écran de contrôle dédié (arbitrage à l'oral).
+  if (s.gameType === 'buzzer') {
+    return <BuzzerHostControl s={s} />
   }
 
   const phase =

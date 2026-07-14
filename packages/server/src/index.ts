@@ -12,6 +12,7 @@ import { getParticipantList, getLeaderboard } from './session-helpers.js'
 import type { GameReport } from '@lya-quiz/shared'
 import {
   seedIfEmpty,
+  seedBuzzerDemoIfMissing,
   listQuizzes,
   getQuiz,
   createQuiz,
@@ -24,6 +25,8 @@ import { saveSessionSnapshot, restoreSessionsAtBoot } from './session-snapshot.j
 
 // Au démarrage : crée les tables (import de db via quiz-repo) + seed si DB vide.
 seedIfEmpty()
+// Quiz famille (buzzer) de démo, si aucun quiz buzzer n'existe encore.
+seedBuzzerDemoIfMissing()
 
 // Filet anti-restart : recharge les sessions de jeu snapshotées (Volume Railway).
 // Les téléphones se reconnectent tout seuls (leur token redevient valide) ; la

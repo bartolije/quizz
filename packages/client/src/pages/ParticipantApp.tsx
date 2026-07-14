@@ -9,6 +9,7 @@ import { QuestionPage } from './QuestionPage'
 import { AnswerPage } from './AnswerPage'
 import { LeaderboardPage } from './LeaderboardPage'
 import { EndedPage } from './EndedPage'
+import { BuzzerParticipant } from './BuzzerParticipant'
 
 // Shell participant monté sur /lobby : branche les events temps réel, gère la
 // reprise automatique au rechargement, et bascule la vue selon l'état du jeu.
@@ -16,6 +17,7 @@ export function ParticipantApp() {
   useParticipantEvents()
   const view = useQuizStore((s) => s.currentView)
   const myId = useQuizStore((s) => s.myId)
+  const gameType = useQuizStore((s) => s.gameType)
   // Identité de la question courante : sert de `key` à <QuestionPage /> pour la
   // remonter à chaque nouvelle question. Sans ça, son état local (`order`, `text`)
   // initialisé en useState lazy ne se réinitialise jamais → tri par ordre cassé.
@@ -61,6 +63,12 @@ export function ParticipantApp() {
         <p>Reconnexion…</p>
       </div>
     )
+  }
+
+  // Partie famille (buzzer) : une vue dédiée pilotée par l'état buzzer, pas par
+  // currentView. Le téléphone est un buzzer, pas un formulaire de réponse.
+  if (gameType === 'buzzer') {
+    return <BuzzerParticipant />
   }
 
   switch (view) {
