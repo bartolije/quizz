@@ -21,6 +21,8 @@ import {
   handleAdjudicate,
   handleReopenBuzzer,
   handlePassQuestion,
+  handleStartTheme,
+  handleAssignOwner,
 } from './handlers/buzzer.js'
 import {
   handleSetMode,
@@ -78,6 +80,8 @@ export function attachSocketHandlers(io: QuizServer): void {
     socket.on(EVENTS.HOST_ADJUDICATE, (p) => safe('host_adjudicate', () => handleAdjudicate(socket, p, io)))
     socket.on(EVENTS.HOST_REOPEN_BUZZER, () => safe('host_reopen_buzzer', () => handleReopenBuzzer(socket, io)))
     socket.on(EVENTS.HOST_PASS_QUESTION, () => safe('host_pass_question', () => handlePassQuestion(socket, io)))
+    socket.on(EVENTS.HOST_START_THEME, (p) => safe('host_start_theme', () => handleStartTheme(socket, p, io)))
+    socket.on(EVENTS.HOST_ASSIGN_OWNER, (p) => safe('host_assign_owner', () => handleAssignOwner(socket, p, io)))
 
     socket.on('disconnect', () => safe('disconnect', () => handleDisconnect(socket.id, io, getAllSessions)))
   })

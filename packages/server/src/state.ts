@@ -50,6 +50,8 @@ export interface SessionState {
   // Mode buzzer (partie famille) — le gameType vit sur session.quiz
   buzz: BuzzState | null            // état de la question buzzer en cours (null = aucune)
   ownerBindings: Map<string, string> // ownerName → participantId (round perso), rebindable
+  currentTheme: string | null       // thème en cours (ownerName | CULTURE_THEME | null=sélecteur)
+  playedQuestionIndices: Set<number> // index des questions déjà jouées (révélées)
 }
 
 // Toutes les sessions actives en mémoire
@@ -93,6 +95,8 @@ export function createSession(quizId?: string): SessionState {
     teamsLocked: false,
     buzz: null,
     ownerBindings: new Map(),
+    currentTheme: null,
+    playedQuestionIndices: new Set(),
   }
   sessions.set(id, session)
   pinIndex.set(pin, id)

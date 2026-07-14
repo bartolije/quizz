@@ -1,6 +1,6 @@
 import type { Server, Socket } from 'socket.io'
-import type { ClientToServerEvents, ServerToClientEvents } from '@lya-quiz/shared'
-import { EVENTS, DIFFICULTY_POINTS } from '@lya-quiz/shared'
+import type { ClientToServerEvents, ServerToClientEvents, BuzzThemesState } from '@lya-quiz/shared'
+import { EVENTS, DIFFICULTY_POINTS, CULTURE_THEME } from '@lya-quiz/shared'
 import type { SessionState } from '../state.js'
 import {
   findSessionByHostSocket,
@@ -34,40 +34,101 @@ function broadcastBuzzState(session: SessionState, io: QuizServer): void {
 }
 
 // ─────────────────────────────────────────────────────────────
+// Thèmes (round perso) : sélection + progression
+// ─────────────────────────────────────────────────────────────
+
+// Index des questions du quiz appartenant à un thème (dans l'ordre du quiz).
+// CULTURE_THEME = toutes les questions non-'perso' (culture ou section absente).
+function themeIndices(session: SessionState, theme: string): number[] {
+  const qs = session.quiz?.questions ?? []
+  const out: number[] = []
+  qs.forEach((q, i) => {
+    if (theme === CULTURE_THEME) {
+      if (q.section !== 'perso') out.push(i)
+    } else if (q.section === 'perso' && q.ownerName === theme) {
+      out.push(i)
+    }
+  })
+  return out
+}
+
+// Première question non encore jouée du thème (null si le thème est fini).
+function nextUnplayedInTheme(session: SessionState, theme: string): number | null {
+  for (const i of themeIndices(session, theme)) {
+    if (!session.playedQuestionIndices.has(i)) return i
+  }
+  return null
+}
+
+// Noms des thèmes perso, dans l'ordre de première apparition dans le quiz.
+function distinctOwners(session: SessionState): string[] {
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const q of session.quiz?.questions ?? []) {
+    if (q.section === 'perso' && q.ownerName && !seen.has(q.ownerName)) {
+      seen.add(q.ownerName)
+      out.push(q.ownerName)
+    }
+  }
+  return out
+}
+
+function allPlayed(session: SessionState): boolean {
+  const n = session.quiz?.questions.length ?? 0
+  for (let i = 0; i < n; i++) if (!session.playedQuestionIndices.has(i)) return false
+  return true
+}
+
+export function buildThemes(session: SessionState): BuzzThemesState {
+  const owners = distinctOwners(session).map((ownerName) => {
+    const idxs = themeIndices(session, ownerName)
+    return {
+      ownerName,
+      participantId: session.ownerBindings.get(ownerName) ?? null,
+      total: idxs.length,
+      done: idxs.length > 0 && idxs.every((i) => session.playedQuestionIndices.has(i)),
+    }
+  })
+  const cultureIdxs = themeIndices(session, CULTURE_THEME)
+  return {
+    owners,
+    culture: {
+      total: cultureIdxs.length,
+      done: cultureIdxs.length > 0 && cultureIdxs.every((i) => session.playedQuestionIndices.has(i)),
+    },
+    currentTheme: session.currentTheme,
+  }
+}
+
+export function broadcastThemes(session: SessionState, io: QuizServer): void {
+  io.to(session.id).emit(EVENTS.BUZZ_THEMES, buildThemes(session))
+}
+
+// ─────────────────────────────────────────────────────────────
 // HOST : lancer la question buzzer suivante (routé depuis handleNextQuestion)
 // ─────────────────────────────────────────────────────────────
 
-export function startNextBuzzerQuestion(session: SessionState, io: QuizServer): void {
-  if (!session.quiz) return
-  // Une question est déjà en cours (pas encore révélée) → ne rien faire.
-  if (session.buzz !== null && session.buzz.phase !== 'revealed') return
+function finishQuiz(session: SessionState, io: QuizServer): void {
+  session.status = 'ended'
+  session.buzz = null
+  session.currentTheme = null
+  deleteSessionSnapshot(session.id)
+  io.to(session.id).emit(EVENTS.SESSION_STATUS_CHANGED, { status: 'ended' })
+  io.to(session.id).emit(EVENTS.LEADERBOARD_UPDATE, { scores: getLeaderboard(session), final: true })
+  logEvent('quiz_ended', { sessionId: session.id })
+}
 
-  const questions = session.quiz.questions
-  const nextIndex = session.currentQuestionIndex + 1
-
-  // Plus de questions → fin du quiz
-  if (nextIndex >= questions.length) {
-    session.status = 'ended'
-    session.buzz = null
-    deleteSessionSnapshot(session.id)
-    io.to(session.id).emit(EVENTS.SESSION_STATUS_CHANGED, { status: 'ended' })
-    io.to(session.id).emit(EVENTS.LEADERBOARD_UPDATE, {
-      scores: getLeaderboard(session),
-      final: true,
-    })
-    logEvent('quiz_ended', { sessionId: session.id, questions: questions.length })
-    return
-  }
-
-  const q = questions[nextIndex]
+// Démarre la question à l'index donné : owner_oral si 'perso' (l'owner répond
+// d'abord à l'oral, buzzer désarmé), steal armé sinon (culture, ouvert à tous).
+function startBuzzerQuestionAt(session: SessionState, io: QuizServer, index: number): void {
+  const questions = session.quiz?.questions ?? []
+  const q = questions[index]
   if (!q) return
 
-  session.currentQuestionIndex = nextIndex
+  session.currentQuestionIndex = index
   session.lastQuestionResults = null
   session.lastCorrectAnswers = null
 
-  // 'perso' → l'owner répond d'abord à l'oral (buzzer désarmé). 'culture' (ou
-  // section absente) → buzzer ouvert à tous immédiatement.
   const isPerso = q.section === 'perso'
   const ownerName = isPerso ? (q.ownerName ?? null) : null
   const ownerParticipantId =
@@ -78,17 +139,98 @@ export function startNextBuzzerQuestion(session: SessionState, io: QuizServer): 
     : { phase: 'steal', armed: true, ownerName: null, ownerParticipantId: null, lockedBy: null, lockedOut: [] }
 
   saveSessionSnapshot(session)
-
   io.to(session.id).emit(EVENTS.BUZZ_QUESTION_STARTED, {
-    question: toPublicQuestion(q, nextIndex, questions.length),
+    question: toPublicQuestion(q, index, questions.length),
     buzz: session.buzz,
   })
   logEvent('buzz_question_started', {
     sessionId: session.id,
-    questionIndex: nextIndex,
+    questionIndex: index,
     section: q.section ?? 'culture',
     difficulty: q.difficulty ?? null,
   })
+}
+
+// host_next_question (mode buzzer) : question suivante DANS le thème courant.
+// Un quiz 100% culture n'a pas de sélection de thème → auto-thème culture, ce qui
+// préserve le flux « Lancer une question » du round culture (Phase 1).
+export function startNextBuzzerQuestion(session: SessionState, io: QuizServer): void {
+  if (!session.quiz) return
+  if (session.buzz !== null && session.buzz.phase !== 'revealed') return // question en cours
+
+  if (session.currentTheme === null && distinctOwners(session).length === 0) {
+    session.currentTheme = CULTURE_THEME
+  }
+  if (session.currentTheme === null) return // le host doit choisir un thème (UI = sélecteur)
+
+  const idx = nextUnplayedInTheme(session, session.currentTheme)
+  if (idx !== null) {
+    startBuzzerQuestionAt(session, io, idx)
+    broadcastThemes(session, io)
+    return
+  }
+
+  // Thème terminé → fin de partie si tout est joué, sinon retour au sélecteur.
+  session.buzz = null
+  if (allPlayed(session)) {
+    finishQuiz(session, io)
+    return
+  }
+  session.currentTheme = null
+  broadcastThemes(session, io)
+}
+
+// host_start_theme : l'admin choisit le thème (joueur) ou la culture G à jouer.
+export function handleStartTheme(
+  socket: QuizSocket,
+  payload: { ownerName: string },
+  io: QuizServer,
+): void {
+  const session = findSessionByHostSocket(socket.id)
+  if (!session || !session.quiz) return
+  if (session.buzz !== null && session.buzz.phase !== 'revealed') return // une question est en cours
+
+  const theme = String(payload?.ownerName ?? '')
+  const idx = nextUnplayedInTheme(session, theme)
+  if (idx === null) {
+    // Thème déjà fini / inconnu → retour sélecteur.
+    session.buzz = null
+    session.currentTheme = null
+    broadcastThemes(session, io)
+    return
+  }
+  session.currentTheme = theme
+  startBuzzerQuestionAt(session, io, idx)
+  broadcastThemes(session, io)
+  logEvent('buzz_theme_started', { sessionId: session.id, theme })
+}
+
+// host_assign_owner : associer un slot de thème (ownerName) à un participant.
+export function handleAssignOwner(
+  socket: QuizSocket,
+  payload: { ownerName: string; participantId: string | null },
+  io: QuizServer,
+): void {
+  const session = findSessionByHostSocket(socket.id)
+  if (!session) return
+  const ownerName = String(payload?.ownerName ?? '')
+  if (!ownerName) return
+  const pid = payload?.participantId ?? null
+  if (pid === null) {
+    session.ownerBindings.delete(ownerName)
+  } else {
+    // Un joueur ne possède qu'UN thème : on retire ses éventuels autres bindings.
+    for (const [k, v] of session.ownerBindings) if (v === pid) session.ownerBindings.delete(k)
+    session.ownerBindings.set(ownerName, pid)
+  }
+  // Question de ce thème en cours (owner_oral) → re-résoudre l'owner à chaud.
+  if (session.buzz && session.buzz.phase === 'owner_oral' && session.buzz.ownerName === ownerName) {
+    session.buzz.ownerParticipantId = session.ownerBindings.get(ownerName) ?? null
+    broadcastBuzzState(session, io)
+  }
+  saveSessionSnapshot(session)
+  broadcastThemes(session, io)
+  logEvent('buzz_owner_assigned', { sessionId: session.id, ownerName, participantId: pid })
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -206,6 +348,7 @@ function awardAndReveal(session: SessionState, io: QuizServer, scorerId: string 
   b.phase = 'revealed'
   b.armed = false
   b.lockedBy = null
+  session.playedQuestionIndices.add(session.currentQuestionIndex) // question jouée
 
   // Historise la question pour le rapport de fin de partie
   session.results.push({
@@ -226,6 +369,7 @@ function awardAndReveal(session: SessionState, io: QuizServer, scorerId: string 
     scores,
   })
   broadcastBuzzState(session, io) // phase 'revealed'
+  broadcastThemes(session, io)    // progression du thème mise à jour (question jouée)
   saveSessionSnapshot(session)
   logEvent('buzz_question_ended', {
     sessionId: session.id,

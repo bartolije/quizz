@@ -1,5 +1,6 @@
 import type {
   BuzzState,
+  BuzzThemesState,
   Difficulty,
   GameType,
   Participant,
@@ -235,6 +236,11 @@ export interface ServerToClientEvents {
     scores: ParticipantScore[]               // classement cumulé après cette question
   }) => void
 
+  // Round perso : état des thèmes (attribution owner↔joueur + progression),
+  // rediffusé à chaque changement. Sert à l'écran de distribution + au sélecteur
+  // de thème du host. (Les participants l'ignorent.)
+  buzz_themes: (payload: BuzzThemesState) => void
+
   // Le statut de la session a changé (host démarre / termine le quiz).
   // Diffusé à toute la room → les deux vues host (control + display) se
   // synchronisent. Les questions elles-mêmes passent par question_started (S4).
@@ -352,6 +358,7 @@ export const EVENTS = {
   BUZZ_QUESTION_STARTED:  'buzz_question_started',
   BUZZ_STATE:             'buzz_state',
   BUZZ_QUESTION_ENDED:    'buzz_question_ended',
+  BUZZ_THEMES:            'buzz_themes',
   PARTICIPANT_JOINED:     'participant_joined',
   PARTICIPANT_LEFT:   'participant_left',
   QUESTION_STARTED:   'question_started',

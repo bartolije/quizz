@@ -55,6 +55,10 @@ interface Snapshot {
   mode: SessionMode
   teams: Team[]
   teamsLocked: boolean
+  // Mode buzzer (optionnels — absents des snapshots antérieurs)
+  currentTheme?: string | null
+  playedQuestionIndices?: number[]
+  ownerBindings?: [string, string][]
 }
 
 const upsertStmt = sqlite.prepare(
@@ -70,9 +74,6 @@ export function serializeSession(session: SessionState): string {
   // tombe qu'à sa fermeture → aucun point n'est perdu, le host relance simplement
   // la question interrompue.
   const openQuestion = session.questionStartedAt !== null
-  // Mode buzzer : une question buzzer non révélée est aussi « à rejouer » au boot
-  // (pas de timer, mais l'état buzzer est transient → on la relance, index décrémenté).
-  const openBuzzer = session.buzz !== null && session.buzz.phase !== 'revealed'
 
   const snap: Snapshot = {
     v: SNAPSHOT_VERSION,
@@ -80,7 +81,10 @@ export function serializeSession(session: SessionState): string {
     pin: session.pin,
     hostKey: session.hostKey,
     status: session.status,
-    currentQuestionIndex: openQuestion || openBuzzer
+    // Mode buzzer : une question interrompue n'est pas marquée « jouée » (le
+    // scoring ne tombe qu'à la révélation) → elle réapparaît comme non jouée et
+    // le host la relance via le thème. Pas de décrément d'index à gérer.
+    currentQuestionIndex: openQuestion
       ? session.currentQuestionIndex - 1
       : session.currentQuestionIndex,
     participants: [...session.participants.values()].map((p) => ({
@@ -105,6 +109,9 @@ export function serializeSession(session: SessionState): string {
     mode: session.mode,
     teams: [...session.teams.values()],
     teamsLocked: session.teamsLocked,
+    currentTheme: session.currentTheme,
+    playedQuestionIndices: [...session.playedQuestionIndices],
+    ownerBindings: [...session.ownerBindings.entries()],
   }
   return JSON.stringify(snap)
 }
@@ -151,8 +158,10 @@ export function deserializeSession(json: string): SessionState {
     mode: snap.mode,
     teams: new Map(snap.teams.map((t) => [t.id, t])),
     teamsLocked: snap.teamsLocked,
-    buzz: null,               // aucune question buzzer active après un restart (rejouée)
-    ownerBindings: new Map(), // bindings owner→participant refaits au (re)join
+    buzz: null,               // aucune question buzzer active après un restart (rejouée via le thème)
+    ownerBindings: new Map(snap.ownerBindings ?? []),
+    currentTheme: snap.currentTheme ?? null,
+    playedQuestionIndices: new Set(snap.playedQuestionIndices ?? []),
   }
 }
 

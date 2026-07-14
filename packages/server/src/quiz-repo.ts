@@ -170,9 +170,14 @@ export function seedBuzzerDemoIfMissing(): void {
     defaultTimeLimit: 0,
     gameType: 'buzzer',
     questions: [
+      // Round perso : 2 thèmes de démo (l'admin les attribue aux joueurs présents)
+      { type: 'free', text: 'Combien de titres de champion du monde pour Ayrton Senna ?', correctAnswers: ['3', 'trois'], timeLimit: 0, difficulty: 'moyen', section: 'perso', ownerName: 'Papa' },
+      { type: 'free', text: 'Chez quelle écurie court Alain Prost en 1990 ?', correctAnswers: ['Ferrari'], timeLimit: 0, difficulty: 'difficile', section: 'perso', ownerName: 'Papa' },
+      { type: 'free', text: 'Dans quelle maison de Poudlard est Harry Potter ?', correctAnswers: ['Gryffondor'], timeLimit: 0, difficulty: 'facile', section: 'perso', ownerName: 'Léa' },
+      { type: 'free', text: 'Comment s’appelle le hibou de Harry Potter ?', correctAnswers: ['Hedwige', 'Hedwig'], timeLimit: 0, difficulty: 'moyen', section: 'perso', ownerName: 'Léa' },
+      // Round culture G (buzzer ouvert à tous)
       { type: 'free', text: 'Combien de pattes a une araignée ?', correctAnswers: ['8', 'huit'], timeLimit: 0, difficulty: 'facile', section: 'culture' },
       { type: 'free', text: "Quelle est la capitale de l'Australie ?", correctAnswers: ['Canberra'], timeLimit: 0, difficulty: 'moyen', section: 'culture' },
-      { type: 'free', text: 'En quelle année est tombé le mur de Berlin ?', correctAnswers: ['1989'], timeLimit: 0, difficulty: 'moyen', section: 'culture' },
       { type: 'free', text: "Quel élément chimique a pour symbole « Fe » ?", correctAnswers: ['Fer', 'Iron'], timeLimit: 0, difficulty: 'difficile', section: 'culture' },
     ],
   })

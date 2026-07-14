@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type {
   BuzzState,
+  BuzzThemesState,
   Difficulty,
   GameType,
   Participant,
@@ -68,6 +69,7 @@ export interface HostSessionView {
   buzz: BuzzState | null
   buzzQuestion: QuestionPublic | null
   buzzReveal: BuzzReveal | null
+  themes: BuzzThemesState | null
   start: () => void
   next: () => void
   showLeaderboard: () => void
@@ -78,6 +80,8 @@ export interface HostSessionView {
   adjudicate: (correct: boolean) => void
   reopenBuzzer: () => void
   passQuestion: () => void
+  startTheme: (ownerName: string) => void
+  assignOwner: (ownerName: string, participantId: string | null) => void
   // Actions host mode équipe
   setMode: (mode: SessionMode) => void
   addTeam: (name: string) => void
@@ -103,6 +107,7 @@ type TeamsPayload = Parameters<ServerToClientEvents['teams_updated']>[0]
 type BuzzStartedPayload = Parameters<ServerToClientEvents['buzz_question_started']>[0]
 type BuzzStatePayload = Parameters<ServerToClientEvents['buzz_state']>[0]
 type BuzzEndedPayload = Parameters<ServerToClientEvents['buzz_question_ended']>[0]
+type BuzzThemesPayload = Parameters<ServerToClientEvents['buzz_themes']>[0]
 
 function upsert(list: Participant[], p: Participant): Participant[] {
   return list.some((x) => x.id === p.id)
@@ -148,6 +153,7 @@ export function useHostSession(mode: HostMode): HostSessionView {
   const [buzz, setBuzz] = useState<BuzzState | null>(null)
   const [buzzQuestion, setBuzzQuestion] = useState<QuestionPublic | null>(null)
   const [buzzReveal, setBuzzReveal] = useState<BuzzReveal | null>(null)
+  const [themes, setThemes] = useState<BuzzThemesState | null>(null)
 
   const resolvedRef = useRef(false)
   // Secret host (control) — jamais dans le state React, seulement pour host_join
@@ -305,6 +311,7 @@ export function useHostSession(mode: HostMode): HostSessionView {
       leaderboardRef.current = p.scores
       setLeaderboard(p.scores)
     }
+    const onThemes = (p: BuzzThemesPayload) => setThemes(p)
 
     socket.on(EVENTS.SESSION_JOINED, onJoined)
     socket.on(EVENTS.PARTICIPANT_JOINED, onJoin)
@@ -318,6 +325,7 @@ export function useHostSession(mode: HostMode): HostSessionView {
     socket.on(EVENTS.BUZZ_QUESTION_STARTED, onBuzzStarted)
     socket.on(EVENTS.BUZZ_STATE, onBuzzState)
     socket.on(EVENTS.BUZZ_QUESTION_ENDED, onBuzzEnded)
+    socket.on(EVENTS.BUZZ_THEMES, onThemes)
 
     // Session côté serveur introuvable / clé invalide (ex : snapshots purgés).
     // Control : on repart proprement sur une NOUVELLE session (une seule fois).
@@ -368,6 +376,7 @@ export function useHostSession(mode: HostMode): HostSessionView {
       socket.off(EVENTS.BUZZ_QUESTION_STARTED, onBuzzStarted)
       socket.off(EVENTS.BUZZ_STATE, onBuzzState)
       socket.off(EVENTS.BUZZ_QUESTION_ENDED, onBuzzEnded)
+      socket.off(EVENTS.BUZZ_THEMES, onThemes)
       socket.off('connect', join)
     }
   }, [pin, sessionId, mode])
@@ -383,6 +392,9 @@ export function useHostSession(mode: HostMode): HostSessionView {
   const adjudicate = (correct: boolean) => socket.emit(EVENTS.HOST_ADJUDICATE, { correct })
   const reopenBuzzer = () => socket.emit(EVENTS.HOST_REOPEN_BUZZER, {})
   const passQuestion = () => socket.emit(EVENTS.HOST_PASS_QUESTION, {})
+  const startTheme = (ownerName: string) => socket.emit(EVENTS.HOST_START_THEME, { ownerName })
+  const assignOwner = (ownerName: string, participantId: string | null) =>
+    socket.emit(EVENTS.HOST_ASSIGN_OWNER, { ownerName, participantId })
 
   // Actions host mode équipe
   const changeMode = (m: SessionMode) => socket.emit(EVENTS.HOST_SET_MODE, { mode: m })
@@ -418,6 +430,7 @@ export function useHostSession(mode: HostMode): HostSessionView {
     buzz,
     buzzQuestion,
     buzzReveal,
+    themes,
     start,
     next,
     showLeaderboard,
@@ -427,6 +440,8 @@ export function useHostSession(mode: HostMode): HostSessionView {
     adjudicate,
     reopenBuzzer,
     passQuestion,
+    startTheme,
+    assignOwner,
     setMode: changeMode,
     addTeam,
     removeTeam,

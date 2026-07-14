@@ -31,6 +31,25 @@ export const DIFFICULTY_POINTS: Record<Difficulty, number> = {
 // 'culture' = culture générale, buzzer ouvert à tous dès le départ
 export type QuestionSection = 'perso' | 'culture'
 
+// « Thème » sélectionnable par l'admin : soit un nom de joueur (ownerName d'un
+// thème perso), soit cette sentinelle pour le round culture générale.
+export const CULTURE_THEME = '__culture__'
+
+// État d'un thème perso pour l'écran de distribution / sélection (host)
+export interface BuzzThemeInfo {
+  ownerName: string
+  participantId: string | null // joueur associé (binding), null = non attribué
+  total: number                // nombre de questions du thème
+  done: boolean                // toutes les questions du thème ont été jouées
+}
+
+// État complet des thèmes d'une partie famille (rediffusé au host à chaque changement)
+export interface BuzzThemesState {
+  owners: BuzzThemeInfo[]
+  culture: { total: number; done: boolean }
+  currentTheme: string | null  // thème en cours (ownerName | CULTURE_THEME | null)
+}
+
 // Palette de couleurs d'équipe (hex → utilisé en style inline côté client, pas de
 // classe Tailwind dynamique qui serait purgée au build). Le serveur pioche dedans.
 export const TEAM_PALETTE = [

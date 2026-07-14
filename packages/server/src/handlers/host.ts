@@ -11,6 +11,7 @@ import {
 } from '../session-helpers.js'
 import { logEvent } from '../logger.js'
 import { saveSessionSnapshot, deleteSessionSnapshot } from '../session-snapshot.js'
+import { buildThemes } from './buzzer.js'
 
 type QuizSocket = Socket<ClientToServerEvents, ServerToClientEvents>
 type QuizServer = Server<ClientToServerEvents, ServerToClientEvents>
@@ -54,15 +55,18 @@ function attachAndSendState(socket: QuizSocket, session: SessionState): void {
     }
   }
 
-  // Mode buzzer : ré-attacher la question buzzer en cours (host/TV qui reconnecte
-  // ou refresh) → il retrouve l'énoncé + l'état buzzer (armé/verrouillé, qui a buzzé).
-  if (session.quiz?.gameType === 'buzzer' && session.buzz && session.buzz.phase !== 'idle') {
-    const q = session.quiz.questions[session.currentQuestionIndex]
-    if (q) {
-      socket.emit(EVENTS.BUZZ_QUESTION_STARTED, {
-        question: toPublicQuestion(q, session.currentQuestionIndex, session.quiz.questions.length),
-        buzz: session.buzz,
-      })
+  // Mode buzzer : ré-attacher l'état de la partie famille (host/TV qui reconnecte
+  // ou refresh) → thèmes + attribution + progression, puis la question en cours.
+  if (session.quiz?.gameType === 'buzzer') {
+    socket.emit(EVENTS.BUZZ_THEMES, buildThemes(session))
+    if (session.buzz && session.buzz.phase !== 'idle') {
+      const q = session.quiz.questions[session.currentQuestionIndex]
+      if (q) {
+        socket.emit(EVENTS.BUZZ_QUESTION_STARTED, {
+          question: toPublicQuestion(q, session.currentQuestionIndex, session.quiz.questions.length),
+          buzz: session.buzz,
+        })
+      }
     }
   }
 }

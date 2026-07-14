@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { GameReport } from '@lya-quiz/shared'
+import { CULTURE_THEME } from '@lya-quiz/shared'
 import type { HostSessionView } from '../hooks/useHostSession'
 import { fetchReport, clearHostSession } from '../host-session'
 import { QrCode } from '../components/QrCode'
@@ -22,6 +23,7 @@ export function BuzzerHostControl({ s }: { s: HostSessionView }) {
   const b = s.buzz
   const q = s.buzzQuestion
   const diff = q?.difficulty ? DIFF[q.difficulty] : null
+  const hasPerso = (s.themes?.owners.length ?? 0) > 0
 
   const btn = 'px-6 py-4 rounded-2xl font-bold text-lg transition-colors disabled:opacity-40'
 
@@ -52,6 +54,32 @@ export function BuzzerHostControl({ s }: { s: HostSessionView }) {
             </ul>
           </section>
         </div>
+
+        {/* Distribution des thèmes : associer chaque thème perso à un joueur */}
+        {(s.themes?.owners.length ?? 0) > 0 && (
+          <section className="px-8 pb-6">
+            <h2 className="text-lg font-bold text-gray-300 mb-3">Distribution des thèmes</h2>
+            <div className="grid sm:grid-cols-2 gap-2">
+              {s.themes!.owners.map((o) => (
+                <div key={o.ownerName} className="flex items-center gap-3 bg-gray-900 rounded-xl px-4 py-2">
+                  <span className="font-medium flex-1">🎤 {o.ownerName} <span className="text-gray-500 text-sm">· {o.total} Q</span></span>
+                  <select
+                    value={o.participantId ?? ''}
+                    onChange={(e) => s.assignOwner(o.ownerName, e.target.value || null)}
+                    className="bg-gray-800 rounded-lg px-2 py-1 border border-gray-700 max-w-[10rem]"
+                  >
+                    <option value="">— non attribué</option>
+                    {connected.map((p) => <option key={p.id} value={p.id}>{p.pseudo}</option>)}
+                  </select>
+                </div>
+              ))}
+            </div>
+            {s.themes!.owners.some((o) => !o.participantId) && (
+              <p className="text-amber-400 text-sm mt-2">Attribue chaque thème à son joueur avant de le lancer (tu pourras aussi le faire en cours de partie).</p>
+            )}
+          </section>
+        )}
+
         <footer className="px-8 py-6 border-t border-gray-800 flex justify-end">
           <button onClick={s.start} disabled={connected.length === 0} className={`${btn} bg-indigo-600 hover:bg-indigo-500 px-10`}>Démarrer le quiz</button>
         </footer>
@@ -95,9 +123,51 @@ export function BuzzerHostControl({ s }: { s: HostSessionView }) {
 
       <div className="flex-1 p-8 flex flex-col gap-6">
         {!b || !q ? (
-          <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center">
-            <p className="text-2xl text-gray-300">Prêt à lancer une question.</p>
-          </div>
+          hasPerso ? (
+            /* Entre deux thèmes : sélecteur de thème (l'admin choisit qui passe) */
+            <div className="flex-1 flex flex-col gap-5">
+              <h2 className="text-2xl font-bold">Choisis le thème à jouer</h2>
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {s.themes!.owners.map((o) => {
+                  const pseudo = o.participantId ? (s.participants.find((p) => p.id === o.participantId)?.pseudo ?? '?') : null
+                  return (
+                    <button
+                      key={o.ownerName}
+                      onClick={() => s.startTheme(o.ownerName)}
+                      disabled={o.done || !o.participantId}
+                      className={`px-5 py-4 rounded-2xl text-left font-bold transition-colors ${
+                        o.done ? 'bg-gray-800 text-gray-600 line-through' : !o.participantId ? 'bg-gray-800 text-gray-500 cursor-not-allowed' : 'bg-indigo-700 hover:bg-indigo-600'
+                      }`}
+                    >
+                      🎤 {o.ownerName}
+                      <span className="block text-sm font-normal opacity-80">
+                        {o.done ? 'terminé' : pseudo ? `→ ${pseudo} · ${o.total} Q` : 'non attribué'}
+                      </span>
+                    </button>
+                  )
+                })}
+                {s.themes!.culture.total > 0 && (
+                  <button
+                    onClick={() => s.startTheme(CULTURE_THEME)}
+                    disabled={s.themes!.culture.done}
+                    className={`px-5 py-4 rounded-2xl text-left font-bold transition-colors ${s.themes!.culture.done ? 'bg-gray-800 text-gray-600 line-through' : 'bg-violet-700 hover:bg-violet-600'}`}
+                  >
+                    🌍 Culture générale
+                    <span className="block text-sm font-normal opacity-80">{s.themes!.culture.done ? 'terminé' : `${s.themes!.culture.total} Q`}</span>
+                  </button>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-2 mt-auto">
+                {s.leaderboard.slice(0, 8).map((sc) => (
+                  <span key={sc.participantId} className="px-3 py-1 rounded-lg bg-gray-900 text-sm">{sc.rank}. {sc.pseudo} <b className="font-mono">{sc.score}</b></span>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center">
+              <p className="text-2xl text-gray-300">Prêt à lancer une question.</p>
+            </div>
+          )
         ) : (
           <>
             <div className="flex items-center gap-3">
@@ -140,8 +210,9 @@ export function BuzzerHostControl({ s }: { s: HostSessionView }) {
       <footer className="px-8 py-5 border-t border-gray-800 flex items-center justify-between gap-4">
         <button onClick={s.endQuiz} className="px-5 py-3 rounded-xl text-rose-400 hover:bg-rose-500/10 font-medium">Terminer</button>
         <div className="flex items-center gap-3">
-          {/* Aucune question active → lancer la suivante */}
-          {(!b || b.phase === 'revealed') && (
+          {/* Question suivante dans le thème (révélation), ou lancement direct
+              en culture-only (sans thèmes perso, le sélecteur n'apparaît pas). */}
+          {(b?.phase === 'revealed' || (!b && !hasPerso)) && (
             <button onClick={s.next} className={`${btn} bg-indigo-600 hover:bg-indigo-500 px-10`}>
               {b?.phase === 'revealed' ? 'Question suivante →' : 'Lancer une question →'}
             </button>
