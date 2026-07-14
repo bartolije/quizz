@@ -1,4 +1,4 @@
-import type { Quiz, QuestionType } from '@lya-quiz/shared'
+import type { Quiz, QuestionType, Difficulty, QuestionSection, GameType } from '@lya-quiz/shared'
 import { apiUrl } from './config'
 
 const PW_KEY = 'lya_admin_pw'
@@ -24,11 +24,16 @@ export interface QuestionInput {
   correctAnswers: string[]
   timeLimit: number
   mediaUrl?: string
+  // Mode buzzer (partie famille)
+  difficulty?: Difficulty
+  section?: QuestionSection
+  ownerName?: string
 }
 export interface QuizInput {
   title: string
   defaultTimeLimit: number
   questions: QuestionInput[]
+  gameType?: GameType
 }
 
 export async function checkPw(password: string): Promise<boolean> {

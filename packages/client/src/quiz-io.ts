@@ -9,6 +9,7 @@ export function toExport(quiz: Quiz): QuizInput {
   return {
     title: quiz.title,
     defaultTimeLimit: quiz.defaultTimeLimit,
+    ...(quiz.gameType ? { gameType: quiz.gameType } : {}),
     questions: quiz.questions.map((q) => ({
       type: q.type,
       text: q.text,
@@ -16,6 +17,9 @@ export function toExport(quiz: Quiz): QuizInput {
       correctAnswers: q.correctAnswers,
       timeLimit: q.timeLimit,
       ...(q.mediaUrl ? { mediaUrl: q.mediaUrl } : {}),
+      ...(q.difficulty ? { difficulty: q.difficulty } : {}),
+      ...(q.section ? { section: q.section } : {}),
+      ...(q.ownerName ? { ownerName: q.ownerName } : {}),
     })),
   }
 }
@@ -81,6 +85,11 @@ export function parseQuizJson(text: string): { quiz: QuizInput | null; error: st
     if (type === 'closest' && Number.isNaN(Number(correctAnswers[0])))
       return err(`Question ${n} (closest) : "correctAnswers[0]" doit être un nombre.`)
 
+    // Champs mode buzzer (optionnels, tolérants)
+    const difficulty = ['facile', 'moyen', 'difficile'].includes(q.difficulty) ? q.difficulty : undefined
+    const section = ['perso', 'culture'].includes(q.section) ? q.section : undefined
+    const ownerName = typeof q.ownerName === 'string' && q.ownerName.trim() ? q.ownerName.trim() : undefined
+
     questions.push({
       type,
       text: q.text.trim(),
@@ -88,8 +97,15 @@ export function parseQuizJson(text: string): { quiz: QuizInput | null; error: st
       timeLimit,
       ...(type === 'mcq' ? { choices: (q.choices as unknown[]).map((c) => String(c)) } : {}),
       ...(typeof q.mediaUrl === 'string' && q.mediaUrl.trim() ? { mediaUrl: q.mediaUrl.trim() } : {}),
+      ...(difficulty ? { difficulty } : {}),
+      ...(section ? { section } : {}),
+      ...(ownerName ? { ownerName } : {}),
     })
   }
 
-  return { quiz: { title: raw.title.trim(), defaultTimeLimit, questions }, error: null }
+  const gameType = raw.gameType === 'buzzer' ? 'buzzer' : undefined
+  return {
+    quiz: { title: raw.title.trim(), defaultTimeLimit, questions, ...(gameType ? { gameType } : {}) },
+    error: null,
+  }
 }

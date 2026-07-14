@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { Quiz, Question, QuestionType } from '@lya-quiz/shared'
+import type { Quiz, Question, QuestionType, Difficulty, QuestionSection, GameType } from '@lya-quiz/shared'
 import { QuestionImage } from '../components/QuestionImage'
 import { toExport, downloadJson, slugify, parseQuizJson } from '../quiz-io'
 import {
@@ -22,15 +22,20 @@ interface EQ {
   text: string
   choices: string[] // 4 entrées (mcq)
   correctIndex: number // mcq
-  freeAnswers: string // free, une réponse par ligne
+  freeAnswers: string // free/ordering/buzzer : une réponse par ligne
   closestValue: string // closest
   mediaUrl: string // image optionnelle (URL)
   timeLimit: number
+  // Mode buzzer (partie famille)
+  section: QuestionSection
+  ownerName: string
+  difficulty: Difficulty
 }
 interface EditDraft {
   id: string | null
   title: string
   defaultTimeLimit: number
+  gameType: GameType
   questions: EQ[]
 }
 
@@ -43,6 +48,9 @@ const newEQ = (timeLimit: number): EQ => ({
   closestValue: '',
   mediaUrl: '',
   timeLimit,
+  section: 'culture',
+  ownerName: '',
+  difficulty: 'moyen',
 })
 
 function fromQuestion(q: Question): EQ {
@@ -53,11 +61,15 @@ function fromQuestion(q: Question): EQ {
     text: q.text,
     choices,
     correctIndex: q.type === 'mcq' ? Math.max(0, choices.indexOf(q.correctAnswers[0] ?? '')) : 0,
+    // buzzer : la réponse de référence est stockée comme 'free' (correctAnswers)
     freeAnswers:
       q.type === 'free' || q.type === 'ordering' ? q.correctAnswers.join('\n') : '',
     closestValue: q.type === 'closest' ? (q.correctAnswers[0] ?? '') : '',
     mediaUrl: q.mediaUrl ?? '',
     timeLimit: q.timeLimit,
+    section: q.section ?? 'culture',
+    ownerName: q.ownerName ?? '',
+    difficulty: q.difficulty ?? 'moyen',
   }
 }
 
@@ -66,6 +78,7 @@ function toDraft(quiz: Quiz): EditDraft {
     id: quiz.id,
     title: quiz.title,
     defaultTimeLimit: quiz.defaultTimeLimit,
+    gameType: quiz.gameType ?? 'classic',
     questions: quiz.questions.map(fromQuestion),
   }
 }
@@ -79,6 +92,26 @@ function toInput(d: EditDraft): { input: QuizInput; error: string | null } {
     const n = i + 1
     const media = q.mediaUrl.trim() ? { mediaUrl: q.mediaUrl.trim() } : {}
     if (!q.text.trim()) return { input: null as never, error: `Question ${n} : l'énoncé est vide.` }
+
+    // Mode buzzer : question arbitrée à l'oral → stockée en 'free' (réponse de
+    // référence), + section/owner/difficulté. Pas de type mcq/closest/ordering.
+    if (d.gameType === 'buzzer') {
+      const answers = q.freeAnswers.split('\n').map((s) => s.trim()).filter(Boolean)
+      if (answers.length === 0) return { input: null as never, error: `Question ${n} : ajoute une réponse de référence.` }
+      if (q.section === 'perso' && !q.ownerName.trim()) return { input: null as never, error: `Question ${n} : indique le joueur (thème perso).` }
+      questions.push({
+        type: 'free',
+        text: q.text.trim(),
+        correctAnswers: answers,
+        timeLimit: 0,
+        difficulty: q.difficulty,
+        section: q.section,
+        ...(q.section === 'perso' ? { ownerName: q.ownerName.trim() } : {}),
+        ...media,
+      })
+      continue
+    }
+
     if (q.type === 'mcq') {
       const choices = q.choices.map((c) => c.trim())
       if (choices.some((c) => !c)) return { input: null as never, error: `Question ${n} : les 4 choix doivent être remplis.` }
@@ -97,7 +130,10 @@ function toInput(d: EditDraft): { input: QuizInput; error: string | null } {
       questions.push({ type: 'closest', text: q.text.trim(), correctAnswers: [v], timeLimit: q.timeLimit, ...media })
     }
   }
-  return { input: { title: d.title.trim(), defaultTimeLimit: d.defaultTimeLimit, questions }, error: null }
+  return {
+    input: { title: d.title.trim(), defaultTimeLimit: d.defaultTimeLimit, questions, gameType: d.gameType },
+    error: null,
+  }
 }
 
 const input = 'bg-gray-800 rounded-lg px-3 py-2 border border-gray-700 focus:border-indigo-500 outline-none'
@@ -145,7 +181,7 @@ export function AdminPage() {
   }
 
   function openNew() {
-    setDraft({ id: null, title: '', defaultTimeLimit: 20, questions: [newEQ(20)] })
+    setDraft({ id: null, title: '', defaultTimeLimit: 20, gameType: 'classic', questions: [newEQ(20)] })
   }
 
   async function save() {
@@ -242,7 +278,7 @@ export function AdminPage() {
       <div className="min-h-screen bg-gray-950 text-white p-6 max-w-3xl mx-auto">
         <h1 className="text-2xl font-bold mb-4">{draft.id ? 'Éditer le quiz' : 'Nouveau quiz'}</h1>
 
-        <div className="flex gap-3 mb-6">
+        <div className="flex flex-wrap gap-3 mb-2">
           <input
             value={draft.title}
             onChange={(e) => setDraft({ ...draft, title: e.target.value })}
@@ -250,31 +286,82 @@ export function AdminPage() {
             className={`${input} flex-1 text-lg`}
           />
           <label className="flex items-center gap-2 text-sm text-gray-400">
-            Temps/déf.
-            <input
-              type="number"
-              value={draft.defaultTimeLimit}
-              onChange={(e) => setDraft({ ...draft, defaultTimeLimit: Number(e.target.value) })}
-              className={`${input} w-20`}
-            />
+            Type
+            <select
+              value={draft.gameType}
+              onChange={(e) => setDraft({ ...draft, gameType: e.target.value as GameType })}
+              className={input}
+            >
+              <option value="classic">Classique (Kahoot)</option>
+              <option value="buzzer">Famille (buzzer)</option>
+            </select>
           </label>
+          {draft.gameType === 'classic' && (
+            <label className="flex items-center gap-2 text-sm text-gray-400">
+              Temps/déf.
+              <input
+                type="number"
+                value={draft.defaultTimeLimit}
+                onChange={(e) => setDraft({ ...draft, defaultTimeLimit: Number(e.target.value) })}
+                className={`${input} w-20`}
+              />
+            </label>
+          )}
         </div>
+        {draft.gameType === 'buzzer' && (
+          <p className="text-gray-500 text-sm mb-6">
+            Partie famille : tu arbitres à l'oral (bon/faux), pas de chrono. Chaque question a une
+            <b> difficulté</b> (Facile 1 · Moyen 2 · Difficile 3) et une <b>section</b> : « perso »
+            (thème d'un joueur, répondu d'abord par lui puis volable) ou « culture » (ouvert à tous).
+          </p>
+        )}
+        {draft.gameType === 'classic' && <div className="mb-6" />}
 
         <div className="space-y-4">
           {draft.questions.map((q, i) => (
             <div key={i} className="bg-gray-900 rounded-2xl p-4 space-y-3">
               <div className="flex items-center gap-2">
                 <span className="font-bold text-indigo-400">Q{i + 1}</span>
-                <select
-                  value={q.type}
-                  onChange={(e) => patchQ(i, { type: e.target.value as QuestionType })}
-                  className={input}
-                >
-                  <option value="mcq">Choix multiple</option>
-                  <option value="free">Saisie libre</option>
-                  <option value="closest">Au plus proche</option>
-                  <option value="ordering">Remettre dans l'ordre</option>
-                </select>
+                {draft.gameType === 'classic' ? (
+                  <select
+                    value={q.type}
+                    onChange={(e) => patchQ(i, { type: e.target.value as QuestionType })}
+                    className={input}
+                  >
+                    <option value="mcq">Choix multiple</option>
+                    <option value="free">Saisie libre</option>
+                    <option value="closest">Au plus proche</option>
+                    <option value="ordering">Remettre dans l'ordre</option>
+                  </select>
+                ) : (
+                  <>
+                    <select
+                      value={q.section}
+                      onChange={(e) => patchQ(i, { section: e.target.value as QuestionSection })}
+                      className={input}
+                    >
+                      <option value="perso">Thème perso</option>
+                      <option value="culture">Culture G</option>
+                    </select>
+                    {q.section === 'perso' && (
+                      <input
+                        value={q.ownerName}
+                        onChange={(e) => patchQ(i, { ownerName: e.target.value })}
+                        placeholder="Joueur (thème)"
+                        className={`${input} w-36`}
+                      />
+                    )}
+                    <select
+                      value={q.difficulty}
+                      onChange={(e) => patchQ(i, { difficulty: e.target.value as Difficulty })}
+                      className={input}
+                    >
+                      <option value="facile">Facile · 1</option>
+                      <option value="moyen">Moyen · 2</option>
+                      <option value="difficile">Difficile · 3</option>
+                    </select>
+                  </>
+                )}
                 <div className="ml-auto flex gap-1">
                   <button onClick={() => moveQ(i, -1)} className="px-2 py-1 rounded bg-gray-800 hover:bg-gray-700">↑</button>
                   <button onClick={() => moveQ(i, 1)} className="px-2 py-1 rounded bg-gray-800 hover:bg-gray-700">↓</button>
@@ -294,7 +381,17 @@ export function AdminPage() {
                 className={`${input} w-full`}
               />
 
-              {q.type === 'mcq' && (
+              {draft.gameType === 'buzzer' && (
+                <textarea
+                  value={q.freeAnswers}
+                  onChange={(e) => patchQ(i, { freeAnswers: e.target.value })}
+                  placeholder="Réponse(s) de référence (une par ligne) — affichée à la révélation, c'est toi qui juges à l'oral"
+                  rows={2}
+                  className={`${input} w-full`}
+                />
+              )}
+
+              {draft.gameType === 'classic' && q.type === 'mcq' && (
                 <div className="space-y-2">
                   {q.choices.map((c, ci) => (
                     <label key={ci} className="flex items-center gap-2">
@@ -319,7 +416,7 @@ export function AdminPage() {
                 </div>
               )}
 
-              {(q.type === 'free' || q.type === 'ordering') && (
+              {draft.gameType === 'classic' && (q.type === 'free' || q.type === 'ordering') && (
                 <textarea
                   value={q.freeAnswers}
                   onChange={(e) => patchQ(i, { freeAnswers: e.target.value })}
@@ -333,7 +430,7 @@ export function AdminPage() {
                 />
               )}
 
-              {q.type === 'closest' && (
+              {draft.gameType === 'classic' && q.type === 'closest' && (
                 <input
                   type="number"
                   value={q.closestValue}
@@ -343,27 +440,31 @@ export function AdminPage() {
                 />
               )}
 
-              <div className="space-y-1">
-                <input
-                  value={q.mediaUrl}
-                  onChange={(e) => patchQ(i, { mediaUrl: e.target.value })}
-                  placeholder="URL d'une image (optionnel, https://…)"
-                  className={`${input} w-full`}
-                />
-                {q.mediaUrl.trim() && (
-                  <QuestionImage key={q.mediaUrl} url={q.mediaUrl.trim()} className="max-h-32" />
-                )}
-              </div>
+              {draft.gameType === 'classic' && (
+                <>
+                  <div className="space-y-1">
+                    <input
+                      value={q.mediaUrl}
+                      onChange={(e) => patchQ(i, { mediaUrl: e.target.value })}
+                      placeholder="URL d'une image (optionnel, https://…)"
+                      className={`${input} w-full`}
+                    />
+                    {q.mediaUrl.trim() && (
+                      <QuestionImage key={q.mediaUrl} url={q.mediaUrl.trim()} className="max-h-32" />
+                    )}
+                  </div>
 
-              <label className="flex items-center gap-2 text-sm text-gray-400">
-                Temps (s)
-                <input
-                  type="number"
-                  value={q.timeLimit}
-                  onChange={(e) => patchQ(i, { timeLimit: Number(e.target.value) })}
-                  className={`${input} w-20`}
-                />
-              </label>
+                  <label className="flex items-center gap-2 text-sm text-gray-400">
+                    Temps (s)
+                    <input
+                      type="number"
+                      value={q.timeLimit}
+                      onChange={(e) => patchQ(i, { timeLimit: Number(e.target.value) })}
+                      className={`${input} w-20`}
+                    />
+                  </label>
+                </>
+              )}
             </div>
           ))}
         </div>
