@@ -31,6 +31,7 @@ function attachAndSendState(socket: QuizSocket, session: SessionState): void {
     mode: session.mode,
     teams: [...session.teams.values()],
     teamsLocked: session.teamsLocked,
+    gameType: session.quiz?.gameType ?? 'classic',
     ...(session.quiz ? { quizTitle: session.quiz.title } : {}),
   })
 

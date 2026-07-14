@@ -100,6 +100,7 @@ export function handleJoinSession(
     mode: session.mode,
     teams: [...session.teams.values()],
     teamsLocked: session.teamsLocked,
+    gameType: session.quiz?.gameType ?? 'classic',
   })
 
   // Retardataire en PLEINE question : lui rejouer la question en cours avec le
@@ -216,6 +217,8 @@ function handleRejoinWithParticipant(
     mode: session.mode,
     teams: [...session.teams.values()],
     teamsLocked: session.teamsLocked,
+    gameType: session.quiz?.gameType ?? 'classic',
+    buzz: null,   // mode buzzer câblé en Phase 1 ; classic → toujours null
   })
 
   // Notifier les autres que ce participant est de retour

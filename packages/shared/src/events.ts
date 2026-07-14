@@ -1,4 +1,7 @@
 import type {
+  BuzzState,
+  Difficulty,
+  GameType,
   Participant,
   ParticipantScore,
   QuestionPublic,
@@ -115,6 +118,34 @@ export interface ClientToServerEvents {
 
   // PARTICIPANT — rejoindre / quitter une équipe (avant le démarrage, si non verrouillé)
   join_team: (payload: { teamId: string | null }) => void
+
+  // ── MODE BUZZER (partie famille arbitrée) ───────────────────
+  // cf. .claude/plan-quiz-famille.md — rien n'est auto-corrigé, l'admin juge.
+
+  // PARTICIPANT — je buzze. Ignoré si le buzzer n'est pas armé, si je suis
+  // l'owner (perso) ou si je suis déjà dans lockedOut. Le 1er reçu gagne.
+  buzz: (payload: Record<string, never>) => void
+
+  // HOST ONLY — juge le locuteur courant (l'owner en phase 'owner_oral', ou le
+  // buzzeur en phase 'locked'). correct=true → il marque les points de difficulté.
+  // correct=false en 'owner_oral' → ouvre le vol ; en 'locked' → bloque le
+  // buzzeur (lockedOut) et attend host_reopen_buzzer ou host_pass_question.
+  host_adjudicate: (payload: { correct: boolean }) => void
+
+  // HOST ONLY — après un vol raté : ré-arme le buzzer pour les autres (le raté
+  // reste dans lockedOut).
+  host_reopen_buzzer: (payload: Record<string, never>) => void
+
+  // HOST ONLY — personne ne trouve : clôt la question à 0 point (révélation).
+  host_pass_question: (payload: Record<string, never>) => void
+
+  // HOST ONLY — round perso : choisir le thème (joueur) à aborder. Les questions
+  // 'perso' de cet owner seront servies par host_next_question.
+  host_start_theme: (payload: { ownerName: string }) => void
+
+  // HOST ONLY — associer un slot de thème (ownerName) à un participant connecté
+  // (binding, écran lobby). null = dissocier. Auto-bind par pseudo par défaut.
+  host_assign_owner: (payload: { ownerName: string; participantId: string | null }) => void
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -133,6 +164,8 @@ export interface ServerToClientEvents {
     mode: SessionMode
     teams: Team[]
     teamsLocked: boolean
+    // Type de jeu (toujours présent → le client choisit l'UI classique ou buzzer)
+    gameType: GameType
     // Envoyé au host/TV uniquement : titre du quiz chargé (le host vérifie d'un
     // coup d'œil qu'il anime le BON quiz — pas celui de démo).
     quizTitle?: string
@@ -165,6 +198,12 @@ export interface ServerToClientEvents {
     mode: SessionMode
     teams: Team[]
     teamsLocked: boolean
+    // Type de jeu restauré
+    gameType: GameType
+    // Mode buzzer : état buzzer courant (null hors mode buzzer ou question non
+    // ouverte) → un tél/host/TV qui reconnecte retrouve buzzer armé/verrouillé,
+    // s'il est owner/bloqué, qui a buzzé. Le client dérive ses affordances.
+    buzz: BuzzState | null
   }) => void
 
   // Mode équipe : état complet (re)diffusé à toute la room à chaque changement
@@ -175,6 +214,25 @@ export interface ServerToClientEvents {
     teams: Team[]
     locked: boolean
     participants: Participant[]   // avec leur teamId à jour
+  }) => void
+
+  // ── MODE BUZZER ──────────────────────────────────────────────
+  // Une question buzzer démarre (perso ou culture). Envoyé à toute la room.
+  buzz_question_started: (payload: {
+    question: QuestionPublic   // text, difficulty, section, ownerName… JAMAIS correctAnswers
+    buzz: BuzzState            // état initial (owner_oral en perso, steal armé en culture)
+  }) => void
+
+  // État buzzer rediffusé COMPLET à chaque changement (buzz, arbitrage, réouverture…).
+  // Source de vérité unique → le client remplace son état et dérive ses affordances.
+  buzz_state: (payload: BuzzState) => void
+
+  // Une question buzzer se termine (révélation). scorer = qui a marqué (null si personne).
+  buzz_question_ended: (payload: {
+    correctAnswers: string[]                 // réponse(s) de référence à révéler
+    difficulty: Difficulty | null
+    scorer: { participantId: string; pseudo: string; points: number } | null
+    scores: ParticipantScore[]               // classement cumulé après cette question
   }) => void
 
   // Le statut de la session a changé (host démarre / termine le quiz).
@@ -278,11 +336,22 @@ export const EVENTS = {
   HOST_AUTOBALANCE_TEAMS:   'host_autobalance_teams',
   JOIN_TEAM:                'join_team',
 
+  // Mode buzzer
+  BUZZ:                'buzz',
+  HOST_ADJUDICATE:     'host_adjudicate',
+  HOST_REOPEN_BUZZER:  'host_reopen_buzzer',
+  HOST_PASS_QUESTION:  'host_pass_question',
+  HOST_START_THEME:    'host_start_theme',
+  HOST_ASSIGN_OWNER:   'host_assign_owner',
+
   // Serveur → Client
   SESSION_JOINED:         'session_joined',
   SESSION_RESTORED:       'session_restored',
   SESSION_STATUS_CHANGED: 'session_status_changed',
   TEAMS_UPDATED:          'teams_updated',
+  BUZZ_QUESTION_STARTED:  'buzz_question_started',
+  BUZZ_STATE:             'buzz_state',
+  BUZZ_QUESTION_ENDED:    'buzz_question_ended',
   PARTICIPANT_JOINED:     'participant_joined',
   PARTICIPANT_LEFT:   'participant_left',
   QUESTION_STARTED:   'question_started',
