@@ -2,19 +2,19 @@ import type { HostSessionView } from '../hooks/useHostSession'
 import { useBuzzerSound } from '../hooks/useBuzzerSound'
 import { QrCode } from '../components/QrCode'
 import { ConnectionBanner } from '../components/ConnectionBanner'
+import { QuestionImage } from '../components/QuestionImage'
 
-const DIFF: Record<string, { label: string; pts: number; cls: string }> = {
-  facile: { label: 'Facile', pts: 1, cls: 'bg-emerald-600' },
-  moyen: { label: 'Moyen', pts: 2, cls: 'bg-amber-600' },
-  difficile: { label: 'Difficile', pts: 3, cls: 'bg-rose-600' },
-}
+const ptsBadge = (pts: number): { label: string; cls: string } => ({
+  label: `${pts} pt${pts > 1 ? 's' : ''}`,
+  cls: pts >= 4 ? 'bg-fuchsia-600' : pts === 3 ? 'bg-rose-600' : pts === 2 ? 'bg-amber-600' : 'bg-emerald-600',
+})
 
 // Écran TV (passif) en mode buzzer : grand, lisible à distance. Ne pilote rien.
 export function BuzzerHostDisplay({ s }: { s: HostSessionView }) {
   const joinUrl = s.pin ? `${window.location.origin}/join?pin=${s.pin}` : ''
   const b = s.buzz
   const q = s.buzzQuestion
-  const diff = q?.difficulty ? DIFF[q.difficulty] : null
+  const badge = q?.points ? ptsBadge(q.points) : null
   const shell = 'h-[100dvh] bg-gray-950 text-white flex flex-col'
   const sound = useBuzzerSound(s.status, s.buzz)
 
@@ -71,10 +71,11 @@ export function BuzzerHostDisplay({ s }: { s: HostSessionView }) {
         ) : (
           <>
             <div className="flex items-center gap-4">
-              {diff && <span className={`px-4 py-2 rounded-full text-xl font-bold ${diff.cls}`}>{diff.label} · {diff.pts} pt{diff.pts > 1 ? 's' : ''}</span>}
+              {badge && <span className={`px-4 py-2 rounded-full text-xl font-bold ${badge.cls}`}>{badge.label}</span>}
               {q.section === 'perso' && b.ownerName && <span className="px-4 py-2 rounded-full text-xl bg-indigo-700">Thème de {b.ownerName}</span>}
             </div>
             <h1 className="text-5xl font-black leading-tight max-w-4xl">{q.text}</h1>
+            {q.mediaUrl && <QuestionImage key={q.mediaUrl} url={q.mediaUrl} className="max-h-[42vh] max-w-3xl rounded-2xl" />}
 
             {b.phase === 'revealed' ? (
               <div className="flex flex-col items-center gap-3">

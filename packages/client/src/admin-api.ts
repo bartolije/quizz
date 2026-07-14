@@ -26,6 +26,7 @@ export interface QuestionInput {
   mediaUrl?: string
   // Mode buzzer (partie famille)
   difficulty?: Difficulty
+  points?: number
   section?: QuestionSection
   ownerName?: string
 }

@@ -6,12 +6,12 @@ import { fetchReport, clearHostSession } from '../host-session'
 import { QrCode } from '../components/QrCode'
 import { ConnectionBanner } from '../components/ConnectionBanner'
 import { ReportView } from '../components/ReportView'
+import { QuestionImage } from '../components/QuestionImage'
 
-const DIFF: Record<string, { label: string; pts: number; cls: string }> = {
-  facile: { label: 'Facile', pts: 1, cls: 'bg-emerald-700' },
-  moyen: { label: 'Moyen', pts: 2, cls: 'bg-amber-700' },
-  difficile: { label: 'Difficile', pts: 3, cls: 'bg-rose-700' },
-}
+const ptsBadge = (pts: number): { label: string; cls: string } => ({
+  label: `${pts} pt${pts > 1 ? 's' : ''}`,
+  cls: pts >= 4 ? 'bg-fuchsia-700' : pts === 3 ? 'bg-rose-700' : pts === 2 ? 'bg-amber-700' : 'bg-emerald-700',
+})
 
 // Écran de contrôle host en mode buzzer (partie famille). L'admin arbitre tout :
 // 3 gros boutons Correct / Faux / Passer (+ Rouvrir). Le serveur sait QUI est
@@ -22,7 +22,7 @@ export function BuzzerHostControl({ s }: { s: HostSessionView }) {
   const joinUrl = s.pin ? `${window.location.origin}/join?pin=${s.pin}` : ''
   const b = s.buzz
   const q = s.buzzQuestion
-  const diff = q?.difficulty ? DIFF[q.difficulty] : null
+  const badge = q?.points ? ptsBadge(q.points) : null
   const hasPerso = (s.themes?.owners.length ?? 0) > 0
 
   const btn = 'px-6 py-4 rounded-2xl font-bold text-lg transition-colors disabled:opacity-40'
@@ -171,11 +171,12 @@ export function BuzzerHostControl({ s }: { s: HostSessionView }) {
         ) : (
           <>
             <div className="flex items-center gap-3">
-              {diff && <span className={`px-3 py-1 rounded-full text-sm font-bold ${diff.cls}`}>{diff.label} · {diff.pts} pt{diff.pts > 1 ? 's' : ''}</span>}
+              {badge && <span className={`px-3 py-1 rounded-full text-sm font-bold ${badge.cls}`}>{badge.label}</span>}
               {q.section === 'perso' && b.ownerName && <span className="px-3 py-1 rounded-full text-sm bg-indigo-800">Thème de {b.ownerName}</span>}
               <span className="text-gray-500 text-sm ml-auto">Q{q.index + 1}/{q.total}</span>
             </div>
             <h2 className="text-3xl font-bold">{q.text}</h2>
+            {q.mediaUrl && <QuestionImage key={q.mediaUrl} url={q.mediaUrl} className="max-h-48 max-w-full rounded-xl" />}
 
             {/* Antisèche admin : la réponse de référence (jamais envoyée aux joueurs) */}
             {b.phase === 'revealed' ? (

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import type { Quiz, Question, QuestionType, Difficulty, QuestionSection, GameType } from '@lya-quiz/shared'
+import type { Quiz, Question, QuestionType, QuestionSection, GameType } from '@lya-quiz/shared'
+import { DIFFICULTY_POINTS } from '@lya-quiz/shared'
 import { QuestionImage } from '../components/QuestionImage'
 import { toExport, downloadJson, slugify, parseQuizJson } from '../quiz-io'
 import {
@@ -29,7 +30,7 @@ interface EQ {
   // Mode buzzer (partie famille)
   section: QuestionSection
   ownerName: string
-  difficulty: Difficulty
+  points: number
 }
 interface EditDraft {
   id: string | null
@@ -50,7 +51,7 @@ const newEQ = (timeLimit: number): EQ => ({
   timeLimit,
   section: 'culture',
   ownerName: '',
-  difficulty: 'moyen',
+  points: 2,
 })
 
 function fromQuestion(q: Question): EQ {
@@ -69,7 +70,7 @@ function fromQuestion(q: Question): EQ {
     timeLimit: q.timeLimit,
     section: q.section ?? 'culture',
     ownerName: q.ownerName ?? '',
-    difficulty: q.difficulty ?? 'moyen',
+    points: q.points ?? (q.difficulty ? DIFFICULTY_POINTS[q.difficulty] : 2),
   }
 }
 
@@ -99,12 +100,13 @@ function toInput(d: EditDraft): { input: QuizInput; error: string | null } {
       const answers = q.freeAnswers.split('\n').map((s) => s.trim()).filter(Boolean)
       if (answers.length === 0) return { input: null as never, error: `Question ${n} : ajoute une réponse de référence.` }
       if (q.section === 'perso' && !q.ownerName.trim()) return { input: null as never, error: `Question ${n} : indique le joueur (thème perso).` }
+      if (!(q.points >= 1)) return { input: null as never, error: `Question ${n} : les points doivent être ≥ 1.` }
       questions.push({
         type: 'free',
         text: q.text.trim(),
         correctAnswers: answers,
         timeLimit: 0,
-        difficulty: q.difficulty,
+        points: Math.round(q.points),
         section: q.section,
         ...(q.section === 'perso' ? { ownerName: q.ownerName.trim() } : {}),
         ...media,
@@ -351,15 +353,30 @@ export function AdminPage() {
                         className={`${input} w-36`}
                       />
                     )}
-                    <select
-                      value={q.difficulty}
-                      onChange={(e) => patchQ(i, { difficulty: e.target.value as Difficulty })}
-                      className={input}
-                    >
-                      <option value="facile">Facile · 1</option>
-                      <option value="moyen">Moyen · 2</option>
-                      <option value="difficile">Difficile · 3</option>
-                    </select>
+                    <label className="flex items-center gap-1 text-sm text-gray-400">
+                      Points
+                      <input
+                        type="number"
+                        min={1}
+                        value={q.points}
+                        onChange={(e) => patchQ(i, { points: Number(e.target.value) })}
+                        className={`${input} w-16`}
+                        title="Nombre de points (libre — ex. « ultra dur » = 5)"
+                      />
+                    </label>
+                    <div className="flex gap-1">
+                      {[1, 2, 3].map((p) => (
+                        <button
+                          key={p}
+                          type="button"
+                          onClick={() => patchQ(i, { points: p })}
+                          className={`px-2 py-1 rounded text-xs ${q.points === p ? 'bg-indigo-600' : 'bg-gray-800 hover:bg-gray-700'}`}
+                          title={`${p} point${p > 1 ? 's' : ''}`}
+                        >
+                          {p}
+                        </button>
+                      ))}
+                    </div>
                   </>
                 )}
                 <div className="ml-auto flex gap-1">
@@ -440,30 +457,29 @@ export function AdminPage() {
                 />
               )}
 
-              {draft.gameType === 'classic' && (
-                <>
-                  <div className="space-y-1">
-                    <input
-                      value={q.mediaUrl}
-                      onChange={(e) => patchQ(i, { mediaUrl: e.target.value })}
-                      placeholder="URL d'une image (optionnel, https://…)"
-                      className={`${input} w-full`}
-                    />
-                    {q.mediaUrl.trim() && (
-                      <QuestionImage key={q.mediaUrl} url={q.mediaUrl.trim()} className="max-h-32" />
-                    )}
-                  </div>
+              {/* Image : disponible dans les deux modes (classique ET buzzer) */}
+              <div className="space-y-1">
+                <input
+                  value={q.mediaUrl}
+                  onChange={(e) => patchQ(i, { mediaUrl: e.target.value })}
+                  placeholder="URL d'une image (optionnel, https://…)"
+                  className={`${input} w-full`}
+                />
+                {q.mediaUrl.trim() && (
+                  <QuestionImage key={q.mediaUrl} url={q.mediaUrl.trim()} className="max-h-32" />
+                )}
+              </div>
 
-                  <label className="flex items-center gap-2 text-sm text-gray-400">
-                    Temps (s)
-                    <input
-                      type="number"
-                      value={q.timeLimit}
-                      onChange={(e) => patchQ(i, { timeLimit: Number(e.target.value) })}
-                      className={`${input} w-20`}
-                    />
-                  </label>
-                </>
+              {draft.gameType === 'classic' && (
+                <label className="flex items-center gap-2 text-sm text-gray-400">
+                  Temps (s)
+                  <input
+                    type="number"
+                    value={q.timeLimit}
+                    onChange={(e) => patchQ(i, { timeLimit: Number(e.target.value) })}
+                    className={`${input} w-20`}
+                  />
+                </label>
               )}
             </div>
           ))}

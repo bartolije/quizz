@@ -1,6 +1,6 @@
 import type { Server, Socket } from 'socket.io'
 import type { ClientToServerEvents, ServerToClientEvents, BuzzThemesState } from '@lya-quiz/shared'
-import { EVENTS, DIFFICULTY_POINTS, CULTURE_THEME } from '@lya-quiz/shared'
+import { EVENTS, CULTURE_THEME, questionPoints } from '@lya-quiz/shared'
 import type { SessionState } from '../state.js'
 import {
   findSessionByHostSocket,
@@ -329,7 +329,7 @@ function awardAndReveal(session: SessionState, io: QuizServer, scorerId: string 
   if (!b || !q) return
 
   const difficulty = q.difficulty ?? null
-  const points = difficulty ? DIFFICULTY_POINTS[difficulty] : 0
+  const points = questionPoints(q)
 
   // Reset des deltas (comme la fermeture d'une question classique)
   for (const p of session.participants.values()) p.lastDelta = 0

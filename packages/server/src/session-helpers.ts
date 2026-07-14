@@ -7,6 +7,7 @@ import type {
   Team,
   TeamScore,
 } from '@lya-quiz/shared'
+import { questionPoints } from '@lya-quiz/shared'
 import type { SessionState, ParticipantState } from './state.js'
 import { getAllSessions } from './state.js'
 
@@ -38,9 +39,10 @@ export function toPublicQuestion(
     timeLimit: q.timeLimit,
     index,
     total,
-    // Mode buzzer : difficulté / section / owner exposés pour l'affichage TV+host
-    // (jamais correctAnswers — révélées seulement à buzz_question_ended).
+    // Mode buzzer : difficulté / points / section / owner exposés pour l'affichage
+    // TV+host (jamais correctAnswers — révélées seulement à buzz_question_ended).
     ...(q.difficulty ? { difficulty: q.difficulty } : {}),
+    ...(q.points || q.difficulty ? { points: questionPoints(q) } : {}),
     ...(q.section ? { section: q.section } : {}),
     ...(q.ownerName ? { ownerName: q.ownerName } : {}),
   }

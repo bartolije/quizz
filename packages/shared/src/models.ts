@@ -26,6 +26,14 @@ export const DIFFICULTY_POINTS: Record<Difficulty, number> = {
   difficile: 3,
 }
 
+// Points effectifs d'une question buzzer : `points` explicite s'il est défini
+// (nombre libre), sinon dérivé de l'ancienne `difficulty` (1/2/3), sinon 1.
+export function questionPoints(q: { points?: number; difficulty?: Difficulty }): number {
+  if (typeof q.points === 'number' && q.points > 0) return Math.round(q.points)
+  if (q.difficulty) return DIFFICULTY_POINTS[q.difficulty]
+  return 1
+}
+
 // Section d'une question dans une partie famille :
 // 'perso'   = thème d'un joueur (répondu d'abord par l'owner, puis volable)
 // 'culture' = culture générale, buzzer ouvert à tous dès le départ
@@ -106,6 +114,7 @@ export interface QuestionPublic {
   total: number        // nombre total de questions
   // Mode buzzer (optionnels) : affichés sur la TV / le tél, JAMAIS correctAnswers
   difficulty?: Difficulty
+  points?: number      // points de la question (nombre libre ; cf. questionPoints)
   section?: QuestionSection
   ownerName?: string   // section 'perso' : nom du propriétaire du thème (affichage)
 }
@@ -119,9 +128,10 @@ export interface Question {
   correctAnswers: string[]   // plusieurs pour gérer variantes (accents, tirets...)
                              // en mode buzzer : réponse de RÉFÉRENCE (révélation + antisèche admin), jamais auto-corrigée
   timeLimit: number          // override si != defaultTimeLimit
-  mediaUrl?: string          // pour plus tard
+  mediaUrl?: string          // image optionnelle (URL publique https) — buzzer inclus
   // ── Mode buzzer (optionnels, absents = question classique) ──
-  difficulty?: Difficulty    // détermine les points (cf. DIFFICULTY_POINTS)
+  difficulty?: Difficulty    // ancien palier (compat) ; points prime dessus
+  points?: number            // points de la question (nombre libre, ex. « ultra dur » = 5)
   section?: QuestionSection  // 'perso' | 'culture'
   ownerName?: string         // section 'perso' : le slot joueur propriétaire du thème
 }

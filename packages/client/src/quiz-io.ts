@@ -18,6 +18,7 @@ export function toExport(quiz: Quiz): QuizInput {
       timeLimit: q.timeLimit,
       ...(q.mediaUrl ? { mediaUrl: q.mediaUrl } : {}),
       ...(q.difficulty ? { difficulty: q.difficulty } : {}),
+      ...(typeof q.points === 'number' ? { points: q.points } : {}),
       ...(q.section ? { section: q.section } : {}),
       ...(q.ownerName ? { ownerName: q.ownerName } : {}),
     })),
@@ -87,6 +88,7 @@ export function parseQuizJson(text: string): { quiz: QuizInput | null; error: st
 
     // Champs mode buzzer (optionnels, tolérants)
     const difficulty = ['facile', 'moyen', 'difficile'].includes(q.difficulty) ? q.difficulty : undefined
+    const points = Number(q.points) > 0 ? Math.round(Number(q.points)) : undefined
     const section = ['perso', 'culture'].includes(q.section) ? q.section : undefined
     const ownerName = typeof q.ownerName === 'string' && q.ownerName.trim() ? q.ownerName.trim() : undefined
 
@@ -98,6 +100,7 @@ export function parseQuizJson(text: string): { quiz: QuizInput | null; error: st
       ...(type === 'mcq' ? { choices: (q.choices as unknown[]).map((c) => String(c)) } : {}),
       ...(typeof q.mediaUrl === 'string' && q.mediaUrl.trim() ? { mediaUrl: q.mediaUrl.trim() } : {}),
       ...(difficulty ? { difficulty } : {}),
+      ...(points ? { points } : {}),
       ...(section ? { section } : {}),
       ...(ownerName ? { ownerName } : {}),
     })

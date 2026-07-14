@@ -3,11 +3,11 @@ import { socket } from '../socket'
 import { useQuizStore } from '../store/quiz-store'
 import { vibrate } from '../haptics'
 
-const DIFFICULTY_LABEL: Record<string, { label: string; pts: number }> = {
-  facile: { label: 'Facile', pts: 1 },
-  moyen: { label: 'Moyen', pts: 2 },
-  difficile: { label: 'Difficile', pts: 3 },
-}
+// Badge de points (couleur selon la valeur — les « ultra dur » ressortent)
+const ptsBadge = (pts: number): { label: string; cls: string } => ({
+  label: `${pts} pt${pts > 1 ? 's' : ''}`,
+  cls: pts >= 4 ? 'bg-fuchsia-700' : pts === 3 ? 'bg-rose-700' : pts === 2 ? 'bg-amber-700' : 'bg-emerald-700',
+})
 
 // Vue participant en mode buzzer (partie famille). Le téléphone n'est qu'un
 // BUZZER : pas de saisie, l'admin arbitre tout à l'oral. La vue est pilotée par
@@ -60,7 +60,7 @@ export function BuzzerParticipant() {
   const iHaveFloor = buzz.lockedBy?.participantId === myId
   const iAmLockedOut = myId !== null && buzz.lockedOut.includes(myId)
   const canBuzz = buzz.armed && !iAmOwner && !iAmLockedOut
-  const diff = question.difficulty ? DIFFICULTY_LABEL[question.difficulty] : null
+  const badge = question.points ? ptsBadge(question.points) : null
 
   const onBuzz = () => {
     if (!canBuzz) return
@@ -71,8 +71,8 @@ export function BuzzerParticipant() {
   // Bandeau haut : difficulté + score (constant quelle que soit la phase)
   const header = (
     <div className="absolute top-0 inset-x-0 flex items-center justify-between px-5 py-4 text-sm">
-      {diff ? (
-        <span className="px-3 py-1 rounded-full bg-gray-800 font-bold">{diff.label} · {diff.pts} pt{diff.pts > 1 ? 's' : ''}</span>
+      {badge ? (
+        <span className={`px-3 py-1 rounded-full font-bold ${badge.cls}`}>{badge.label}</span>
       ) : <span />}
       <span className="text-gray-400">Score <span className="font-mono font-bold text-white">{myScore}</span></span>
     </div>

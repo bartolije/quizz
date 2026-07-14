@@ -46,7 +46,8 @@ export const questions = sqliteTable('questions', {
   ord: integer('ord').notNull(),
   mediaUrl: text('media_url'),
   // Mode buzzer (nullable → questions classiques inchangées)
-  difficulty: text('difficulty'), // 'facile' | 'moyen' | 'difficile' | null
+  difficulty: text('difficulty'), // 'facile' | 'moyen' | 'difficile' | null (compat)
+  points: integer('points'),      // points de la question (nombre libre) | null
   section: text('section'),       // 'perso' | 'culture' | null
   ownerName: text('owner_name'),  // slot joueur propriétaire du thème (section perso)
 })
@@ -92,6 +93,7 @@ function ensureColumn(table: string, column: string, decl: string): void {
 }
 ensureColumn('quizzes', 'game_type', 'TEXT')
 ensureColumn('questions', 'difficulty', 'TEXT')
+ensureColumn('questions', 'points', 'INTEGER')
 ensureColumn('questions', 'section', 'TEXT')
 ensureColumn('questions', 'owner_name', 'TEXT')
 
