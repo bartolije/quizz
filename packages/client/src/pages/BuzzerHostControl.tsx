@@ -18,7 +18,12 @@ const ptsBadge = (pts: number): { label: string; cls: string } => ({
 // jugé selon la phase (owner à l'oral ou buzzeur).
 export function BuzzerHostControl({ s }: { s: HostSessionView }) {
   const [report, setReport] = useState<GameReport | null>(null)
+  const [adjustOpen, setAdjustOpen] = useState(false)
+  const [showScores, setShowScores] = useState(false)
+  const [manualName, setManualName] = useState('')
   const connected = s.participants.filter((p) => p.connected)
+  // Joueurs pouvant marquer (avec tél connecté OU « sans téléphone » manuel)
+  const players = s.participants.filter((p) => p.connected || p.manual)
   const joinUrl = s.pin ? `${window.location.origin}/join?pin=${s.pin}` : ''
   const b = s.buzz
   const q = s.buzzQuestion
@@ -26,6 +31,63 @@ export function BuzzerHostControl({ s }: { s: HostSessionView }) {
   const hasPerso = (s.themes?.owners.length ?? 0) > 0
 
   const btn = 'px-6 py-4 rounded-2xl font-bold text-lg transition-colors disabled:opacity-40'
+
+  const addManual = () => {
+    const name = manualName.trim()
+    if (!name) return
+    s.addManualParticipant(name)
+    setManualName('')
+  }
+
+  // Bouton « Ajuster » (présent dans chaque phase) + panneau (rendu une seule fois
+  // car une seule vue est active à la fois).
+  const adjustBtn = (
+    <button
+      onClick={() => setAdjustOpen(true)}
+      className="px-4 py-3 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-200 font-medium"
+      title="Donner / retirer des points (arbitrage)"
+    >
+      ⚖️ Ajuster
+    </button>
+  )
+  const adjustOverlay = adjustOpen ? (
+    <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setAdjustOpen(false)}>
+      <div className="bg-gray-900 rounded-3xl p-6 max-w-lg w-full max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-1">
+          <h2 className="text-xl font-bold">⚖️ Ajuster les points</h2>
+          <button onClick={() => setShowScores((v) => !v)} className="text-sm px-3 py-1 rounded-lg bg-gray-800 hover:bg-gray-700">
+            {showScores ? '🙈 Cacher les scores' : '👁 Voir les scores'}
+          </button>
+        </div>
+        <p className="text-gray-500 text-sm mb-4">Arbitrage : +/− des points. Par défaut on n'affiche que ton ajustement, pas le score total.</p>
+        <ul className="space-y-2">
+          {players.map((p) => {
+            const sc = s.leaderboard.find((x) => x.participantId === p.id)?.score ?? 0
+            return (
+              <li key={p.id} className="flex items-center gap-3 bg-gray-800 rounded-xl px-3 py-2">
+                <span className="flex-1 font-medium">
+                  {p.pseudo}
+                  {p.manual && <span className="text-gray-500 text-xs"> (sans tél)</span>}
+                </span>
+                {showScores && <span className="font-mono text-indigo-300 tabular-nums">{sc}</span>}
+                {typeof p.bonus === 'number' && p.bonus !== 0 && (
+                  <span className={`text-sm font-bold ${p.bonus > 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                    {p.bonus > 0 ? '+' : ''}{p.bonus}
+                  </span>
+                )}
+                <div className="flex gap-1">
+                  <button onClick={() => s.adjustScore(p.id, -1)} className="w-9 h-9 rounded-lg bg-rose-700 hover:bg-rose-600 font-black text-lg">−</button>
+                  <button onClick={() => s.adjustScore(p.id, 1)} className="w-9 h-9 rounded-lg bg-emerald-700 hover:bg-emerald-600 font-black text-lg">+</button>
+                </div>
+              </li>
+            )
+          })}
+          {players.length === 0 && <li className="text-gray-500">Aucun joueur pour l'instant.</li>}
+        </ul>
+        <button onClick={() => setAdjustOpen(false)} className="mt-5 w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 font-bold">Fermer</button>
+      </div>
+    </div>
+  ) : null
 
   // ── Waiting : QR + participants + démarrer ──────────────────
   if (s.status === 'waiting') {
@@ -42,16 +104,28 @@ export function BuzzerHostControl({ s }: { s: HostSessionView }) {
             <p className="text-6xl font-black tracking-widest font-mono">{s.pin}</p>
           </section>
           <section className="flex flex-col gap-3">
-            <h2 className="text-lg font-bold text-gray-300">Joueurs connectés</h2>
-            <ul className="flex-1 flex flex-wrap gap-2 content-start">
-              {connected.map((p) => (
+            <h2 className="text-lg font-bold text-gray-300">Joueurs</h2>
+            <ul className="flex flex-wrap gap-2 content-start">
+              {players.map((p) => (
                 <li key={p.id} className="px-3 py-2 rounded-xl bg-gray-800 flex items-center gap-2">
                   {p.pseudo}
+                  {p.manual && <span className="text-gray-500 text-xs">(sans tél)</span>}
                   <button onClick={() => { if (confirm(`Retirer ${p.pseudo} ?`)) s.kick(p.id) }} className="text-gray-500 hover:text-rose-400" aria-label={`Retirer ${p.pseudo}`}>✕</button>
                 </li>
               ))}
-              {connected.length === 0 && <li className="text-gray-500">En attente de joueurs…</li>}
+              {players.length === 0 && <li className="text-gray-500">En attente de joueurs…</li>}
             </ul>
+            {/* Joueur sans téléphone : géré par l'admin (thème + points, pas de buzz) */}
+            <div className="flex gap-2">
+              <input
+                value={manualName}
+                onChange={(e) => setManualName(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && addManual()}
+                placeholder="Ajouter un joueur sans téléphone…"
+                className="flex-1 bg-gray-800 rounded-lg px-3 py-2 border border-gray-700 focus:border-indigo-500 outline-none"
+              />
+              <button onClick={addManual} className="px-3 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 font-bold">+ Sans tél</button>
+            </div>
           </section>
         </div>
 
@@ -69,7 +143,7 @@ export function BuzzerHostControl({ s }: { s: HostSessionView }) {
                     className="bg-gray-800 rounded-lg px-2 py-1 border border-gray-700 max-w-[10rem]"
                   >
                     <option value="">— non attribué</option>
-                    {connected.map((p) => <option key={p.id} value={p.id}>{p.pseudo}</option>)}
+                    {players.map((p) => <option key={p.id} value={p.id}>{p.pseudo}{p.manual ? ' (sans tél)' : ''}</option>)}
                   </select>
                 </div>
               ))}
@@ -80,9 +154,11 @@ export function BuzzerHostControl({ s }: { s: HostSessionView }) {
           </section>
         )}
 
-        <footer className="px-8 py-6 border-t border-gray-800 flex justify-end">
-          <button onClick={s.start} disabled={connected.length === 0} className={`${btn} bg-indigo-600 hover:bg-indigo-500 px-10`}>Démarrer le quiz</button>
+        <footer className="px-8 py-6 border-t border-gray-800 flex items-center justify-between">
+          {adjustBtn}
+          <button onClick={s.start} disabled={players.length === 0} className={`${btn} bg-indigo-600 hover:bg-indigo-500 px-10`}>Démarrer le quiz</button>
         </footer>
+        {adjustOverlay}
       </div>
     )
   }
@@ -101,11 +177,13 @@ export function BuzzerHostControl({ s }: { s: HostSessionView }) {
             </li>
           ))}
         </ol>
-        <div className="flex gap-3 mt-4">
+        <div className="flex flex-wrap justify-center gap-3 mt-4">
+          {adjustBtn}
           <button onClick={() => { if (s.sessionId) void fetchReport(s.sessionId).then(setReport) }} className={`${btn} bg-indigo-600 hover:bg-indigo-500`}>📊 Rapport</button>
           <button onClick={() => { if (confirm('Nouvelle session ?')) { clearHostSession(); window.location.reload() } }} className={`${btn} bg-gray-800 hover:bg-gray-700 text-gray-300`}>➕ Nouvelle session</button>
         </div>
         {report && <ReportView report={report} onClose={() => setReport(null)} />}
+        {adjustOverlay}
       </div>
     )
   }
@@ -219,7 +297,10 @@ export function BuzzerHostControl({ s }: { s: HostSessionView }) {
       </div>
 
       <footer className="px-8 py-5 border-t border-gray-800 flex items-center justify-between gap-4">
-        <button onClick={s.endQuiz} className="px-5 py-3 rounded-xl text-rose-400 hover:bg-rose-500/10 font-medium">Terminer</button>
+        <div className="flex items-center gap-2">
+          <button onClick={s.endQuiz} className="px-5 py-3 rounded-xl text-rose-400 hover:bg-rose-500/10 font-medium">Terminer</button>
+          {adjustBtn}
+        </div>
         <div className="flex items-center gap-3">
           {/* Question suivante dans le thème (révélation), ou lancement direct
               en culture-only (sans thèmes perso, le sélecteur n'apparaît pas). */}
@@ -244,6 +325,7 @@ export function BuzzerHostControl({ s }: { s: HostSessionView }) {
           )}
         </div>
       </footer>
+      {adjustOverlay}
     </div>
   )
 }

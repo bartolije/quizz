@@ -36,6 +36,8 @@ interface SnapshotParticipant {
   lastDelta: number
   correctTotal: number
   teamId?: string
+  manual?: boolean
+  bonus?: number
 }
 
 interface Snapshot {
@@ -95,6 +97,8 @@ export function serializeSession(session: SessionState): string {
       lastDelta: p.lastDelta,
       correctTotal: p.correctTotal,
       ...(p.teamId !== undefined ? { teamId: p.teamId } : {}),
+      ...(p.manual ? { manual: true } : {}),
+      ...(p.bonus ? { bonus: p.bonus } : {}),
     })),
     answers: openQuestion ? [] : [...session.answers.entries()],
     currentShuffled: openQuestion ? null : session.currentShuffled,
@@ -132,6 +136,8 @@ export function deserializeSession(json: string): SessionState {
       lastDelta: p.lastDelta,
       correctTotal: p.correctTotal,
       ...(p.teamId !== undefined ? { teamId: p.teamId } : {}),
+      ...(p.manual ? { manual: true } : {}),
+      ...(p.bonus ? { bonus: p.bonus } : {}),
     })
     tokenIndex.set(p.sessionToken, p.id)
   }

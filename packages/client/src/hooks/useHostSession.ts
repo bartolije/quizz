@@ -82,6 +82,8 @@ export interface HostSessionView {
   passQuestion: () => void
   startTheme: (ownerName: string) => void
   assignOwner: (ownerName: string, participantId: string | null) => void
+  addManualParticipant: (pseudo: string) => void
+  adjustScore: (participantId: string, delta: number) => void
   // Actions host mode équipe
   setMode: (mode: SessionMode) => void
   addTeam: (name: string) => void
@@ -395,6 +397,9 @@ export function useHostSession(mode: HostMode): HostSessionView {
   const startTheme = (ownerName: string) => socket.emit(EVENTS.HOST_START_THEME, { ownerName })
   const assignOwner = (ownerName: string, participantId: string | null) =>
     socket.emit(EVENTS.HOST_ASSIGN_OWNER, { ownerName, participantId })
+  const addManualParticipant = (pseudo: string) => socket.emit(EVENTS.HOST_ADD_MANUAL_PARTICIPANT, { pseudo })
+  const adjustScore = (participantId: string, delta: number) =>
+    socket.emit(EVENTS.HOST_ADJUST_SCORE, { participantId, delta })
 
   // Actions host mode équipe
   const changeMode = (m: SessionMode) => socket.emit(EVENTS.HOST_SET_MODE, { mode: m })
@@ -442,6 +447,8 @@ export function useHostSession(mode: HostMode): HostSessionView {
     passQuestion,
     startTheme,
     assignOwner,
+    addManualParticipant,
+    adjustScore,
     setMode: changeMode,
     addTeam,
     removeTeam,

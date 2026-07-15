@@ -1,3 +1,4 @@
+import { v4 as uuid } from 'uuid'
 import type { Server, Socket } from 'socket.io'
 import type { ClientToServerEvents, ServerToClientEvents } from '@lya-quiz/shared'
 import { EVENTS } from '@lya-quiz/shared'
@@ -175,6 +176,67 @@ export function handleKickParticipant(
     participantId: participant.id,
     pseudo: participant.pseudo,
   })
+}
+
+// Mode buzzer : ajouter un joueur « sans téléphone » (participant fantôme géré
+// par l'admin). Il peut posséder un thème et marquer des points (l'admin tape),
+// mais n'a pas d'appareil → il ne buzze jamais.
+export function handleAddManualParticipant(
+  socket: QuizSocket,
+  payload: { pseudo: string },
+  io: QuizServer,
+): void {
+  const session = getAllSessions().find((s) => s.hostSocketIds.has(socket.id))
+  if (!session) return
+  const pseudo = String(payload?.pseudo ?? '').trim().slice(0, 40)
+  if (!pseudo) return
+  const id = uuid()
+  const token = uuid()
+  session.participants.set(id, {
+    id,
+    pseudo,
+    socketId: '',
+    sessionToken: token,
+    connected: false,
+    score: 0,
+    lastDelta: 0,
+    correctTotal: 0,
+    manual: true,
+    bonus: 0,
+  })
+  session.tokenIndex.set(token, id)
+  io.to(session.id).emit(EVENTS.TEAMS_UPDATED, getTeamsPayload(session))
+  if (session.quiz?.gameType === 'buzzer') io.to(session.id).emit(EVENTS.BUZZ_THEMES, buildThemes(session))
+  saveSessionSnapshot(session)
+  logEvent('manual_participant_added', { sessionId: session.id, pseudo })
+}
+
+// Ajustement manuel de points (+/-) pour arbitrer un détail (réponse limite,
+// effort, pénalité, bonne réponse criée par un joueur sans téléphone…).
+export function handleAdjustScore(
+  socket: QuizSocket,
+  payload: { participantId: string; delta: number },
+  io: QuizServer,
+): void {
+  const session = getAllSessions().find((s) => s.hostSocketIds.has(socket.id))
+  if (!session) return
+  const p = session.participants.get(String(payload?.participantId ?? ''))
+  if (!p) return
+  let delta = Number(payload?.delta)
+  if (!Number.isFinite(delta)) return
+  delta = Math.max(-1000, Math.min(1000, Math.round(delta)))
+  if (delta === 0) return
+  p.score += delta
+  p.bonus = (p.bonus ?? 0) + delta
+  // teams_updated porte le `bonus` (écran d'ajustement, sans le score total) ;
+  // leaderboard_update porte les scores réels (bouton « voir les scores » + podium).
+  io.to(session.id).emit(EVENTS.TEAMS_UPDATED, getTeamsPayload(session))
+  io.to(session.id).emit(EVENTS.LEADERBOARD_UPDATE, {
+    scores: getLeaderboard(session),
+    final: session.status === 'ended',
+  })
+  saveSessionSnapshot(session)
+  logEvent('score_adjusted', { sessionId: session.id, participantId: p.id, delta })
 }
 
 // Le host lance le quiz : on passe la session en 'running' et on diffuse le

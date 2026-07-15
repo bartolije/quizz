@@ -81,6 +81,8 @@ export interface Participant {
   pseudo: string
   connected: boolean
   teamId?: string      // mode équipe : équipe du participant (absent = sans équipe)
+  manual?: boolean     // mode buzzer : joueur « sans téléphone » géré par l'admin (pas de buzz)
+  bonus?: number       // total des ajustements manuels (+/-) appliqués par l'admin
 }
 
 // Score d'un participant à un instant T

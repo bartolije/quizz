@@ -15,6 +15,8 @@ export interface ParticipantState {
   correctTotal: number      // nb de questions réussies (pour le rapport de fin)
   disconnectedAt?: number   // timestamp, pour cleanup après TTL
   teamId?: string           // mode équipe : équipe du participant (absent = sans équipe)
+  manual?: boolean          // joueur « sans téléphone » (mode buzzer) — pas d'appareil
+  bonus?: number            // total des ajustements manuels (+/-) de l'admin
 }
 
 // Réponse en cours d'un participant à la question ouverte

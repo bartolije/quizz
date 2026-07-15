@@ -18,6 +18,8 @@ export function toParticipant(p: ParticipantState): Participant {
     connected: p.connected,
     // exactOptionalPropertyTypes : n'ajouter la clé que si une équipe est définie
     ...(p.teamId ? { teamId: p.teamId } : {}),
+    ...(p.manual ? { manual: true } : {}),
+    ...(p.bonus ? { bonus: p.bonus } : {}),
   }
 }
 

@@ -17,6 +17,7 @@ type BuzzStateP = Parameters<ServerToClientEvents['buzz_state']>[0]
 type BuzzEnded = Parameters<ServerToClientEvents['buzz_question_ended']>[0]
 type BuzzThemes = Parameters<ServerToClientEvents['buzz_themes']>[0]
 type Leaderboard = Parameters<ServerToClientEvents['leaderboard_update']>[0]
+type TeamsUpdated = Parameters<ServerToClientEvents['teams_updated']>[0]
 
 let srv: TestServer
 
@@ -334,6 +335,54 @@ describe('buzzer — reconnexion', () => {
     expect(restored.currentQuestion).toBeNull() // pas de question "classique" en mode buzzer
     expect(restored.buzz?.phase).toBe('steal')
     expect(restored.buzz?.armed).toBe(true)
+  })
+})
+
+describe('buzzer — joueurs sans téléphone + ajustement de points', () => {
+  it('joueur « sans téléphone » : peut posséder un thème et marquer des points', async () => {
+    const session = makeBuzzerSession(PERSO_QS)
+    const host = await hostJoin(session)
+    host.emit(EVENTS.HOST_START_QUIZ, {})
+
+    // L'admin ajoute Mamie (sans tél) → elle apparaît dans la liste (manual)
+    const added = waitFor<TeamsUpdated>(host, EVENTS.TEAMS_UPDATED)
+    host.emit(EVENTS.HOST_ADD_MANUAL_PARTICIPANT, { pseudo: 'Mamie' })
+    const tu = await added
+    const mamie = tu.participants.find((p) => p.pseudo === 'Mamie')
+    expect(mamie?.manual).toBe(true)
+    const mamieId = mamie!.id
+
+    // On lui attribue le thème de Papa
+    const bound = waitThemes(host, (t) => t.owners.find((o) => o.ownerName === 'Papa')?.participantId === mamieId)
+    host.emit(EVENTS.HOST_ASSIGN_OWNER, { ownerName: 'Papa', participantId: mamieId })
+    await bound
+
+    // Le thème démarre : owner_oral, owner = Mamie (sans tél)
+    const st = waitFor<BuzzStarted>(host, EVENTS.BUZZ_QUESTION_STARTED)
+    host.emit(EVENTS.HOST_START_THEME, { ownerName: 'Papa' })
+    expect((await st).buzz.ownerParticipantId).toBe(mamieId)
+
+    // Elle répond juste à l'oral → l'admin valide → elle marque (2 pts, moyen)
+    const ended = waitFor<BuzzEnded>(host, EVENTS.BUZZ_QUESTION_ENDED)
+    host.emit(EVENTS.HOST_ADJUDICATE, { correct: true })
+    const e = await ended
+    expect(e.scorer?.participantId).toBe(mamieId)
+    expect(e.scorer?.points).toBe(2)
+  })
+
+  it('ajustement manuel : +/- points reflétés dans le score ET le bonus', async () => {
+    const session = makeBuzzerSession(CULTURE_QS)
+    const { joined } = await joinAs('alice', session.pin)
+    const host = await hostJoin(session)
+    host.emit(EVENTS.HOST_START_QUIZ, {})
+    const id = joined.participant.id
+
+    const lbP = waitFor<Leaderboard>(host, EVENTS.LEADERBOARD_UPDATE)
+    const tuP = waitFor<TeamsUpdated>(host, EVENTS.TEAMS_UPDATED)
+    host.emit(EVENTS.HOST_ADJUST_SCORE, { participantId: id, delta: 5 })
+    const [l, t] = await Promise.all([lbP, tuP])
+    expect(l.scores.find((s) => s.participantId === id)?.score).toBe(5)      // score réel
+    expect(t.participants.find((p) => p.id === id)?.bonus).toBe(5)           // ajustement exposé (écran host)
   })
 })
 

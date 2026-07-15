@@ -8,6 +8,8 @@ import {
   handleHostStartQuiz,
   handleHostEndQuiz,
   handleKickParticipant,
+  handleAddManualParticipant,
+  handleAdjustScore,
 } from './handlers/host.js'
 import {
   handleNextQuestion,
@@ -82,6 +84,8 @@ export function attachSocketHandlers(io: QuizServer): void {
     socket.on(EVENTS.HOST_PASS_QUESTION, () => safe('host_pass_question', () => handlePassQuestion(socket, io)))
     socket.on(EVENTS.HOST_START_THEME, (p) => safe('host_start_theme', () => handleStartTheme(socket, p, io)))
     socket.on(EVENTS.HOST_ASSIGN_OWNER, (p) => safe('host_assign_owner', () => handleAssignOwner(socket, p, io)))
+    socket.on(EVENTS.HOST_ADD_MANUAL_PARTICIPANT, (p) => safe('host_add_manual_participant', () => handleAddManualParticipant(socket, p, io)))
+    socket.on(EVENTS.HOST_ADJUST_SCORE, (p) => safe('host_adjust_score', () => handleAdjustScore(socket, p, io)))
 
     socket.on('disconnect', () => safe('disconnect', () => handleDisconnect(socket.id, io, getAllSessions)))
   })

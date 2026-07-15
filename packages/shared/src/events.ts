@@ -147,6 +147,13 @@ export interface ClientToServerEvents {
   // HOST ONLY — associer un slot de thème (ownerName) à un participant connecté
   // (binding, écran lobby). null = dissocier. Auto-bind par pseudo par défaut.
   host_assign_owner: (payload: { ownerName: string; participantId: string | null }) => void
+
+  // HOST ONLY — ajouter un joueur « sans téléphone » (participant fantôme géré par
+  // l'admin : peut posséder un thème et marquer des points, ne peut pas buzzer).
+  host_add_manual_participant: (payload: { pseudo: string }) => void
+
+  // HOST ONLY — ajustement manuel de points (+/-) pour arbitrer un détail.
+  host_adjust_score: (payload: { participantId: string; delta: number }) => void
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -349,6 +356,8 @@ export const EVENTS = {
   HOST_PASS_QUESTION:  'host_pass_question',
   HOST_START_THEME:    'host_start_theme',
   HOST_ASSIGN_OWNER:   'host_assign_owner',
+  HOST_ADD_MANUAL_PARTICIPANT: 'host_add_manual_participant',
+  HOST_ADJUST_SCORE:           'host_adjust_score',
 
   // Serveur → Client
   SESSION_JOINED:         'session_joined',
