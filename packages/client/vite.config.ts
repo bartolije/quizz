@@ -16,6 +16,10 @@ function buildSha(): string {
 const BUILD_SHA = buildSha()
 const BUILD_DATE = new Date().toISOString().slice(0, 16).replace('T', ' ')
 
+// Cible du proxy dev (serveur Fastify). Surchargeable via QUIZ_SERVER_URL quand le
+// port 3001 est déjà pris par un autre projet local. Défaut inchangé = 3001.
+const SERVER_TARGET = process.env['QUIZ_SERVER_URL'] ?? 'http://localhost:3001'
+
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
@@ -28,11 +32,11 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:3001',
+        target: SERVER_TARGET,
         changeOrigin: true,
       },
       '/socket.io': {
-        target: 'http://localhost:3001',
+        target: SERVER_TARGET,
         ws: true, // proxyer les WebSockets
         changeOrigin: true,
       },

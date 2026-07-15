@@ -201,8 +201,10 @@ export function AdminPage() {
   }
 
   async function launch(id: string) {
-    const { pin, sessionId } = await launchQuiz(id)
-    localStorage.setItem('lya_host_session', JSON.stringify({ sessionId, pin }))
+    const { pin, sessionId, hostKey } = await launchQuiz(id)
+    // Stocker le hostKey → /host/control reprend CETTE session (le bon quiz) au
+    // lieu d'en recréer une avec le quiz par défaut.
+    localStorage.setItem('lya_host_session', JSON.stringify({ sessionId, pin, hostKey }))
     window.location.href = '/host/control'
   }
 

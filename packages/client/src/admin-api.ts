@@ -84,13 +84,15 @@ export async function deleteQuiz(id: string): Promise<void> {
   if (!res.ok) throw new Error('delete_failed')
 }
 
-// Lance un quiz : crée une session liée puis renvoie pin+sessionId.
-export async function launchQuiz(quizId: string): Promise<{ pin: string; sessionId: string }> {
+// Lance un quiz : crée une session liée puis renvoie pin+sessionId+hostKey.
+// Le hostKey est INDISPENSABLE : sans lui, /host/control ne peut pas reprendre
+// cette session et en recrée une (avec le quiz par défaut) → mauvais quiz lancé.
+export async function launchQuiz(quizId: string): Promise<{ pin: string; sessionId: string; hostKey: string }> {
   const res = await fetch(apiUrl('/api/sessions'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ quizId }),
   })
   if (!res.ok) throw new Error('launch_failed')
-  return (await res.json()) as { pin: string; sessionId: string }
+  return (await res.json()) as { pin: string; sessionId: string; hostKey: string }
 }
