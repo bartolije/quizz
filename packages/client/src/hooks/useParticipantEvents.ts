@@ -50,8 +50,9 @@ export function useParticipantEvents(): void {
       store().onBuzzQuestionStarted(p.question, p.buzz)
     }
     const onBuzzState = (p: BuzzStateP) => {
-      // Vibration quand JE prends la parole (mon buzz a gagné)
-      if (p.lockedBy?.participantId === store().myId) vibrate([40, 30, 40])
+      // Vibration quand JE prends la parole (mon buzz a gagné). p peut être null
+      // (thème terminé → retour au sélecteur) : le tél revient en écran d'attente.
+      if (p?.lockedBy?.participantId === store().myId) vibrate([40, 30, 40])
       store().onBuzzState(p)
     }
     const onBuzzEnded = (p: BuzzEnded) => store().onBuzzQuestionEnded(p)

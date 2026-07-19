@@ -142,7 +142,7 @@ interface QuizStore {
   onLeaderboard: (scores: ParticipantScore[], final: boolean, teamScores?: TeamScore[]) => void
   // Mode buzzer
   onBuzzQuestionStarted: (question: QuestionPublic, buzz: BuzzState) => void
-  onBuzzState: (buzz: BuzzState) => void
+  onBuzzState: (buzz: BuzzState | null) => void
   onBuzzQuestionEnded: (payload: { correctAnswers: string[]; difficulty: Difficulty | null; scorer: BuzzResult['scorer']; scores: ParticipantScore[] }) => void
   onSessionRestored: (payload: SessionRestoredPayload) => void
   onStatusChanged: (status: SessionStatus) => void

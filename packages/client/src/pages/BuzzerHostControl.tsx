@@ -24,6 +24,10 @@ export function BuzzerHostControl({ s }: { s: HostSessionView }) {
   const connected = s.participants.filter((p) => p.connected)
   // Joueurs pouvant marquer (avec tél connecté OU « sans téléphone » manuel)
   const players = s.participants.filter((p) => p.connected || p.manual)
+  // Écran d'ajustement : TOUT LE MONDE est ajustable, même un joueur déconnecté
+  // (ex. celui qui vient de passer et dont le tél s'est mis en veille). L'arbitrage
+  // de score ne dépend pas de l'état de connexion.
+  const adjustable = s.participants
   const joinUrl = s.pin ? `${window.location.origin}/join?pin=${s.pin}` : ''
   const b = s.buzz
   const q = s.buzzQuestion
@@ -61,13 +65,14 @@ export function BuzzerHostControl({ s }: { s: HostSessionView }) {
         </div>
         <p className="text-gray-500 text-sm mb-4">Arbitrage : +/− des points. Par défaut on n'affiche que ton ajustement, pas le score total.</p>
         <ul className="space-y-2">
-          {players.map((p) => {
+          {adjustable.map((p) => {
             const sc = s.leaderboard.find((x) => x.participantId === p.id)?.score ?? 0
             return (
               <li key={p.id} className="flex items-center gap-3 bg-gray-800 rounded-xl px-3 py-2">
                 <span className="flex-1 font-medium">
                   {p.pseudo}
                   {p.manual && <span className="text-gray-500 text-xs"> (sans tél)</span>}
+                  {!p.manual && !p.connected && <span className="text-amber-500/70 text-xs"> (déconnecté)</span>}
                 </span>
                 {showScores && <span className="font-mono text-indigo-300 tabular-nums">{sc}</span>}
                 {typeof p.bonus === 'number' && p.bonus !== 0 && (
@@ -82,7 +87,7 @@ export function BuzzerHostControl({ s }: { s: HostSessionView }) {
               </li>
             )
           })}
-          {players.length === 0 && <li className="text-gray-500">Aucun joueur pour l'instant.</li>}
+          {adjustable.length === 0 && <li className="text-gray-500">Aucun joueur pour l'instant.</li>}
         </ul>
         <button onClick={() => setAdjustOpen(false)} className="mt-5 w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 font-bold">Fermer</button>
       </div>

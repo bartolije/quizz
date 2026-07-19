@@ -29,8 +29,11 @@ import { saveSessionSnapshot, deleteSessionSnapshot } from '../session-snapshot.
 type QuizSocket = Socket<ClientToServerEvents, ServerToClientEvents>
 type QuizServer = Server<ClientToServerEvents, ServerToClientEvents>
 
+// Rediffuse l'état buzzer courant — y compris `null` : quand une question se
+// referme sans qu'une autre s'ouvre (thème terminé, retour au sélecteur), le
+// client DOIT recevoir ce null pour sortir de l'écran de révélation figé.
 function broadcastBuzzState(session: SessionState, io: QuizServer): void {
-  if (session.buzz) io.to(session.id).emit(EVENTS.BUZZ_STATE, session.buzz)
+  io.to(session.id).emit(EVENTS.BUZZ_STATE, session.buzz)
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -156,6 +159,11 @@ function startBuzzerQuestionAt(session: SessionState, io: QuizServer, index: num
 // préserve le flux « Lancer une question » du round culture (Phase 1).
 export function startNextBuzzerQuestion(session: SessionState, io: QuizServer): void {
   if (!session.quiz) return
+  logEvent('buzz_next_requested', {
+    sessionId: session.id,
+    currentTheme: session.currentTheme,
+    buzzPhase: session.buzz?.phase ?? null,
+  })
   if (session.buzz !== null && session.buzz.phase !== 'revealed') return // question en cours
 
   if (session.currentTheme === null && distinctOwners(session).length === 0) {
@@ -177,7 +185,10 @@ export function startNextBuzzerQuestion(session: SessionState, io: QuizServer): 
     return
   }
   session.currentTheme = null
+  broadcastBuzzState(session, io) // null → le host sort de la révélation vers le sélecteur
   broadcastThemes(session, io)
+  saveSessionSnapshot(session)    // currentTheme remis à null → persister pour un restart propre
+  logEvent('buzz_return_to_selector', { sessionId: session.id, reason: 'theme_done' })
 }
 
 // host_start_theme : l'admin choisit le thème (joueur) ou la culture G à jouer.
@@ -196,7 +207,9 @@ export function handleStartTheme(
     // Thème déjà fini / inconnu → retour sélecteur.
     session.buzz = null
     session.currentTheme = null
+    broadcastBuzzState(session, io) // null → sort de la révélation figée
     broadcastThemes(session, io)
+    logEvent('buzz_return_to_selector', { sessionId: session.id, reason: 'theme_empty', theme })
     return
   }
   session.currentTheme = theme

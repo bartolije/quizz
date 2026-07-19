@@ -233,7 +233,9 @@ export interface ServerToClientEvents {
 
   // État buzzer rediffusé COMPLET à chaque changement (buzz, arbitrage, réouverture…).
   // Source de vérité unique → le client remplace son état et dérive ses affordances.
-  buzz_state: (payload: BuzzState) => void
+  // `null` = plus de question active (thème terminé → retour au sélecteur de thème,
+  // fin de partie) : sans ce signal, le client resterait figé sur la révélation.
+  buzz_state: (payload: BuzzState | null) => void
 
   // Une question buzzer se termine (révélation). scorer = qui a marqué (null si personne).
   buzz_question_ended: (payload: {

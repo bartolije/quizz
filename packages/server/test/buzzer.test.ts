@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import type { ServerToClientEvents, Question } from '@lya-quiz/shared'
+import type { ServerToClientEvents, Question, BuzzState } from '@lya-quiz/shared'
 import { EVENTS } from '@lya-quiz/shared'
 import {
   startTestServer,
@@ -26,16 +26,17 @@ let srv: TestServer
 // et évite les courses sur l'ordre de livraison des broadcasts room.
 function waitBuzz(
   socket: TestClient,
-  pred: (s: BuzzStateP) => boolean,
+  pred: (s: BuzzState) => boolean,
   timeoutMs = 3000,
-): Promise<BuzzStateP> {
-  return new Promise<BuzzStateP>((resolve, reject) => {
+): Promise<BuzzState> {
+  return new Promise<BuzzState>((resolve, reject) => {
     const to = setTimeout(() => {
       socket.off(EVENTS.BUZZ_STATE, handler)
       reject(new Error(`timeout (${timeoutMs}ms) en attendant un buzz_state`))
     }, timeoutMs)
     const handler = (s: BuzzStateP): void => {
-      if (!pred(s)) return
+      // buzz_state peut désormais être null (retour au sélecteur) → on l'ignore ici
+      if (s === null || !pred(s)) return
       clearTimeout(to)
       socket.off(EVENTS.BUZZ_STATE, handler)
       resolve(s)
@@ -134,7 +135,7 @@ describe('buzzer — round culture (ouvert à tous)', () => {
     host.emit(EVENTS.HOST_NEXT_QUESTION, {})
     await waitFor<BuzzStarted>(alice, EVENTS.BUZZ_QUESTION_STARTED)
 
-    const locked = waitFor<BuzzStateP>(alice, EVENTS.BUZZ_STATE)
+    const locked = waitFor<BuzzState>(alice, EVENTS.BUZZ_STATE)
     alice.emit(EVENTS.BUZZ, {})
     const st = await locked
     expect(st.phase).toBe('locked')
@@ -156,7 +157,7 @@ describe('buzzer — round culture (ouvert à tous)', () => {
     host.emit(EVENTS.HOST_NEXT_QUESTION, {})
     await waitFor<BuzzStarted>(alice, EVENTS.BUZZ_QUESTION_STARTED)
 
-    const locked = waitFor<BuzzStateP>(alice, EVENTS.BUZZ_STATE)
+    const locked = waitFor<BuzzState>(alice, EVENTS.BUZZ_STATE)
     alice.emit(EVENTS.BUZZ, {})
     const st = await locked
     expect(st.lockedBy?.pseudo).toBe('alice')
@@ -305,10 +306,22 @@ describe('buzzer — round perso (thème + owner)', () => {
     expect((await e2).scorer?.participantId).toBe(bobId)
     expect((await e2).scorer?.points).toBe(3) // difficile
 
-    // Thème de Papa épuisé → retour sélecteur, Papa marqué done, Léa non
+    // Thème de Papa épuisé → retour sélecteur, Papa marqué done, Léa non.
+    // NON-RÉGRESSION (bug écran host figé) : le retour au sélecteur DOIT émettre
+    // buzz_state=null. Sans ce signal, le host restait bloqué sur la révélation de
+    // la dernière question du thème (bouton « suivant » mort).
+    const cleared = new Promise<BuzzStateP>((resolve) => {
+      const h = (s: BuzzStateP): void => {
+        if (s !== null) return
+        host.off(EVENTS.BUZZ_STATE, h)
+        resolve(s)
+      }
+      host.on(EVENTS.BUZZ_STATE, h)
+    })
     const done = waitThemes(host, (t) => t.currentTheme === null)
     host.emit(EVENTS.HOST_NEXT_QUESTION, {})
     const td = await done
+    expect(await cleared).toBeNull()
     expect(td.owners.find((o) => o.ownerName === 'Papa')?.done).toBe(true)
     expect(td.owners.find((o) => o.ownerName === 'Léa')?.done).toBe(false)
   })
