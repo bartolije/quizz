@@ -36,7 +36,7 @@ export function BuzzerHostDisplay({ s }: { s: HostSessionView }) {
         <h1 className="text-5xl font-black">Rejoins la partie 🎙️</h1>
         <div className="bg-white p-5 rounded-3xl"><QrCode value={joinUrl} size={280} /></div>
         <p className="text-8xl font-black tracking-widest font-mono">{s.pin}</p>
-        <p className="text-2xl text-indigo-300">{s.participants.filter((p) => p.connected).length} joueur·euse·s prêt·e·s</p>
+        <p className="text-2xl text-indigo-300">{s.participants.filter((p) => p.connected || p.manual).length} joueur·euse·s prêt·e·s</p>
       </div>
     )
   }

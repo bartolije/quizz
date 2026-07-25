@@ -21,8 +21,9 @@ export function BuzzerHostControl({ s }: { s: HostSessionView }) {
   const [adjustOpen, setAdjustOpen] = useState(false)
   const [showScores, setShowScores] = useState(false)
   const [manualName, setManualName] = useState('')
-  const connected = s.participants.filter((p) => p.connected)
-  // Joueurs pouvant marquer (avec tél connecté OU « sans téléphone » manuel)
+  // Joueurs pouvant marquer (avec tél connecté OU « sans téléphone » manuel).
+  // C'est CE décompte qu'on affiche : compter les seuls téléphones connectés
+  // annonçait « 0 joueur » sur une partie jouée uniquement sans téléphone.
   const players = s.participants.filter((p) => p.connected || p.manual)
   // Écran d'ajustement : TOUT LE MONDE est ajustable, même un joueur déconnecté
   // (ex. celui qui vient de passer et dont le tél s'est mis en veille). L'arbitrage
@@ -101,7 +102,7 @@ export function BuzzerHostControl({ s }: { s: HostSessionView }) {
         <ConnectionBanner connected={s.socketConnected} />
         <header className="flex items-center justify-between px-8 py-5 border-b border-gray-800">
           <h1 className="text-2xl font-bold">LYA QUIZ · <span className="text-indigo-300 text-base">Famille (buzzer)</span>{s.quizTitle && <span className="text-gray-500 text-base"> · {s.quizTitle}</span>}</h1>
-          <p className="text-gray-400">PIN <span className="text-white font-mono font-bold tracking-widest">{s.pin}</span> · <span className="text-indigo-400 font-bold">{connected.length}</span> joueur{connected.length > 1 ? 's' : ''}</p>
+          <p className="text-gray-400">PIN <span className="text-white font-mono font-bold tracking-widest">{s.pin}</span> · <span className="text-indigo-400 font-bold">{players.length}</span> joueur{players.length > 1 ? 's' : ''}</p>
         </header>
         <div className="flex-1 grid md:grid-cols-2 gap-8 p-8">
           <section className="flex flex-col items-center justify-center gap-6 bg-gray-900 rounded-3xl p-8">
@@ -201,7 +202,7 @@ export function BuzzerHostControl({ s }: { s: HostSessionView }) {
       <ConnectionBanner connected={s.socketConnected} />
       <header className="flex items-center justify-between px-8 py-4 border-b border-gray-800">
         <h1 className="text-xl font-bold">LYA QUIZ · <span className="text-indigo-300 text-sm">Famille</span></h1>
-        <p className="text-gray-400 text-sm">{connected.length} joueur{connected.length > 1 ? 's' : ''}</p>
+        <p className="text-gray-400 text-sm">{players.length} joueur{players.length > 1 ? 's' : ''}</p>
       </header>
 
       <div className="flex-1 p-8 flex flex-col gap-6">
@@ -278,7 +279,9 @@ export function BuzzerHostControl({ s }: { s: HostSessionView }) {
                     {(() => {
                       const owner = b.ownerParticipantId ? s.participants.find((p) => p.id === b.ownerParticipantId) : null
                       if (!owner) return <span className="ml-2 text-amber-400 text-sm">⚠️ thème non attribué — passe ou attribue-le</span>
-                      if (!owner.connected) return <span className="ml-2 text-amber-400 text-sm">⚠️ {owner.pseudo} est déconnecté·e</span>
+                      // Un joueur « sans téléphone » n'a jamais de socket : ne PAS
+                      // l'annoncer déconnecté (l'alerte resterait affichée toute la partie).
+                      if (!owner.manual && !owner.connected) return <span className="ml-2 text-amber-400 text-sm">⚠️ {owner.pseudo} est déconnecté·e</span>
                       return null
                     })()}
                   </span>
