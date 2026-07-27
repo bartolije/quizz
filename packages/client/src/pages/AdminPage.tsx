@@ -138,7 +138,7 @@ function toInput(d: EditDraft): { input: QuizInput; error: string | null } {
   }
 }
 
-const input = 'bg-gray-800 rounded-lg px-3 py-2 border border-gray-700 focus:border-indigo-500 outline-none'
+const input = 'bg-gray-800 rounded-lg px-3 py-2 border border-gray-700 focus:border-indigo-500 outline-hidden'
 
 export function AdminPage() {
   const [authed, setAuthed] = useState<boolean | null>(null)
@@ -372,7 +372,7 @@ export function AdminPage() {
                           key={p}
                           type="button"
                           onClick={() => patchQ(i, { points: p })}
-                          className={`px-2 py-1 rounded text-xs ${q.points === p ? 'bg-indigo-600' : 'bg-gray-800 hover:bg-gray-700'}`}
+                          className={`px-2 py-1 rounded-sm text-xs ${q.points === p ? 'bg-indigo-600' : 'bg-gray-800 hover:bg-gray-700'}`}
                           title={`${p} point${p > 1 ? 's' : ''}`}
                         >
                           {p}
@@ -382,11 +382,11 @@ export function AdminPage() {
                   </>
                 )}
                 <div className="ml-auto flex gap-1">
-                  <button onClick={() => moveQ(i, -1)} className="px-2 py-1 rounded bg-gray-800 hover:bg-gray-700">↑</button>
-                  <button onClick={() => moveQ(i, 1)} className="px-2 py-1 rounded bg-gray-800 hover:bg-gray-700">↓</button>
+                  <button onClick={() => moveQ(i, -1)} className="px-2 py-1 rounded-sm bg-gray-800 hover:bg-gray-700">↑</button>
+                  <button onClick={() => moveQ(i, 1)} className="px-2 py-1 rounded-sm bg-gray-800 hover:bg-gray-700">↓</button>
                   <button
                     onClick={() => setDraft({ ...draft, questions: draft.questions.filter((_, j) => j !== i) })}
-                    className="px-2 py-1 rounded bg-rose-900/60 hover:bg-rose-800 text-rose-200"
+                    className="px-2 py-1 rounded-sm bg-rose-900/60 hover:bg-rose-800 text-rose-200"
                   >
                     🗑
                   </button>

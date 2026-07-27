@@ -1,4 +1,3 @@
-import { v4 as uuid } from 'uuid'
 import { eq, asc, sql } from 'drizzle-orm'
 import type { Quiz, Question, QuestionType, Difficulty, QuestionSection, GameType } from '@lya-quiz/shared'
 import { db, quizzes, questions } from './db.js'
@@ -55,7 +54,7 @@ function insertQuestions(quizId: string, items: QuestionInput[]): void {
   items.forEach((q, i) => {
     db.insert(questions)
       .values({
-        id: uuid(),
+        id: crypto.randomUUID(),
         quizId,
         type: q.type,
         text: q.text,
@@ -113,7 +112,7 @@ export function getDefaultQuiz(): Quiz | null {
 }
 
 export function createQuiz(input: QuizInput): string {
-  const id = uuid()
+  const id = crypto.randomUUID()
   const now = Date.now()
   // Tout-ou-rien : les questions DANS la transaction — un crash au milieu ne
   // peut plus laisser un quiz sans questions en base.

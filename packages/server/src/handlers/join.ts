@@ -1,4 +1,3 @@
-import { v4 as uuid } from 'uuid'
 import type { Server, Socket } from 'socket.io'
 import type { ClientToServerEvents, ServerToClientEvents } from '@lya-quiz/shared'
 import { EVENTS } from '@lya-quiz/shared'
@@ -71,9 +70,9 @@ export function handleJoinSession(
   }
 
   // Créer le participant
-  const newToken = uuid()
+  const newToken = crypto.randomUUID()
   const participant: ParticipantState = {
-    id: uuid(),
+    id: crypto.randomUUID(),
     pseudo: pseudo.trim(),
     socketId: socket.id,
     sessionToken: newToken,
@@ -238,6 +237,25 @@ function handleRejoinWithParticipant(
     gameType: session.quiz?.gameType ?? 'classic',
     buzz: session.buzz,   // mode buzzer : état courant → le tél retrouve son buzzer ; classic → null
   })
+
+  // Mode BUZZER : un reload de page (onglet déchargé, téléphone verrouillé…) perd
+  // le store client — session_restored porte `buzz` mais PAS l'énoncé. Sans ce
+  // rejeu, le joueur restait sur « Prêt·e ? » avec un buzzer inutilisable jusqu'à
+  // la question suivante. Même bloc que le retardataire de handleJoinSession.
+  if (
+    quiz?.gameType === 'buzzer' &&
+    session.buzz &&
+    session.buzz.phase !== 'idle' &&
+    session.buzz.phase !== 'revealed'
+  ) {
+    const bq = quiz.questions[session.currentQuestionIndex]
+    if (bq) {
+      socket.emit(EVENTS.BUZZ_QUESTION_STARTED, {
+        question: toPublicQuestion(bq, session.currentQuestionIndex, quiz.questions.length),
+        buzz: session.buzz,
+      })
+    }
+  }
 
   // Notifier les autres que ce participant est de retour
   socket.to(session.id).emit(EVENTS.PARTICIPANT_JOINED, {

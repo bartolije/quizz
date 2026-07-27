@@ -44,7 +44,7 @@ export function TeamPicker({
                 style={{ backgroundColor: mine ? t.color : 'rgba(255,255,255,0.06)' }}
               >
                 <span
-                  className="w-5 h-5 rounded-full flex-shrink-0"
+                  className="w-5 h-5 rounded-full shrink-0"
                   style={{ backgroundColor: t.color }}
                 />
                 <span className="flex-1 text-left">{t.name}</span>

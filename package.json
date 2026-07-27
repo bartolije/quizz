@@ -1,6 +1,9 @@
 {
   "name": "lya-quiz",
   "private": true,
+  "engines": {
+    "node": ">=24 <25"
+  },
   "workspaces": [
     "packages/*"
   ],
@@ -16,8 +19,12 @@
     "loadtest:buzzer": "node packages/server/scripts/buzzer-loadtest.mjs"
   },
   "devDependencies": {
-    "concurrently": "^8.2.0",
-    "typescript": "^5.4.0",
+    "concurrently": "^10.0.4",
+    "typescript": "^7.0.2",
     "vitest": "^4.1.9"
+  },
+  "allowScripts": {
+    "better-sqlite3@13.0.1": true,
+    "esbuild@0.28.1": true
   }
 }

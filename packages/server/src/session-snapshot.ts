@@ -168,6 +168,7 @@ export function deserializeSession(json: string): SessionState {
     ownerBindings: new Map(snap.ownerBindings ?? []),
     currentTheme: snap.currentTheme ?? null,
     playedQuestionIndices: new Set(snap.playedQuestionIndices ?? []),
+    lastBuzzReveal: null,     // pas de révélation à rejouer : la question interrompue est rejouée
   }
 }
 

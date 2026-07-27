@@ -296,9 +296,15 @@ describe('partie famille de bout en bout', () => {
     host.emit(EVENTS.HOST_START_THEME, { ownerName: 'Alice' })
     expect((await started).buzz.ownerParticipantId).toBeNull()
 
-    // « Correct » sans owner résolu → personne ne marque, la partie continue.
-    const ended = waitFor<BuzzEnded>(host, EVENTS.BUZZ_QUESTION_ENDED)
+    // « Correct » sans owner résolu → REFUSÉ (rien à créditer) : avant le fix M5,
+    // la question se révélait avec 0 point en silence. La phase ne bouge pas.
     host.emit(EVENTS.HOST_ADJUDICATE, { correct: true })
+    await tick()
+    expect(session.buzz?.phase).toBe('owner_oral')
+
+    // « Passer » ferme proprement la question : personne ne marque, la partie continue.
+    const ended = waitFor<BuzzEnded>(host, EVENTS.BUZZ_QUESTION_ENDED)
+    host.emit(EVENTS.HOST_PASS_QUESTION, {})
     const e = await ended
     expect(e.scorer).toBeNull()
     expect(e.scores.every((s) => s.score === 0)).toBe(true)

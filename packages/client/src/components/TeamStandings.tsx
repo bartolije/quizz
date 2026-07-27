@@ -33,7 +33,7 @@ export function TeamStandings({
               {t.rank}
             </span>
             <span
-              className={`rounded-full flex-shrink-0 ${big ? 'w-6 h-6' : 'w-4 h-4'}`}
+              className={`rounded-full shrink-0 ${big ? 'w-6 h-6' : 'w-4 h-4'}`}
               style={{ backgroundColor: t.color }}
             />
             <span className="font-bold flex-1 truncate">{t.name}</span>

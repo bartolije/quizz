@@ -140,7 +140,7 @@ export function HostControlPage() {
                       <span className="text-2xl">{st.shape}</span>
                       <span className="font-bold flex-1">{choice}</span>
                       {phase === 'reveal' && (
-                        <span className="font-mono text-sm bg-black/30 px-2 py-1 rounded">
+                        <span className="font-mono text-sm bg-black/30 px-2 py-1 rounded-sm">
                           {count} {isCorrect && '✓'}
                         </span>
                       )}
@@ -279,7 +279,7 @@ export function HostControlPage() {
         <div>
           {phase !== 'waiting' && phase !== 'ended' && (
             <button
-              onClick={s.endQuiz}
+              onClick={() => { if (window.confirm('Terminer le quiz ? Le classement devient définitif.')) s.endQuiz() }}
               className="px-5 py-3 rounded-xl text-rose-400 hover:bg-rose-500/10 font-medium transition-colors"
             >
               Terminer le quiz

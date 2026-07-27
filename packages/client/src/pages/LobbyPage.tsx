@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Navigate } from 'react-router-dom'
+import { Navigate } from 'react-router'
 import { useQuizStore } from '../store/quiz-store'
 import { ParticipantList } from '../components/ParticipantList'
 import { TeamPicker } from '../components/TeamPicker'
@@ -30,7 +30,7 @@ export function LobbyPage() {
   // entre le clic « Démarrer » et la première question — les joueurs doutaient).
   if (status === 'running') {
     return (
-      <div className="h-[100dvh] bg-gray-950 flex flex-col items-center justify-center p-6 text-center gap-4">
+      <div className="h-dvh bg-gray-950 flex flex-col items-center justify-center p-6 text-center gap-4">
         <div className="text-7xl animate-bounce">🚀</div>
         <h1 className="text-3xl font-black text-white">C&apos;est parti !</h1>
         <p className="text-gray-400 text-lg">

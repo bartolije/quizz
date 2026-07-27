@@ -47,6 +47,33 @@
 > `teamsLocked` ; `question_ended` et `leaderboard_update` portent un `teamScores?` présent
 > uniquement quand `mode === 'team'`. Détail : [architecture.md](architecture.md#mode-équipe).
 
+## Events du mode buzzer (partie famille arbitrée)
+
+Client → serveur :
+
+| Constante | Event | Payload | Notes |
+|---|---|---|---|
+| `BUZZ` | `buzz` | `{}` | ignoré si non armé, owner du thème, ou déjà `lockedOut` ; le 1er reçu gagne |
+| `HOST_ADJUDICATE` | `host_adjudicate` | `{ correct }` | juge l'owner (`owner_oral`) ou le buzzeur (`locked`). `correct:true` sur un thème **non attribué** est refusé |
+| `HOST_REOPEN_BUZZER` | `host_reopen_buzzer` | `{}` | après un vol raté : ré-arme pour les autres |
+| `HOST_PASS_QUESTION` | `host_pass_question` | `{}` | clôt la question à 0 point |
+| `HOST_START_THEME` | `host_start_theme` | `{ ownerName }` | choisit le thème à jouer (round perso ou culture) |
+| `HOST_ASSIGN_OWNER` | `host_assign_owner` | `{ ownerName, participantId\|null }` | binding thème→joueur ; `participantId` inconnu ignoré ; re-résout l'owner en `owner_oral` **et** `steal` |
+| `HOST_ADD_MANUAL_PARTICIPANT` | `host_add_manual_participant` | `{ pseudo }` | joueur « sans téléphone » ; mode buzzer uniquement, pseudo unique, 20 chars max |
+| `HOST_ADJUST_SCORE` | `host_adjust_score` | `{ participantId, delta }` | delta clampé ±1000 |
+
+Serveur → client :
+
+| Constante | Event | Payload | Destinataires |
+|---|---|---|---|
+| `BUZZ_QUESTION_STARTED` | `buzz_question_started` | `{ question: QuestionPublic, buzz: BuzzState }` | room ; **rejoué** au retardataire, au participant qui rejoint/reload en pleine question, et au host/TV qui se ré-attache |
+| `BUZZ_STATE` | `buzz_state` | `BuzzState \| null` | room, rediffusé complet à chaque changement (`null` = retour sélecteur) |
+| `BUZZ_QUESTION_ENDED` | `buzz_question_ended` | `{ correctAnswers, difficulty, scorer, scores }` | room ; **rejoué** au host/TV qui se ré-attache en phase `revealed` (`lastBuzzReveal`) |
+| `BUZZ_THEMES` | `buzz_themes` | `BuzzThemesState` | room (progression + bindings des thèmes) |
+
+> `session_restored` embarque aussi `buzz` (état courant, `null` en classic) — et le
+> serveur fait suivre un `buzz_question_started` si une question buzzer est ouverte.
+
 ### Codes d'erreur (`quiz_error.code`)
 
 `INVALID_PIN` · `PSEUDO_TAKEN` · `SESSION_ENDED` · `SESSION_FULL` · `INVALID_TOKEN` · `UNKNOWN`

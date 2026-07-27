@@ -292,6 +292,10 @@ export const useQuizStore = create<QuizStore>()((set) => ({
       leaderboard: scores,
       prevRanks: ranksOf(state.leaderboard),
       currentView: final ? 'ended' : 'leaderboard',
+      // Un ajustement manuel de points (host_adjust_score) arrive par ici : sans
+      // ce recalage, le header « Score » du téléphone restait périmé jusqu'à la
+      // fin de question suivante.
+      myScore: scores.find((sc) => sc.participantId === state.myId)?.score ?? state.myScore,
       ...(teamScores ? { teamLeaderboard: teamScores } : {}),
     })),
 

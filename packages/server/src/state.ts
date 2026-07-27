@@ -1,6 +1,4 @@
-import { v4 as uuid } from 'uuid'
-import type { BuzzState, Quiz, QuestionReport, SessionMode, Team } from '@lya-quiz/shared'
-import { SESSION_TOKEN_TTL_MS } from '@lya-quiz/shared'
+import type { BuzzState, Difficulty, Quiz, QuestionReport, SessionMode, Team } from '@lya-quiz/shared'
 import { getDefaultQuiz, getQuiz } from './quiz-repo.js'
 import { logEvent } from './logger.js'
 
@@ -13,7 +11,7 @@ export interface ParticipantState {
   score: number             // score cumulé
   lastDelta: number         // points gagnés à la dernière question fermée
   correctTotal: number      // nb de questions réussies (pour le rapport de fin)
-  disconnectedAt?: number   // timestamp, pour cleanup après TTL
+  disconnectedAt?: number   // timestamp — fenêtre de grâce 30 s du « tous ont répondu »
   teamId?: string           // mode équipe : équipe du participant (absent = sans équipe)
   manual?: boolean          // joueur « sans téléphone » (mode buzzer) — pas d'appareil
   bonus?: number            // total des ajustements manuels (+/-) de l'admin
@@ -54,6 +52,16 @@ export interface SessionState {
   ownerBindings: Map<string, string> // ownerName → participantId (round perso), rebindable
   currentTheme: string | null       // thème en cours (ownerName | CULTURE_THEME | null=sélecteur)
   playedQuestionIndices: Set<number> // index des questions déjà jouées (révélées)
+  // Dernière révélation buzzer (réponse + scorer) : ré-émise à un host/TV qui se
+  // ré-attache en phase 'revealed' — sans ça, une micro-coupure wifi pendant la
+  // révélation affichait « Personne n'a trouvé » à tort. Non snapshotée (au
+  // restart serveur, la question interrompue est rejouée). Vidée au démarrage
+  // de la question suivante.
+  lastBuzzReveal: {
+    correctAnswers: string[]
+    difficulty: Difficulty | null
+    scorer: { participantId: string; pseudo: string; points: number } | null
+  } | null
 }
 
 // Toutes les sessions actives en mémoire
@@ -72,12 +80,12 @@ export function generatePin(): string {
 }
 
 export function createSession(quizId?: string): SessionState {
-  const id = uuid()
+  const id = crypto.randomUUID()
   const pin = generatePin()
   const session: SessionState = {
     id,
     pin,
-    hostKey: uuid(),
+    hostKey: crypto.randomUUID(),
     status: 'waiting',
     participants: new Map(),
     tokenIndex: new Map(),
@@ -99,6 +107,7 @@ export function createSession(quizId?: string): SessionState {
     ownerBindings: new Map(),
     currentTheme: null,
     playedQuestionIndices: new Set(),
+    lastBuzzReveal: null,
   }
   sessions.set(id, session)
   pinIndex.set(pin, id)
@@ -126,6 +135,8 @@ export function restoreSession(session: SessionState): void {
   pinIndex.set(session.pin, session.id)
 }
 
+// Retire une session de la mémoire (tests de restart ; jamais appelé en prod —
+// les sessions vivent jusqu'au restart serveur, c'est assumé pour un usage soirée).
 export function deleteSession(id: string): void {
   const session = sessions.get(id)
   if (session) {
@@ -134,13 +145,6 @@ export function deleteSession(id: string): void {
   }
 }
 
-// Cleanup des participants déconnectés depuis plus de SESSION_TOKEN_TTL_MS
-export function cleanupDisconnectedParticipants(session: SessionState): void {
-  const now = Date.now()
-  for (const [id, p] of session.participants) {
-    if (!p.connected && p.disconnectedAt && now - p.disconnectedAt > SESSION_TOKEN_TTL_MS) {
-      session.tokenIndex.delete(p.sessionToken)
-      session.participants.delete(id)
-    }
-  }
-}
+// NB : pas de purge des participants déconnectés — la fenêtre de reconnexion
+// est volontairement ILLIMITÉE (un téléphone qui revient 10 min plus tard
+// retrouve son score).

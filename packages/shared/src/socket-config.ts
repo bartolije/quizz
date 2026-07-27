@@ -36,13 +36,9 @@ export const SOCKET_SERVER_CONFIG = {
   pingInterval: 10_000,   // ping toutes les 10 secondes
   pingTimeout: 10_000,    // considéré mort si pas de réponse en 10 secondes
 
-  // CORS : à restreindre en production si besoin
+  // CORS : '*' par défaut, surchargé par CORS_ORIGIN côté serveur (cf. index.ts)
   cors: {
     origin: '*',
     methods: ['GET', 'POST'],
   },
 }
-
-// Durée de rétention d'un sessionToken en mémoire serveur après déconnexion
-// Le participant peut se reconnecter dans cette fenêtre sans perdre son état
-export const SESSION_TOKEN_TTL_MS = 30_000   // 30 secondes

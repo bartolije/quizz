@@ -15,7 +15,7 @@ export function BuzzerHostDisplay({ s }: { s: HostSessionView }) {
   const b = s.buzz
   const q = s.buzzQuestion
   const badge = q?.points ? ptsBadge(q.points) : null
-  const shell = 'h-[100dvh] bg-gray-950 text-white flex flex-col'
+  const shell = 'h-dvh bg-gray-950 text-white flex flex-col'
   const sound = useBuzzerSound(s.status, s.buzz)
 
   const soundCtl = (

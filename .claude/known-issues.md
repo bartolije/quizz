@@ -61,6 +61,8 @@ Points clés de robustesse (priorité « stabilité ») :
   plus aucun mot de passe par défaut shippé. Résiduel mineur : `GET /api/sessions/:id/report`
   expose les `correctAnswers` des questions **déjà révélées** (pas les suivantes) sans
   auth — pas un vecteur de triche en direct, mais à gater si besoin.
-- **CORS `*`** : à restreindre si exposition publique (n'empêche pas les appels directs).
-- **`dvh`** : `h-[100dvh]` suppose un navigateur récent (iOS 15.4+/Chrome 108+). OK
-  pour les téléphones actuels ; à surveiller si un très vieux device pose souci.
+- **CORS `*` par défaut**, surchargeable depuis 08/2026 : poser `CORS_ORIGIN=https://…`
+  sur Railway pour verrouiller (laisser vide pour la voie Vercel cross-origin).
+- **Navigateurs minimum** : Tailwind 4 (depuis la montée de versions 08/2026) exige
+  Safari 16.4+ / Chrome 111+ — plancher plus haut que l'ancien prérequis `dvh`
+  (iOS 15.4+). OK pour les téléphones actuels ; à savoir si un vieux device coince.

@@ -1,4 +1,3 @@
-import { v4 as uuid } from 'uuid'
 import type { Server, Socket } from 'socket.io'
 import type { ClientToServerEvents, ServerToClientEvents } from '@lya-quiz/shared'
 import { EVENTS } from '@lya-quiz/shared'
@@ -9,10 +8,11 @@ import {
   getLeaderboard,
   getTeamLeaderboard,
   getTeamsPayload,
+  isPseudoTaken,
 } from '../session-helpers.js'
 import { logEvent } from '../logger.js'
 import { saveSessionSnapshot, deleteSessionSnapshot } from '../session-snapshot.js'
-import { buildThemes } from './buzzer.js'
+import { buildThemes, broadcastBuzzState } from './buzzer.js'
 
 type QuizSocket = Socket<ClientToServerEvents, ServerToClientEvents>
 type QuizServer = Server<ClientToServerEvents, ServerToClientEvents>
@@ -66,6 +66,15 @@ function attachAndSendState(socket: QuizSocket, session: SessionState): void {
         socket.emit(EVENTS.BUZZ_QUESTION_STARTED, {
           question: toPublicQuestion(q, session.currentQuestionIndex, session.quiz.questions.length),
           buzz: session.buzz,
+        })
+      }
+      // Phase 'revealed' : BUZZ_QUESTION_STARTED vient d'effacer buzzReveal côté
+      // client (host/TV) — rejouer la révélation, sinon une micro-coupure wifi
+      // pendant l'écran de révélation affichait « Personne n'a trouvé » à tort.
+      if (session.buzz.phase === 'revealed' && session.lastBuzzReveal) {
+        socket.emit(EVENTS.BUZZ_QUESTION_ENDED, {
+          ...session.lastBuzzReveal,
+          scores: getLeaderboard(session),
         })
       }
     }
@@ -155,6 +164,31 @@ export function handleKickParticipant(
   // Mode buzzer : libérer les thèmes dont il était propriétaire (binding périmé)
   for (const [k, v] of session.ownerBindings) if (v === participant.id) session.ownerBindings.delete(k)
 
+  // Mode buzzer : purger l'éjecté de l'état de la question en cours, sinon la
+  // machine reste bloquée sur un fantôme (phase 'locked' d'un joueur disparu →
+  // « Correct » créditait 0 point en silence ; owner supprimé jamais rediffusé).
+  const b = session.buzz
+  if (b) {
+    let buzzChanged = false
+    if (b.lockedBy?.participantId === participant.id) {
+      // Il avait la main : on rouvre le vol pour les autres.
+      b.lockedBy = null
+      b.phase = 'steal'
+      b.armed = true
+      buzzChanged = true
+    }
+    if (b.ownerParticipantId === participant.id) {
+      b.ownerParticipantId = null
+      buzzChanged = true
+    }
+    const lockedOutIdx = b.lockedOut.indexOf(participant.id)
+    if (lockedOutIdx >= 0) {
+      b.lockedOut.splice(lockedOutIdx, 1)
+      buzzChanged = true
+    }
+    if (buzzChanged) broadcastBuzzState(session, io)
+  }
+
   // Prévenir l'éjecté (s'il est connecté) et le sortir de la room
   const target = io.sockets.sockets.get(participant.socketId)
   if (target) {
@@ -188,10 +222,13 @@ export function handleAddManualParticipant(
 ): void {
   const session = getAllSessions().find((s) => s.hostSocketIds.has(socket.id))
   if (!session) return
-  const pseudo = String(payload?.pseudo ?? '').trim().slice(0, 40)
-  if (!pseudo) return
-  const id = uuid()
-  const token = uuid()
+  if (session.quiz?.gameType !== 'buzzer') return // n'a de sens qu'en partie famille
+  // Mêmes règles que le join téléphone : borne 20 chars + pseudo unique (un
+  // doublon rendait l'arbitrage et le classement ambigus).
+  const pseudo = String(payload?.pseudo ?? '').trim().slice(0, 20)
+  if (!pseudo || isPseudoTaken(session, pseudo)) return
+  const id = crypto.randomUUID()
+  const token = crypto.randomUUID()
   session.participants.set(id, {
     id,
     pseudo,

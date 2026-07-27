@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router'
 import { socket } from '../socket'
 import { useQuizStore } from '../store/quiz-store'
 import { EVENTS } from '@lya-quiz/shared'
@@ -131,7 +131,7 @@ export function JoinPage() {
           value={pin}
           onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
           onKeyDown={(e) => e.key === 'Enter' && handleJoin()}
-          className="w-full text-center text-3xl font-bold tracking-widest bg-gray-800 text-white rounded-2xl px-6 py-5 border-2 border-gray-700 focus:border-indigo-500 outline-none"
+          className="w-full text-center text-3xl font-bold tracking-widest bg-gray-800 text-white rounded-2xl px-6 py-5 border-2 border-gray-700 focus:border-indigo-500 outline-hidden"
           autoFocus
         />
 
@@ -142,7 +142,7 @@ export function JoinPage() {
           value={pseudo}
           onChange={(e) => setPseudo(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleJoin()}
-          className="w-full text-center text-xl bg-gray-800 text-white rounded-2xl px-6 py-4 border-2 border-gray-700 focus:border-indigo-500 outline-none"
+          className="w-full text-center text-xl bg-gray-800 text-white rounded-2xl px-6 py-4 border-2 border-gray-700 focus:border-indigo-500 outline-hidden"
         />
 
         {error && (

@@ -1,4 +1,3 @@
-import { v4 as uuid } from 'uuid'
 import type { Server, Socket } from 'socket.io'
 import type {
   ClientToServerEvents,
@@ -52,7 +51,7 @@ export function handleAddTeam(
   if (!session || session.status !== 'waiting') return
   const name = payload.name.trim().slice(0, 24)
   if (!name || session.teams.size >= MAX_TEAMS) return
-  const id = uuid()
+  const id = crypto.randomUUID()
   const color = TEAM_PALETTE[session.teams.size % TEAM_PALETTE.length]!
   session.teams.set(id, { id, name, color })
   logEvent('team_added', { sessionId: session.id, teamId: id, name })

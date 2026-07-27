@@ -74,10 +74,16 @@ const app = Fastify({ logger: { level: 'warn' } })
 
 // Socket.io partage le serveur HTTP sous-jacent de Fastify (app.server).
 // app.listen() démarre les deux : routes HTTP + WebSocket sur le même port.
-const io = new Server<ClientToServerEvents, ServerToClientEvents>(
-  app.server,
-  SOCKET_SERVER_CONFIG,
-)
+// CORS : '*' par défaut (déploiement single-service = same-origin de toute façon,
+// et la voie Vercel+Railway séparée a besoin du cross-origin). CORS_ORIGIN permet
+// de verrouiller sur un domaine précis en prod : CORS_ORIGIN=https://quiz.exemple.fr
+const io = new Server<ClientToServerEvents, ServerToClientEvents>(app.server, {
+  ...SOCKET_SERVER_CONFIG,
+  cors: {
+    ...SOCKET_SERVER_CONFIG.cors,
+    origin: process.env['CORS_ORIGIN'] ?? SOCKET_SERVER_CONFIG.cors.origin,
+  },
+})
 
 attachSocketHandlers(io)
 
@@ -208,10 +214,10 @@ void app.register(fastifyStatic, {
   // un nouveau déploiement est pris en compte au refresh suivant, sans hard-refresh.
   // Les assets /assets/* sont hashés par Vite → immuables, cache long (les 80
   // téléphones ne les re-téléchargent pas à chaque visite).
-  setHeaders: (res, path) => {
-    if (path.endsWith('.html')) res.setHeader('cache-control', 'no-store')
+  setHeaders: (reply, path) => {
+    if (path.endsWith('.html')) void reply.header('cache-control', 'no-store')
     else if (path.includes('/assets/'))
-      res.setHeader('cache-control', 'public, max-age=31536000, immutable')
+      void reply.header('cache-control', 'public, max-age=31536000, immutable')
   },
 })
 

@@ -128,7 +128,7 @@ export function BuzzerHostControl({ s }: { s: HostSessionView }) {
                 onChange={(e) => setManualName(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && addManual()}
                 placeholder="Ajouter un joueur sans téléphone…"
-                className="flex-1 bg-gray-800 rounded-lg px-3 py-2 border border-gray-700 focus:border-indigo-500 outline-none"
+                className="flex-1 bg-gray-800 rounded-lg px-3 py-2 border border-gray-700 focus:border-indigo-500 outline-hidden"
               />
               <button onClick={addManual} className="px-3 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 font-bold">+ Sans tél</button>
             </div>
@@ -146,7 +146,7 @@ export function BuzzerHostControl({ s }: { s: HostSessionView }) {
                   <select
                     value={o.participantId ?? ''}
                     onChange={(e) => s.assignOwner(o.ownerName, e.target.value || null)}
-                    className="bg-gray-800 rounded-lg px-2 py-1 border border-gray-700 max-w-[10rem]"
+                    className="bg-gray-800 rounded-lg px-2 py-1 border border-gray-700 max-w-40"
                   >
                     <option value="">— non attribué</option>
                     {players.map((p) => <option key={p.id} value={p.id}>{p.pseudo}{p.manual ? ' (sans tél)' : ''}</option>)}
@@ -306,7 +306,11 @@ export function BuzzerHostControl({ s }: { s: HostSessionView }) {
 
       <footer className="px-8 py-5 border-t border-gray-800 flex items-center justify-between gap-4">
         <div className="flex items-center gap-2">
-          <button onClick={s.endQuiz} className="px-5 py-3 rounded-xl text-rose-400 hover:bg-rose-500/10 font-medium">Terminer</button>
+          {/* confirm : irréversible (supprime aussi le snapshot anti-restart) */}
+          <button
+            onClick={() => { if (window.confirm('Terminer la partie ? Le classement devient définitif.')) s.endQuiz() }}
+            className="px-5 py-3 rounded-xl text-rose-400 hover:bg-rose-500/10 font-medium"
+          >Terminer</button>
           {adjustBtn}
         </div>
         <div className="flex items-center gap-3">
@@ -321,7 +325,12 @@ export function BuzzerHostControl({ s }: { s: HostSessionView }) {
           {b && (b.phase === 'owner_oral' || b.phase === 'locked') && (
             <>
               <button onClick={() => s.adjudicate(false)} className={`${btn} bg-rose-600 hover:bg-rose-500`}>✗ Faux</button>
-              <button onClick={() => s.adjudicate(true)} className={`${btn} bg-emerald-600 hover:bg-emerald-500`}>✓ Correct</button>
+              {/* Thème non attribué : ✓ créditerait personne (le serveur refuse aussi) */}
+              <button
+                onClick={() => s.adjudicate(true)}
+                disabled={b.phase === 'owner_oral' && !b.ownerParticipantId}
+                className={`${btn} bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed`}
+              >✓ Correct</button>
             </>
           )}
           {/* Vol en cours (buzzer ouvert, personne n'a encore la parole) → passer */}
