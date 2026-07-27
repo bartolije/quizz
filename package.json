@@ -19,7 +19,7 @@
     "loadtest:buzzer": "node packages/server/scripts/buzzer-loadtest.mjs"
   },
   "devDependencies": {
-    "concurrently": "^8.2.0",
+    "concurrently": "^10.0.4",
     "typescript": "^5.4.0",
     "vitest": "^4.1.9"
   }

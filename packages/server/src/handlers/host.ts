@@ -1,4 +1,3 @@
-import { v4 as uuid } from 'uuid'
 import type { Server, Socket } from 'socket.io'
 import type { ClientToServerEvents, ServerToClientEvents } from '@lya-quiz/shared'
 import { EVENTS } from '@lya-quiz/shared'
@@ -190,8 +189,8 @@ export function handleAddManualParticipant(
   if (!session) return
   const pseudo = String(payload?.pseudo ?? '').trim().slice(0, 40)
   if (!pseudo) return
-  const id = uuid()
-  const token = uuid()
+  const id = crypto.randomUUID()
+  const token = crypto.randomUUID()
   session.participants.set(id, {
     id,
     pseudo,

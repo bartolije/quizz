@@ -1,4 +1,3 @@
-import { v4 as uuid } from 'uuid'
 import type { Server, Socket } from 'socket.io'
 import type { ClientToServerEvents, ServerToClientEvents } from '@lya-quiz/shared'
 import { EVENTS } from '@lya-quiz/shared'
@@ -71,9 +70,9 @@ export function handleJoinSession(
   }
 
   // Créer le participant
-  const newToken = uuid()
+  const newToken = crypto.randomUUID()
   const participant: ParticipantState = {
-    id: uuid(),
+    id: crypto.randomUUID(),
     pseudo: pseudo.trim(),
     socketId: socket.id,
     sessionToken: newToken,

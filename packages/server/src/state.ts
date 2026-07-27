@@ -1,4 +1,3 @@
-import { v4 as uuid } from 'uuid'
 import type { BuzzState, Quiz, QuestionReport, SessionMode, Team } from '@lya-quiz/shared'
 import { SESSION_TOKEN_TTL_MS } from '@lya-quiz/shared'
 import { getDefaultQuiz, getQuiz } from './quiz-repo.js'
@@ -72,12 +71,12 @@ export function generatePin(): string {
 }
 
 export function createSession(quizId?: string): SessionState {
-  const id = uuid()
+  const id = crypto.randomUUID()
   const pin = generatePin()
   const session: SessionState = {
     id,
     pin,
-    hostKey: uuid(),
+    hostKey: crypto.randomUUID(),
     status: 'waiting',
     participants: new Map(),
     tokenIndex: new Map(),
