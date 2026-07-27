@@ -39,10 +39,10 @@ versions ([plan-upgrade-deps.md](plan-upgrade-deps.md)). Cocher au fil des commi
 
 ## MOYENNE
 
-- [ ] **M1 — Mort subite absente** (plan phase 3 : « égalité finale = mort subite au
-  buzzer », aucune occurrence dans le code ; `finishQuiz` termine dès que tout est
-  joué). Implémenter (bloquer sur égalité au rang 1 + question bonus) OU dé-scoper
-  le plan explicitement. Idem « option compte à rebours » (jamais implémentée).
+- [x] **M1 — Mort subite absente** — **dé-scopé le 27/07/2026** (décision utilisateur) :
+  en cas d'égalité finale, l'admin tranche à la main (ajustement de points ou question
+  bonus via les thèmes). Plan famille mis à jour. L'« option compte à rebours » reste
+  un « plus tard » optionnel du plan, pas un engagement.
 - [x] **M2 — Snapshot : `session.buzz` non sérialisé** (restauré `null`,
   session-snapshot.ts:167) → au restart en pleine question, `lockedOut` perdu :
   un joueur « grillé » peut re-buzzer. `awardAndReveal` ne peuple pas
@@ -98,8 +98,6 @@ a été mis à jour vers ce nouveau contrat), M6, B1 (TTL/cleanup supprimés —
 inchangé pour la voie Vercel).
 
 Restent ouverts, à trancher/planifier :
-- **M1 mort subite** : feature du plan famille jamais implémentée — à décider
-  (implémenter ou dé-scoper le plan). Idem « option compte à rebours ».
 - **B3 duplication / B6 gros fichiers** : refactors cosmétiques, hors périmètre
   du chantier upgrade.
 - **B5 validation serveur des routes admin** : protégé par ADMIN_PASSWORD,

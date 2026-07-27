@@ -42,7 +42,8 @@ automatiquement, et le scoring est **par difficulté** (Facile 1 / Moyen 2 / Dif
   gagnant par question**. Classement unique cumulé sur les deux rounds (réutilise le
   leaderboard/rapport existants).
 - Avantage de l'owner = **le premier essai sans concurrence** (pas de multiplicateur).
-- **Égalité finale** : question en **mort subite** au buzzer.
+- **Égalité finale** : ~~question en mort subite au buzzer~~ **dé-scopé (27/07/2026)** —
+  l'admin tranche à la main (`host_adjust_score` ou une question de plus via les thèmes).
 - Équilibrage = responsabilité de l'admin (il fixe les difficultés) : **même nombre de
   questions + même répartition de difficulté par joueur** (gabarit conseillé, ex.
   `[Facile, Facile, Moyen]` à 3 questions/thème pour 17 joueurs).
