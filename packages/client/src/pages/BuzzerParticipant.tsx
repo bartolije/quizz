@@ -19,6 +19,7 @@ export function BuzzerParticipant() {
   const buzz = useQuizStore((s) => s.buzz)
   const question = useQuizStore((s) => s.buzzQuestion)
   const result = useQuizStore((s) => s.buzzResult)
+  const participants = useQuizStore((s) => s.participants)
   const leaderboard = useQuizStore((s) => s.leaderboard)
   const myScore = useQuizStore((s) => s.myScore)
 
@@ -107,12 +108,18 @@ export function BuzzerParticipant() {
           <>
             <div className="text-6xl">🗣️</div>
             <h1 className="text-3xl font-black text-indigo-400">À toi !</h1>
-            <p className="text-gray-300">C'est ton thème. Réponds <span className="font-bold">à voix haute</span>.</p>
+            {/* Tour par tour : on peut répondre sur le thème d'un·e autre */}
+            <p className="text-gray-300">Thème « {buzz.ownerName} ». Réponds <span className="font-bold">à voix haute</span>.</p>
           </>
         ) : (
           <>
             <div className="text-5xl">👂</div>
-            <p className="text-xl">Au tour de <span className="font-bold text-indigo-400">{buzz.ownerName}</span></p>
+            <p className="text-xl">
+              Au tour de <span className="font-bold text-indigo-400">
+                {(buzz.ownerParticipantId && participants.find((p) => p.id === buzz.ownerParticipantId)?.pseudo) ?? buzz.ownerName}
+              </span>
+              <span className="text-gray-400"> — thème « {buzz.ownerName} »</span>
+            </p>
             <p className="text-gray-400">Prépare-toi à buzzer s'il·elle sèche…</p>
           </>
         )}

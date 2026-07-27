@@ -69,7 +69,7 @@ Serveur → client :
 | `BUZZ_QUESTION_STARTED` | `buzz_question_started` | `{ question: QuestionPublic, buzz: BuzzState }` | room ; **rejoué** au retardataire, au participant qui rejoint/reload en pleine question, et au host/TV qui se ré-attache |
 | `BUZZ_STATE` | `buzz_state` | `BuzzState \| null` | room, rediffusé complet à chaque changement (`null` = retour sélecteur) |
 | `BUZZ_QUESTION_ENDED` | `buzz_question_ended` | `{ correctAnswers, difficulty, scorer, scores }` | room ; **rejoué** au host/TV qui se ré-attache en phase `revealed` (`lastBuzzReveal`) |
-| `BUZZ_THEMES` | `buzz_themes` | `BuzzThemesState` | room (progression + bindings des thèmes) |
+| `BUZZ_THEMES` | `buzz_themes` | `BuzzThemesState` | room (progression + bindings des thèmes + `turn` : ordre de passage tiré au start et position courante — le joueur du tour est le répondeur du prochain thème perso) |
 | `BUZZ_HOST_ANSWER` | `buzz_host_answer` | `{ correctAnswers }` | **sockets du control UNIQUEMENT** (antisèche admin) — jamais la room : ni TV ni téléphones. Rejoué au reattach du control |
 
 > `session_restored` embarque aussi `buzz` (état courant, `null` en classic) — et le

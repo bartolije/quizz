@@ -12,7 +12,7 @@ import {
 } from '../session-helpers.js'
 import { logEvent } from '../logger.js'
 import { saveSessionSnapshot, deleteSessionSnapshot } from '../session-snapshot.js'
-import { buildThemes, broadcastBuzzState } from './buzzer.js'
+import { buildThemes, broadcastBuzzState, initTurnOrder } from './buzzer.js'
 
 type QuizSocket = Socket<ClientToServerEvents, ServerToClientEvents>
 type QuizServer = Server<ClientToServerEvents, ServerToClientEvents>
@@ -167,6 +167,15 @@ export function handleKickParticipant(
   session.answers.delete(participant.id) // sa réponse à la question en cours ne compte plus
   // Mode buzzer : libérer les thèmes dont il était propriétaire (binding périmé)
   for (const [k, v] of session.ownerBindings) if (v === participant.id) session.ownerBindings.delete(k)
+  // Tour par tour : retirer son tour de l'ordre de passage (l'index recule si
+  // le retrait est avant lui, pour continuer à pointer le même joueur).
+  if (session.buzzTurnOrder) {
+    const ti = session.buzzTurnOrder.indexOf(participant.id)
+    if (ti >= 0) {
+      session.buzzTurnOrder.splice(ti, 1)
+      if (ti < session.buzzTurnIndex) session.buzzTurnIndex--
+    }
+  }
 
   // Mode buzzer : purger l'éjecté de l'état de la question en cours, sinon la
   // machine reste bloquée sur un fantôme (phase 'locked' d'un joueur disparu →
@@ -246,6 +255,8 @@ export function handleAddManualParticipant(
     bonus: 0,
   })
   session.tokenIndex.set(token, id)
+  // Ajouté APRÈS le tirage de l'ordre : il passe en dernier (équitable et simple).
+  if (session.buzzTurnOrder) session.buzzTurnOrder.push(id)
   io.to(session.id).emit(EVENTS.TEAMS_UPDATED, getTeamsPayload(session))
   if (session.quiz?.gameType === 'buzzer') io.to(session.id).emit(EVENTS.BUZZ_THEMES, buildThemes(session))
   saveSessionSnapshot(session)
@@ -287,8 +298,14 @@ export function handleHostStartQuiz(socket: QuizSocket, io: QuizServer): void {
   for (const session of getAllSessions()) {
     if (session.hostSocketIds.has(socket.id)) {
       session.status = 'running'
+      // Mode buzzer avec thèmes perso : tirage de l'ordre de passage (le joueur
+      // du tour choisira son thème — le sien ou celui d'un autre).
+      initTurnOrder(session)
       saveSessionSnapshot(session)
       io.to(session.id).emit(EVENTS.SESSION_STATUS_CHANGED, { status: session.status })
+      if (session.quiz?.gameType === 'buzzer') {
+        io.to(session.id).emit(EVENTS.BUZZ_THEMES, buildThemes(session)) // ordre visible partout
+      }
       logEvent('quiz_started', { sessionId: session.id })
       return
     }

@@ -137,6 +137,11 @@ describe('partie famille de bout en bout', () => {
     expect(t0.culture.total).toBe(2)
 
     host.emit(EVENTS.HOST_START_QUIZ, {})
+    await tick()
+    // Ordre de passage DÉTERMINISTE pour le scénario (le vrai tirage est aléatoire) :
+    // alice joue d'abord (son thème), puis bob (le sien), Mamie en dernier.
+    session.buzzTurnOrder = [aliceId, bobId, mamieId]
+    session.buzzTurnIndex = 0
 
     // ══ THÈME 1 (Alice) ═══════════════════════════════════════════════════
     // Q1 (2 pts) : Alice répond juste à l'oral.
@@ -290,6 +295,10 @@ describe('partie famille de bout en bout', () => {
     const { c: alice } = await joinAs('alice', session.pin)
     const host = await hostJoin(session)
     host.emit(EVENTS.HOST_START_QUIZ, {})
+    await tick()
+    // Ce test couvre le FALLBACK sans tour par tour (résolution par binding) :
+    // on désactive l'ordre tiré au start.
+    session.buzzTurnOrder = null
 
     // Thème d'Alice lancé SANS attribution (l'UI le grise, mais le serveur doit tenir)
     const started = waitFor<BuzzStarted>(alice, EVENTS.BUZZ_QUESTION_STARTED)
@@ -323,6 +332,10 @@ describe('partie famille de bout en bout', () => {
     const aliceId = joined.participant.id
     host.emit(EVENTS.HOST_ASSIGN_OWNER, { ownerName: 'Alice', participantId: aliceId })
     host.emit(EVENTS.HOST_START_QUIZ, {})
+    await tick()
+    // Déterministe : c'est le tour d'alice (elle répondra sur son thème).
+    session.buzzTurnOrder = [aliceId]
+    session.buzzTurnIndex = 0
 
     const started = waitFor<BuzzStarted>(host, EVENTS.BUZZ_QUESTION_STARTED)
     host.emit(EVENTS.HOST_START_THEME, { ownerName: 'Alice' })

@@ -52,6 +52,12 @@ export interface SessionState {
   ownerBindings: Map<string, string> // ownerName → participantId (round perso), rebindable
   currentTheme: string | null       // thème en cours (ownerName | CULTURE_THEME | null=sélecteur)
   playedQuestionIndices: Set<number> // index des questions déjà jouées (révélées)
+  // Tour par tour : ordre de passage aléatoire tiré au host_start_quiz (mode
+  // buzzer avec thèmes perso). Le joueur du tour (order[index]) est le RÉPONDEUR
+  // du prochain thème perso lancé, quel que soit le propriétaire du thème.
+  // null = pas de tour par tour (quiz culture-only). Avance à chaque thème perso fini.
+  buzzTurnOrder: string[] | null    // participantIds mélangés
+  buzzTurnIndex: number
   // Dernière révélation buzzer (réponse + scorer) : ré-émise à un host/TV qui se
   // ré-attache en phase 'revealed' — sans ça, une micro-coupure wifi pendant la
   // révélation affichait « Personne n'a trouvé » à tort. Non snapshotée (au
@@ -107,6 +113,8 @@ export function createSession(quizId?: string): SessionState {
     ownerBindings: new Map(),
     currentTheme: null,
     playedQuestionIndices: new Set(),
+    buzzTurnOrder: null,
+    buzzTurnIndex: 0,
     lastBuzzReveal: null,
   }
   sessions.set(id, session)

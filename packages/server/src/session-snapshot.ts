@@ -61,6 +61,8 @@ interface Snapshot {
   currentTheme?: string | null
   playedQuestionIndices?: number[]
   ownerBindings?: [string, string][]
+  buzzTurnOrder?: string[] | null
+  buzzTurnIndex?: number
 }
 
 const upsertStmt = sqlite.prepare(
@@ -116,6 +118,8 @@ export function serializeSession(session: SessionState): string {
     currentTheme: session.currentTheme,
     playedQuestionIndices: [...session.playedQuestionIndices],
     ownerBindings: [...session.ownerBindings.entries()],
+    buzzTurnOrder: session.buzzTurnOrder,
+    buzzTurnIndex: session.buzzTurnIndex,
   }
   return JSON.stringify(snap)
 }
@@ -168,6 +172,8 @@ export function deserializeSession(json: string): SessionState {
     ownerBindings: new Map(snap.ownerBindings ?? []),
     currentTheme: snap.currentTheme ?? null,
     playedQuestionIndices: new Set(snap.playedQuestionIndices ?? []),
+    buzzTurnOrder: snap.buzzTurnOrder ?? null,
+    buzzTurnIndex: snap.buzzTurnIndex ?? 0,
     lastBuzzReveal: null,     // pas de révélation à rejouer : la question interrompue est rejouée
   }
 }

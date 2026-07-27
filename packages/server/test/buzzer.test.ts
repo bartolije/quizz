@@ -260,6 +260,11 @@ describe('buzzer — round perso (thème + owner)', () => {
     const bobId = jb.participant.id
 
     host.emit(EVENTS.HOST_START_QUIZ, {})
+    await tick()
+    // Tour par tour déterministe pour le scénario : alice a la main (le vrai
+    // tirage est aléatoire).
+    session.buzzTurnOrder = [aliceId, bobId]
+    session.buzzTurnIndex = 0
 
     // Attribution : le thème de Papa revient à alice
     const bound = waitThemes(host, (t) => t.owners.find((o) => o.ownerName === 'Papa')?.participantId === aliceId)
@@ -444,6 +449,8 @@ describe('buzzer — stabilité (retardataire, reconnexion, anti-buzz)', () => {
     await joinAs('bob', session.pin)
     const host = await hostJoin(session)
     host.emit(EVENTS.HOST_START_QUIZ, {})
+    await tick()
+    session.buzzTurnOrder = [ja.participant.id] // déterministe : alice a la main
     const bound = waitThemes(host, (t) => t.owners.find((o) => o.ownerName === 'Papa')?.participantId === ja.participant.id)
     host.emit(EVENTS.HOST_ASSIGN_OWNER, { ownerName: 'Papa', participantId: ja.participant.id })
     await bound
@@ -466,6 +473,8 @@ describe('buzzer — stabilité (retardataire, reconnexion, anti-buzz)', () => {
     const { c: bob } = await joinAs('bob', session.pin)
     const host = await hostJoin(session)
     host.emit(EVENTS.HOST_START_QUIZ, {})
+    await tick()
+    session.buzzTurnOrder = [ja.participant.id] // déterministe : alice a la main
     const bound = waitThemes(host, (t) => t.owners.find((o) => o.ownerName === 'Papa')?.participantId === ja.participant.id)
     host.emit(EVENTS.HOST_ASSIGN_OWNER, { ownerName: 'Papa', participantId: ja.participant.id })
     await bound

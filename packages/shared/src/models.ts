@@ -51,11 +51,21 @@ export interface BuzzThemeInfo {
   done: boolean                // toutes les questions du thème ont été jouées
 }
 
+// Tour par tour (règle 2026) : ordre de passage ALÉATOIRE tiré au lancement du
+// quiz. Le joueur du tour choisit un thème PAS ENCORE JOUÉ — le sien ou celui
+// d'un autre — et c'est LUI qui répond à tout le thème (mauvaise réponse →
+// vol ouvert à tous les autres, y compris le propriétaire du thème).
+export interface BuzzTurnState {
+  order: { participantId: string; pseudo: string }[]  // ordre de passage mélangé
+  index: number                                        // position courante (>= length = tours finis)
+}
+
 // État complet des thèmes d'une partie famille (rediffusé au host à chaque changement)
 export interface BuzzThemesState {
   owners: BuzzThemeInfo[]
   culture: { total: number; done: boolean }
   currentTheme: string | null  // thème en cours (ownerName | CULTURE_THEME | null)
+  turn: BuzzTurnState | null   // null = pas de tour par tour (culture-only, vieux flux)
 }
 
 // Palette de couleurs d'équipe (hex → utilisé en style inline côté client, pas de

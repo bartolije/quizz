@@ -67,7 +67,44 @@ export function BuzzerHostDisplay({ s }: { s: HostSessionView }) {
       {soundCtl}
       <div className="flex-1 flex flex-col items-center justify-center gap-8 p-10 text-center">
         {!b || !q ? (
-          <p className="text-4xl text-gray-400">Prêts pour la prochaine question…</p>
+          (() => {
+            // Entre deux thèmes : la TV affiche les thèmes (joués barrés) et le
+            // joueur dont c'est le tour de choisir — le sien ou celui d'un autre.
+            const turn = s.themes?.turn
+            const current = turn && turn.index < turn.order.length ? turn.order[turn.index] : null
+            const owners = s.themes?.owners ?? []
+            if (owners.length === 0) return <p className="text-4xl text-gray-400">Prêts pour la prochaine question…</p>
+            return (
+              <>
+                {current ? (
+                  <h1 className="text-5xl font-black">🎯 Au tour de <span className="text-indigo-300">{current.pseudo}</span></h1>
+                ) : (
+                  <h1 className="text-4xl font-black text-gray-300">Choix du thème…</h1>
+                )}
+                {current && <p className="text-2xl text-gray-400">Choisis un thème pas encore joué — le tien ou celui d'un·e autre !</p>}
+                <div className="flex flex-wrap justify-center gap-3 max-w-5xl">
+                  {owners.map((o) => (
+                    <span
+                      key={o.ownerName}
+                      className={`px-6 py-3 rounded-2xl text-2xl font-bold ${o.done ? 'bg-gray-800 text-gray-600 line-through' : 'bg-indigo-700'}`}
+                    >
+                      {o.ownerName}
+                    </span>
+                  ))}
+                  {s.themes && s.themes.culture.total > 0 && (
+                    <span className={`px-6 py-3 rounded-2xl text-2xl font-bold ${s.themes.culture.done ? 'bg-gray-800 text-gray-600 line-through' : 'bg-violet-700'}`}>
+                      🌍 Culture G
+                    </span>
+                  )}
+                </div>
+                {turn && (
+                  <p className="text-xl text-gray-500">
+                    Ordre de passage : {turn.order.map((t, i) => (i === turn.index ? `▶ ${t.pseudo}` : t.pseudo)).join(' · ')}
+                  </p>
+                )}
+              </>
+            )
+          })()
         ) : (
           <>
             <div className="flex items-center gap-4">
@@ -86,7 +123,11 @@ export function BuzzerHostDisplay({ s }: { s: HostSessionView }) {
                 </p>
               </div>
             ) : b.phase === 'owner_oral' ? (
-              <p className="text-3xl">🗣️ Au tour de <span className="font-black text-indigo-300">{b.ownerName}</span></p>
+              <p className="text-3xl">
+                🗣️ À <span className="font-black text-indigo-300">
+                  {(b.ownerParticipantId && s.participants.find((p) => p.id === b.ownerParticipantId)?.pseudo) ?? b.ownerName}
+                </span> de répondre
+              </p>
             ) : b.phase === 'locked' ? (
               <p className="text-4xl font-black text-emerald-400 animate-pulse">🎤 {b.lockedBy?.pseudo} !</p>
             ) : b.armed ? (

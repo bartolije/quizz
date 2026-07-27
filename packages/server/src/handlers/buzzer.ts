@@ -83,6 +83,50 @@ function allPlayed(session: SessionState): boolean {
   return true
 }
 
+// ─────────────────────────────────────────────────────────────
+// Tour par tour : le joueur du tour choisit un thème pas encore joué (le sien
+// ou celui d'un autre) et RÉPOND à tout le thème. Ordre tiré au host_start_quiz.
+// ─────────────────────────────────────────────────────────────
+
+// Répondeur courant : le joueur du tour, en sautant ceux qui ont disparu
+// (kickés entre-temps) — l'index avance alors définitivement.
+export function currentTurnResponder(session: SessionState): string | null {
+  const order = session.buzzTurnOrder
+  if (!order) return null
+  while (session.buzzTurnIndex < order.length) {
+    const pid = order[session.buzzTurnIndex]
+    if (pid !== undefined && session.participants.has(pid)) return pid
+    session.buzzTurnIndex++
+  }
+  return null // tous les tours sont passés
+}
+
+// Mélange de Fisher-Yates (l'ordre de passage doit être équitablement aléatoire).
+export function shuffle<T>(arr: T[]): T[] {
+  const a = [...arr]
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[a[i], a[j]] = [a[j] as T, a[i] as T]
+  }
+  return a
+}
+
+// Tirage de l'ordre de passage au host_start_quiz : tous les participants
+// présents (téléphones + « sans téléphone »), mélangés. Uniquement s'il y a des
+// thèmes perso (un quiz 100 % culture n'a pas de tours). Idempotent : ne retire
+// jamais un ordre déjà tiré (restart du quiz après restore).
+export function initTurnOrder(session: SessionState): void {
+  if (session.quiz?.gameType !== 'buzzer') return
+  if (session.buzzTurnOrder) return
+  if (distinctOwners(session).length === 0) return
+  session.buzzTurnOrder = shuffle([...session.participants.keys()])
+  session.buzzTurnIndex = 0
+  logEvent('buzz_turn_order_drawn', {
+    sessionId: session.id,
+    order: session.buzzTurnOrder.map((pid) => session.participants.get(pid)?.pseudo ?? pid),
+  })
+}
+
 export function buildThemes(session: SessionState): BuzzThemesState {
   const owners = distinctOwners(session).map((ownerName) => {
     const idxs = themeIndices(session, ownerName)
@@ -94,6 +138,22 @@ export function buildThemes(session: SessionState): BuzzThemesState {
     }
   })
   const cultureIdxs = themeIndices(session, CULTURE_THEME)
+  // Tour par tour : ordre résolu en pseudos pour l'affichage (control + TV).
+  // Les joueurs disparus (kickés) sont filtrés — l'index est recalculé dans
+  // l'espace filtré pour rester pointé sur le bon joueur.
+  const turn = session.buzzTurnOrder
+    ? {
+        order: session.buzzTurnOrder
+          .filter((pid) => session.participants.has(pid))
+          .map((pid) => ({
+            participantId: pid,
+            pseudo: session.participants.get(pid)?.pseudo ?? '?',
+          })),
+        index: session.buzzTurnOrder
+          .slice(0, session.buzzTurnIndex)
+          .filter((pid) => session.participants.has(pid)).length,
+      }
+    : null
   return {
     owners,
     culture: {
@@ -101,6 +161,7 @@ export function buildThemes(session: SessionState): BuzzThemesState {
       done: cultureIdxs.length > 0 && cultureIdxs.every((i) => session.playedQuestionIndices.has(i)),
     },
     currentTheme: session.currentTheme,
+    turn,
   }
 }
 
@@ -136,8 +197,12 @@ function startBuzzerQuestionAt(session: SessionState, io: QuizServer, index: num
 
   const isPerso = q.section === 'perso'
   const ownerName = isPerso ? (q.ownerName ?? null) : null
+  // Répondeur : en tour par tour, c'est le JOUEUR DU TOUR (qui a choisi ce
+  // thème — le sien ou celui d'un autre), stable pour tout le thème (l'index
+  // n'avance qu'à la fin). Sans tour (culture-only), fallback binding historique.
+  const turnResponder = isPerso ? currentTurnResponder(session) : null
   const ownerParticipantId =
-    ownerName !== null ? (session.ownerBindings.get(ownerName) ?? null) : null
+    turnResponder ?? (ownerName !== null ? (session.ownerBindings.get(ownerName) ?? null) : null)
 
   session.buzz = isPerso
     ? { phase: 'owner_oral', armed: false, ownerName, ownerParticipantId, lockedBy: null, lockedOut: [] }
@@ -185,7 +250,12 @@ export function startNextBuzzerQuestion(session: SessionState, io: QuizServer): 
     return
   }
 
-  // Thème terminé → fin de partie si tout est joué, sinon retour au sélecteur.
+  // Thème terminé → le tour passe au joueur suivant (un thème perso consommé =
+  // un tour ; la culture générale, ouverte à tous, ne consomme pas de tour).
+  if (session.currentTheme !== CULTURE_THEME && session.buzzTurnOrder) {
+    session.buzzTurnIndex++
+  }
+  // → fin de partie si tout est joué, sinon retour au sélecteur.
   session.buzz = null
   if (allPlayed(session)) {
     finishQuiz(session, io)
@@ -250,10 +320,13 @@ export function handleAssignOwner(
   // Question de ce thème en cours → re-résoudre l'owner à chaud. Couvre owner_oral
   // ET steal : re-binder pendant un vol doit aussi empêcher le nouvel owner de
   // voler son propre thème (handleBuzz filtre sur ownerParticipantId).
+  // EXCEPTION tour par tour : le répondeur est le joueur du tour, pas le binding —
+  // un re-binding d'affichage ne doit pas lui retirer la main.
   if (
     session.buzz &&
     session.buzz.ownerName === ownerName &&
-    (session.buzz.phase === 'owner_oral' || session.buzz.phase === 'steal')
+    (session.buzz.phase === 'owner_oral' || session.buzz.phase === 'steal') &&
+    currentTurnResponder(session) === null
   ) {
     session.buzz.ownerParticipantId = session.ownerBindings.get(ownerName) ?? null
     broadcastBuzzState(session, io)

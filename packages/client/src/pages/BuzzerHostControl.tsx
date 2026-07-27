@@ -208,24 +208,57 @@ export function BuzzerHostControl({ s }: { s: HostSessionView }) {
       <div className="flex-1 p-8 flex flex-col gap-6">
         {!b || !q ? (
           hasPerso ? (
-            /* Entre deux thèmes : sélecteur de thème (l'admin choisit qui passe) */
+            /* Entre deux thèmes : sélecteur de thème. En tour par tour, le joueur
+               du tour annonce son choix à l'oral (son thème OU celui d'un autre —
+               c'est LUI qui répondra) et l'admin clique. */
             <div className="flex-1 flex flex-col gap-5">
-              <h2 className="text-2xl font-bold">Choisis le thème à jouer</h2>
+              {(() => {
+                const turn = s.themes?.turn
+                const current = turn && turn.index < turn.order.length ? turn.order[turn.index] : null
+                const available = s.themes!.owners.filter((o) => !o.done)
+                return (
+                  <>
+                    {current && turn ? (
+                      <div className="bg-indigo-950 border border-indigo-700 rounded-2xl px-5 py-4 flex items-center justify-between gap-4">
+                        <p className="text-2xl font-bold">🎯 Au tour de <span className="text-indigo-300">{current.pseudo}</span> — quel thème ?</p>
+                        <p className="text-sm text-gray-400">
+                          Puis : {turn.order.slice(turn.index + 1, turn.index + 4).map((t) => t.pseudo).join(' → ') || '— dernier tour !'}
+                        </p>
+                      </div>
+                    ) : (
+                      <h2 className="text-2xl font-bold">Choisis le thème à jouer</h2>
+                    )}
+                    {available.length > 1 && (
+                      <button
+                        onClick={() => {
+                          const pick = available[Math.floor(Math.random() * available.length)]
+                          if (pick && window.confirm(`🎲 Le sort a choisi « ${pick.ownerName} » — on lance ?`)) s.startTheme(pick.ownerName)
+                        }}
+                        className="self-start px-5 py-3 rounded-2xl bg-fuchsia-700 hover:bg-fuchsia-600 font-bold"
+                      >🎲 Thème aléatoire</button>
+                    )}
+                  </>
+                )
+              })()}
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {s.themes!.owners.map((o) => {
                   const pseudo = o.participantId ? (s.participants.find((p) => p.id === o.participantId)?.pseudo ?? '?') : null
+                  const hasTurn = !!s.themes?.turn
+                  // Tour par tour : le répondeur est le joueur du tour → un thème
+                  // non « attribué » (binding) reste jouable. Sans tour : ancien flux.
+                  const blocked = o.done || (!hasTurn && !o.participantId)
                   return (
                     <button
                       key={o.ownerName}
                       onClick={() => s.startTheme(o.ownerName)}
-                      disabled={o.done || !o.participantId}
+                      disabled={blocked}
                       className={`px-5 py-4 rounded-2xl text-left font-bold transition-colors ${
-                        o.done ? 'bg-gray-800 text-gray-600 line-through' : !o.participantId ? 'bg-gray-800 text-gray-500 cursor-not-allowed' : 'bg-indigo-700 hover:bg-indigo-600'
+                        o.done ? 'bg-gray-800 text-gray-600 line-through' : blocked ? 'bg-gray-800 text-gray-500 cursor-not-allowed' : 'bg-indigo-700 hover:bg-indigo-600'
                       }`}
                     >
                       🎤 {o.ownerName}
                       <span className="block text-sm font-normal opacity-80">
-                        {o.done ? 'terminé' : pseudo ? `→ ${pseudo} · ${o.total} Q` : 'non attribué'}
+                        {o.done ? 'déjà joué' : `${o.total} Q${pseudo && pseudo !== o.ownerName ? ` · tél : ${pseudo}` : ''}`}
                       </span>
                     </button>
                   )
@@ -282,19 +315,23 @@ export function BuzzerHostControl({ s }: { s: HostSessionView }) {
                 </div>
               )}
               <div className="flex items-center gap-3 text-lg">
-                {b.phase === 'owner_oral' && (
-                  <span>
-                    🗣️ Au tour de <b className="text-indigo-300">{b.ownerName ?? '—'}</b> (à l'oral)
-                    {(() => {
-                      const owner = b.ownerParticipantId ? s.participants.find((p) => p.id === b.ownerParticipantId) : null
-                      if (!owner) return <span className="ml-2 text-amber-400 text-sm">⚠️ thème non attribué — passe ou attribue-le</span>
-                      // Un joueur « sans téléphone » n'a jamais de socket : ne PAS
-                      // l'annoncer déconnecté (l'alerte resterait affichée toute la partie).
-                      if (!owner.manual && !owner.connected) return <span className="ml-2 text-amber-400 text-sm">⚠️ {owner.pseudo} est déconnecté·e</span>
-                      return null
-                    })()}
-                  </span>
-                )}
+                {b.phase === 'owner_oral' && (() => {
+                  // Le répondeur = le joueur du TOUR (pas forcément le propriétaire
+                  // du thème : il a pu prendre celui d'un autre). Le badge « Thème
+                  // de X » au-dessus dit à qui appartient le thème.
+                  const responder = b.ownerParticipantId ? s.participants.find((p) => p.id === b.ownerParticipantId) : null
+                  return (
+                    <span>
+                      🗣️ À <b className="text-indigo-300">{responder?.pseudo ?? b.ownerName ?? '—'}</b> de répondre (à l'oral)
+                      {!responder && <span className="ml-2 text-amber-400 text-sm">⚠️ personne pour répondre — passe ou attribue le thème</span>}
+                      {/* Un joueur « sans téléphone » n'a jamais de socket : ne PAS
+                          l'annoncer déconnecté (l'alerte resterait toute la partie). */}
+                      {responder && !responder.manual && !responder.connected && (
+                        <span className="ml-2 text-amber-400 text-sm">⚠️ {responder.pseudo} est déconnecté·e</span>
+                      )}
+                    </span>
+                  )
+                })()}
                 {b.phase === 'steal' && b.armed && <span className="text-rose-300">🔔 Buzzer ouvert — attends un buzz…</span>}
                 {b.phase === 'steal' && !b.armed && <span className="text-amber-300">⏸️ Vol raté — rouvre le buzzer ou passe.</span>}
                 {b.phase === 'locked' && <span className="text-emerald-300">🎤 <b>{b.lockedBy?.pseudo}</b> a la parole</span>}

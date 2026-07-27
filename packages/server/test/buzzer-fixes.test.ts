@@ -110,6 +110,8 @@ describe('H1 — reattach host/TV pendant la révélation', () => {
     await waitFor<BuzzStarted>(alice, EVENTS.BUZZ_QUESTION_STARTED)
 
     alice.emit(EVENTS.BUZZ, {})
+    await tick() // le buzz (socket alice) doit être traité AVANT l'arbitrage (socket host)
+    expect(session.buzz?.phase).toBe('locked')
     const endedP = waitFor<BuzzEnded>(host, EVENTS.BUZZ_QUESTION_ENDED)
     host.emit(EVENTS.HOST_ADJUDICATE, { correct: true })
     await endedP // phase revealed, alice a marqué
@@ -194,6 +196,8 @@ describe('M3 — validation de host_assign_owner', () => {
     const { c: bob, joined: bobJoined } = await joinAs('bob', session.pin)
     const host = await hostJoin(session)
     host.emit(EVENTS.HOST_START_QUIZ, {})
+    await tick()
+    session.buzzTurnOrder = null // fallback binding (sans tour par tour)
     host.emit(EVENTS.HOST_ASSIGN_OWNER, { ownerName: 'alice', participantId: aliceJoined.participant.id })
     host.emit(EVENTS.HOST_START_THEME, { ownerName: 'alice' })
     await waitFor<BuzzStarted>(alice, EVENTS.BUZZ_QUESTION_STARTED)
@@ -220,6 +224,8 @@ describe('M5 — « Correct » sur un thème non attribué', () => {
     const { c: alice } = await joinAs('alice', session.pin)
     const host = await hostJoin(session)
     host.emit(EVENTS.HOST_START_QUIZ, {})
+    await tick()
+    session.buzzTurnOrder = null // fallback binding (sans tour par tour)
     // Pas de HOST_ASSIGN_OWNER : le thème alice n'est pas attribué.
     host.emit(EVENTS.HOST_START_THEME, { ownerName: 'alice' })
     await waitFor<BuzzStarted>(alice, EVENTS.BUZZ_QUESTION_STARTED)

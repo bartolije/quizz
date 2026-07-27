@@ -22,9 +22,20 @@ automatiquement, et le scoring est **par difficulté** (Facile 1 / Moyen 2 / Dif
 
 ## Les deux rounds
 
-### Round 1 — Thèmes perso
-- Chaque joueur a **un thème**. L'admin choisit quel thème aborder (`host_start_theme`).
-- L'**owner** du thème répond **à l'oral**, question par question (l'admin les lance).
+### Round 1 — Thèmes perso (règle « tour par tour », 08/2026)
+- Chaque joueur a **un thème**. Au lancement du quiz, l'app tire un **ordre de
+  passage aléatoire** (affiché control + TV).
+- Le **joueur du tour** choisit un thème **pas encore joué** — le sien OU celui
+  d'un autre (bouton « 🎲 Thème aléatoire » disponible). **Tu commences = tu finis**
+  (pas de thème entamé).
+- Le **joueur du tour répond à tout le thème à l'oral** (même si ce n'est pas le
+  sien : « tant pis » pour le propriétaire, qui garde le droit de buzzer au vol).
+  S'il se trompe → vol ouvert à tous les autres. Un thème perso fini = le tour
+  passe au joueur suivant (la culture G ne consomme pas de tour).
+- (Option écartée pour l'instant : points négatifs quand on vole un thème et
+  qu'on répond mal.)
+- Ancien flux (résolution par binding owner) conservé en fallback quand aucun
+  ordre n'est tiré (quiz 100 % culture).
 - Admin juge :
   - **Correct** → l'owner marque les points de difficulté → révélation → suivante.
   - **Faux** → ouverture du **vol** : buzzer armé pour tous **sauf l'owner**.
