@@ -44,9 +44,9 @@ export function QuestionPage() {
   }
 
   return (
-    <div className="h-[100dvh] bg-gray-950 text-white flex flex-col p-4">
+    <div className="h-dvh bg-gray-950 text-white flex flex-col p-4">
       <TimePressure active={lowTime && !hasAnswered} />
-      <header className="flex-shrink-0 flex items-center justify-between mb-4">
+      <header className="shrink-0 flex items-center justify-between mb-4">
         <span className="text-gray-400 text-sm">
           Question {question.index + 1} / {question.total}
         </span>
@@ -95,7 +95,7 @@ export function QuestionPage() {
         </div>
       ) : question.type === 'mcq' ? (
         <div className="flex-1 flex flex-col min-h-0">
-          <p className="flex-shrink-0 text-center text-gray-400 mb-4">
+          <p className="shrink-0 text-center text-gray-400 mb-4">
             👀 Regarde l'écran pour la question
           </p>
           <div className="flex-1 grid grid-cols-1 gap-3 overflow-y-auto min-h-0">
@@ -108,7 +108,7 @@ export function QuestionPage() {
                   onClick={() => submit(choice)}
                   className={`${st.bg} rounded-2xl px-5 py-6 flex items-center gap-4 text-left active:scale-[0.98] transition-transform`}
                 >
-                  <span className="text-3xl flex-shrink-0">{st.shape}</span>
+                  <span className="text-3xl shrink-0">{st.shape}</span>
                   <span className="text-xl font-bold">{choice}</span>
                 </button>
               )
@@ -128,7 +128,7 @@ export function QuestionPage() {
           <button
             type="button"
             onClick={() => submit(order)}
-            className="flex-shrink-0 mt-3 w-full py-5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-xl font-bold transition-colors"
+            className="shrink-0 mt-3 w-full py-5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-xl font-bold transition-colors"
           >
             Valider l'ordre
           </button>
@@ -150,7 +150,7 @@ export function QuestionPage() {
                 }
               }}
               placeholder={question.type === 'closest' ? 'Ton nombre' : 'Ta réponse'}
-              className="w-full text-center text-2xl bg-gray-800 rounded-2xl px-6 py-5 border-2 border-gray-700 focus:border-indigo-500 outline-none"
+              className="w-full text-center text-2xl bg-gray-800 rounded-2xl px-6 py-5 border-2 border-gray-700 focus:border-indigo-500 outline-hidden"
               autoFocus
             />
           </div>
@@ -158,7 +158,7 @@ export function QuestionPage() {
             type="button"
             onClick={() => submit(question.type === 'closest' ? Number(text) : text.trim())}
             disabled={!text.trim() || (question.type === 'closest' && Number.isNaN(Number(text)))}
-            className="flex-shrink-0 mt-3 w-full py-5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed text-xl font-bold transition-colors"
+            className="shrink-0 mt-3 w-full py-5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed text-xl font-bold transition-colors"
           >
             Envoyer
           </button>

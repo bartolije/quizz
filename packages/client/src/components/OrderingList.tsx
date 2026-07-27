@@ -61,18 +61,18 @@ function Row({
         {...attributes}
         {...listeners}
         aria-label="Glisser pour réordonner"
-        className="w-10 h-11 flex-shrink-0 flex items-center justify-center rounded-lg text-gray-400 text-2xl touch-none select-none cursor-grab active:cursor-grabbing active:bg-gray-700"
+        className="w-10 h-11 shrink-0 flex items-center justify-center rounded-lg text-gray-400 text-2xl touch-none select-none cursor-grab active:cursor-grabbing active:bg-gray-700"
       >
         ⠿
       </button>
-      <span className="w-5 flex-shrink-0 text-center text-gray-500 font-bold">{index + 1}</span>
+      <span className="w-5 shrink-0 text-center text-gray-500 font-bold">{index + 1}</span>
       <span className="flex-1 font-medium">{id}</span>
       <button
         type="button"
         onClick={() => onMove(index, -1)}
         disabled={index === 0}
         aria-label="Monter"
-        className="w-10 h-11 flex-shrink-0 rounded-lg bg-gray-700 active:bg-gray-600 disabled:opacity-30 text-xl"
+        className="w-10 h-11 shrink-0 rounded-lg bg-gray-700 active:bg-gray-600 disabled:opacity-30 text-xl"
       >
         ↑
       </button>
@@ -81,7 +81,7 @@ function Row({
         onClick={() => onMove(index, 1)}
         disabled={index === total - 1}
         aria-label="Descendre"
-        className="w-10 h-11 flex-shrink-0 rounded-lg bg-gray-700 active:bg-gray-600 disabled:opacity-30 text-xl"
+        className="w-10 h-11 shrink-0 rounded-lg bg-gray-700 active:bg-gray-600 disabled:opacity-30 text-xl"
       >
         ↓
       </button>

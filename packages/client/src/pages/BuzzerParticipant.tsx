@@ -22,7 +22,7 @@ export function BuzzerParticipant() {
   const leaderboard = useQuizStore((s) => s.leaderboard)
   const myScore = useQuizStore((s) => s.myScore)
 
-  const shell = 'h-[100dvh] bg-gray-950 text-white flex flex-col items-center justify-center p-6 text-center gap-4 select-none'
+  const shell = 'h-dvh bg-gray-950 text-white flex flex-col items-center justify-center p-6 text-center gap-4 select-none'
 
   // ── Fin de partie : podium ──────────────────────────────────
   if (status === 'ended') {

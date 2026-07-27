@@ -140,7 +140,7 @@ export function HostControlPage() {
                       <span className="text-2xl">{st.shape}</span>
                       <span className="font-bold flex-1">{choice}</span>
                       {phase === 'reveal' && (
-                        <span className="font-mono text-sm bg-black/30 px-2 py-1 rounded">
+                        <span className="font-mono text-sm bg-black/30 px-2 py-1 rounded-sm">
                           {count} {isCorrect && '✓'}
                         </span>
                       )}

@@ -35,7 +35,7 @@ function PlayerChip({ id, pseudo, onRemove }: { id: string; pseudo: string; onRe
           onPointerDown={(e) => e.stopPropagation()}
           onClick={onRemove}
           aria-label={`Retirer ${pseudo}`}
-          className="w-5 h-5 rounded-full bg-black/30 hover:bg-black/50 flex items-center justify-center text-xs flex-shrink-0"
+          className="w-5 h-5 rounded-full bg-black/30 hover:bg-black/50 flex items-center justify-center text-xs shrink-0"
         >
           ✕
         </button>
@@ -64,13 +64,13 @@ function DropZone({
   return (
     <div
       ref={setNodeRef}
-      className={`rounded-2xl border-2 p-3 flex flex-col gap-2 min-h-[7rem] transition-colors ${
+      className={`rounded-2xl border-2 p-3 flex flex-col gap-2 min-h-28 transition-colors ${
         isOver ? 'border-white bg-white/5' : 'border-gray-700'
       }`}
     >
       <div className="flex items-center gap-2">
         {color && (
-          <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
+          <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: color }} />
         )}
         <span className="font-bold flex-1 truncate" style={color ? { color } : undefined}>
           {title}
@@ -183,7 +183,7 @@ export function HostTeamPanel({
           <ul className="space-y-2 overflow-y-auto flex-1">
             {connected.map((p) => (
               <li key={p.id} className="flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-800">
-                <span className="w-2 h-2 rounded-full bg-green-400 flex-shrink-0" />
+                <span className="w-2 h-2 rounded-full bg-green-400 shrink-0" />
                 <span className="font-medium flex-1">{p.pseudo}</span>
                 {onKick && (
                   <button
@@ -213,7 +213,7 @@ export function HostTeamPanel({
               onKeyDown={(e) => e.key === 'Enter' && add()}
               maxLength={24}
               placeholder="Nom d'équipe"
-              className="flex-1 bg-gray-800 rounded-xl px-4 py-2.5 border border-gray-700 focus:border-indigo-500 outline-none"
+              className="flex-1 bg-gray-800 rounded-xl px-4 py-2.5 border border-gray-700 focus:border-indigo-500 outline-hidden"
             />
             <button
               type="button"
