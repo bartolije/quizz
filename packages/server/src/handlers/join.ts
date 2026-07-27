@@ -238,6 +238,25 @@ function handleRejoinWithParticipant(
     buzz: session.buzz,   // mode buzzer : état courant → le tél retrouve son buzzer ; classic → null
   })
 
+  // Mode BUZZER : un reload de page (onglet déchargé, téléphone verrouillé…) perd
+  // le store client — session_restored porte `buzz` mais PAS l'énoncé. Sans ce
+  // rejeu, le joueur restait sur « Prêt·e ? » avec un buzzer inutilisable jusqu'à
+  // la question suivante. Même bloc que le retardataire de handleJoinSession.
+  if (
+    quiz?.gameType === 'buzzer' &&
+    session.buzz &&
+    session.buzz.phase !== 'idle' &&
+    session.buzz.phase !== 'revealed'
+  ) {
+    const bq = quiz.questions[session.currentQuestionIndex]
+    if (bq) {
+      socket.emit(EVENTS.BUZZ_QUESTION_STARTED, {
+        question: toPublicQuestion(bq, session.currentQuestionIndex, quiz.questions.length),
+        buzz: session.buzz,
+      })
+    }
+  }
+
   // Notifier les autres que ce participant est de retour
   socket.to(session.id).emit(EVENTS.PARTICIPANT_JOINED, {
     participant: toParticipant(participant),

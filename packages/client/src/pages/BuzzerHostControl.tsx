@@ -306,7 +306,11 @@ export function BuzzerHostControl({ s }: { s: HostSessionView }) {
 
       <footer className="px-8 py-5 border-t border-gray-800 flex items-center justify-between gap-4">
         <div className="flex items-center gap-2">
-          <button onClick={s.endQuiz} className="px-5 py-3 rounded-xl text-rose-400 hover:bg-rose-500/10 font-medium">Terminer</button>
+          {/* confirm : irréversible (supprime aussi le snapshot anti-restart) */}
+          <button
+            onClick={() => { if (window.confirm('Terminer la partie ? Le classement devient définitif.')) s.endQuiz() }}
+            className="px-5 py-3 rounded-xl text-rose-400 hover:bg-rose-500/10 font-medium"
+          >Terminer</button>
           {adjustBtn}
         </div>
         <div className="flex items-center gap-3">
@@ -321,7 +325,12 @@ export function BuzzerHostControl({ s }: { s: HostSessionView }) {
           {b && (b.phase === 'owner_oral' || b.phase === 'locked') && (
             <>
               <button onClick={() => s.adjudicate(false)} className={`${btn} bg-rose-600 hover:bg-rose-500`}>✗ Faux</button>
-              <button onClick={() => s.adjudicate(true)} className={`${btn} bg-emerald-600 hover:bg-emerald-500`}>✓ Correct</button>
+              {/* Thème non attribué : ✓ créditerait personne (le serveur refuse aussi) */}
+              <button
+                onClick={() => s.adjudicate(true)}
+                disabled={b.phase === 'owner_oral' && !b.ownerParticipantId}
+                className={`${btn} bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed`}
+              >✓ Correct</button>
             </>
           )}
           {/* Vol en cours (buzzer ouvert, personne n'a encore la parole) → passer */}

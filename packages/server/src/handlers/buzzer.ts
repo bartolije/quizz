@@ -32,7 +32,8 @@ type QuizServer = Server<ClientToServerEvents, ServerToClientEvents>
 // Rediffuse l'état buzzer courant — y compris `null` : quand une question se
 // referme sans qu'une autre s'ouvre (thème terminé, retour au sélecteur), le
 // client DOIT recevoir ce null pour sortir de l'écran de révélation figé.
-function broadcastBuzzState(session: SessionState, io: QuizServer): void {
+// Exporté : le kick d'un joueur (host.ts) doit aussi rediffuser après nettoyage.
+export function broadcastBuzzState(session: SessionState, io: QuizServer): void {
   io.to(session.id).emit(EVENTS.BUZZ_STATE, session.buzz)
 }
 
@@ -131,6 +132,7 @@ function startBuzzerQuestionAt(session: SessionState, io: QuizServer, index: num
   session.currentQuestionIndex = index
   session.lastQuestionResults = null
   session.lastCorrectAnswers = null
+  session.lastBuzzReveal = null
 
   const isPerso = q.section === 'perso'
   const ownerName = isPerso ? (q.ownerName ?? null) : null
@@ -228,7 +230,11 @@ export function handleAssignOwner(
   if (!session) return
   const ownerName = String(payload?.ownerName ?? '')
   if (!ownerName) return
-  const pid = payload?.participantId ?? null
+  // participantId non fiable (DevTools) : string existante dans la session ou null,
+  // sinon on ignorait silencieusement… en rebroadcastant un owner fantôme à toute
+  // la room. Un objet arbitraire est rejeté ici.
+  const pid = typeof payload?.participantId === 'string' ? payload.participantId : null
+  if (pid !== null && !session.participants.has(pid)) return
   if (pid === null) {
     session.ownerBindings.delete(ownerName)
   } else {
@@ -236,8 +242,14 @@ export function handleAssignOwner(
     for (const [k, v] of session.ownerBindings) if (v === pid) session.ownerBindings.delete(k)
     session.ownerBindings.set(ownerName, pid)
   }
-  // Question de ce thème en cours (owner_oral) → re-résoudre l'owner à chaud.
-  if (session.buzz && session.buzz.phase === 'owner_oral' && session.buzz.ownerName === ownerName) {
+  // Question de ce thème en cours → re-résoudre l'owner à chaud. Couvre owner_oral
+  // ET steal : re-binder pendant un vol doit aussi empêcher le nouvel owner de
+  // voler son propre thème (handleBuzz filtre sur ownerParticipantId).
+  if (
+    session.buzz &&
+    session.buzz.ownerName === ownerName &&
+    (session.buzz.phase === 'owner_oral' || session.buzz.phase === 'steal')
+  ) {
     session.buzz.ownerParticipantId = session.ownerBindings.get(ownerName) ?? null
     broadcastBuzzState(session, io)
   }
@@ -282,6 +294,9 @@ export function handleAdjudicate(
 
   if (b.phase === 'owner_oral') {
     if (correct) {
+      // Thème non attribué : « Correct » donnerait 0 point en silence. On refuse —
+      // le host doit d'abord attribuer le thème (ou Passer). L'UI désactive ✓.
+      if (b.ownerParticipantId === null) return
       awardAndReveal(session, io, b.ownerParticipantId)
     } else {
       // L'owner a séché → ouverture du vol (buzzer armé pour tous sauf lui).
@@ -362,6 +377,8 @@ function awardAndReveal(session: SessionState, io: QuizServer, scorerId: string 
   b.armed = false
   b.lockedBy = null
   session.playedQuestionIndices.add(session.currentQuestionIndex) // question jouée
+  // Mémorise la révélation : ré-émise au host/TV qui se ré-attache en 'revealed'
+  session.lastBuzzReveal = { correctAnswers: q.correctAnswers, difficulty, scorer }
 
   // Historise la question pour le rapport de fin de partie
   session.results.push({

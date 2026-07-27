@@ -6,7 +6,7 @@ versions ([plan-upgrade-deps.md](plan-upgrade-deps.md)). Cocher au fil des commi
 
 ## CRITIQUE
 
-- [ ] **C1 — Reload d'un téléphone en pleine question buzzer : buzzer inutilisable
+- [x] **C1 — Reload d'un téléphone en pleine question buzzer : buzzer inutilisable
   jusqu'à la question suivante.** `handlers/join.ts` (`handleRejoinWithParticipant`,
   ~l.177-251) n'émet jamais `BUZZ_QUESTION_STARTED` — contrairement au retardataire
   nouveau (`handleJoinSession`) et au host/TV (`attachAndSendState`). `session_restored`
@@ -20,7 +20,7 @@ versions ([plan-upgrade-deps.md](plan-upgrade-deps.md)). Cocher au fil des commi
 
 ## HAUTE
 
-- [ ] **H1 — Micro-coupure/refresh host-TV pendant la révélation : affiche
+- [x] **H1 — Micro-coupure/refresh host-TV pendant la révélation : affiche
   « Personne n'a trouvé » à tort.** `attachAndSendState` (host.ts:63) ré-émet
   `BUZZ_QUESTION_STARTED` même en phase `revealed`, et `onBuzzStarted`
   (useHostSession) remet `buzzReveal` à null ; comme `host_join` est ré-émis à
@@ -29,7 +29,7 @@ versions ([plan-upgrade-deps.md](plan-upgrade-deps.md)). Cocher au fil des commi
   **Fix** : stocker le dernier reveal buzzer (correctAnswers/difficulty/scorer)
   dans `SessionState` et ré-émettre `BUZZ_QUESTION_ENDED` au reattach si `revealed`.
 
-- [ ] **H2 — Kick d'un joueur qui a buzzé (ou owner en cours) : état incohérent.**
+- [x] **H2 — Kick d'un joueur qui a buzzé (ou owner en cours) : état incohérent.**
   `handleKickParticipant` (host.ts:142-179) nettoie `ownerBindings` mais pas
   `session.buzz` : kické = `lockedBy` → phase `locked` sur un fantôme (Correct =
   0 pt silencieux, Faux = fantôme dans `lockedOut`) ; kické = owner en `owner_oral`
@@ -43,37 +43,37 @@ versions ([plan-upgrade-deps.md](plan-upgrade-deps.md)). Cocher au fil des commi
   buzzer », aucune occurrence dans le code ; `finishQuiz` termine dès que tout est
   joué). Implémenter (bloquer sur égalité au rang 1 + question bonus) OU dé-scoper
   le plan explicitement. Idem « option compte à rebours » (jamais implémentée).
-- [ ] **M2 — Snapshot : `session.buzz` non sérialisé** (restauré `null`,
+- [x] **M2 — Snapshot : `session.buzz` non sérialisé** (restauré `null`,
   session-snapshot.ts:167) → au restart en pleine question, `lockedOut` perdu :
   un joueur « grillé » peut re-buzzer. `awardAndReveal` ne peuple pas
   `lastQuestionResults` (piège futur : `lastResult.myDelta = 0`). `currentTheme`,
   `playedQuestionIndices`, `ownerBindings`, `manual`, `bonus` sont bien couverts
   mais **aucun test snapshot** ne les vérifie. Ajouter un roundtrip buzzer au test.
-- [ ] **M3 — `host_assign_owner.participantId` non validé** (buzzer.ts:231) : pas de
+- [x] **M3 — `host_assign_owner.participantId` non validé** (buzzer.ts:231) : pas de
   `String()`, pas de vérif d'existence dans `session.participants` → owner fantôme
   ou objet arbitraire rebroadcasté. Et un re-binding pendant `steal` du même thème
   ne met pas à jour `buzz.ownerParticipantId` → le nouvel owner peut voler son
   propre thème.
-- [ ] **M4 — « Terminer » sans confirm()** (BuzzerHostControl.tsx:309,
+- [x] **M4 — « Terminer » sans confirm()** (BuzzerHostControl.tsx:309,
   HostControlPage.tsx:282) alors que ça supprime le snapshot (irréversible).
-- [ ] **M5 — « Correct » sur thème non attribué = 0 pt silencieux**
+- [x] **M5 — « Correct » sur thème non attribué = 0 pt silencieux**
   (buzzer.ts:283-285, `awardAndReveal(null)`). Désactiver ✓ côté client ou refuser
   côté serveur.
-- [ ] **M6 — `handleAddManualParticipant`** : pas de `isPseudoTaken`, borne 40 vs
+- [x] **M6 — `handleAddManualParticipant`** : pas de `isPseudoTaken`, borne 40 vs
   `PSEUDO_MAX_LEN = 20`, pas de garde `gameType`.
 
 ## BASSE
 
-- [ ] **B1 — Dead code** : `cleanupDisconnectedParticipants` (state.ts:138-146) et
+- [x] **B1 — Dead code** : `cleanupDisconnectedParticipants` (state.ts:138-146) et
   `deleteSession` (state.ts:129) jamais appelées, `SESSION_TOKEN_TTL_MS = 30_000`
   (socket-config.ts:48) sans effet et commentaire mensonger. Supprimer (ou brancher
   une purge des sessions `ended` qui s'accumulent en mémoire).
-- [ ] **B2 — Doc drift** : `events-contract.md` ne documente aucun des 12 events
+- [x] **B2 — Doc drift** : `events-contract.md` ne documente aucun des 12 events
   buzzer ; `deployment.md` dit « max 5 » restarts vs `railway.json` = 10.
 - [ ] **B3 — Duplication** : `ptsBadge` ×3 (nuances divergentes `*-700`/`*-600`),
   `ranksOf` ×2 (quiz-store, useHostSession), `findSessionByHostSocket` ×2
   (game.ts, session-helpers.ts), 3 variantes de « fin de quiz » — à factoriser.
-- [ ] **B4 — `myScore` périmé sur le tél après `host_adjust_score`** :
+- [x] **B4 — `myScore` périmé sur le tél après `host_adjust_score`** :
   `onTeamsUpdated`/`onLeaderboard` ne recalculent pas `myScore` → header faux
   jusqu'à la fin de question suivante.
 - [ ] **B5 — Routes admin sans validation serveur** (`POST/PUT /api/admin/quizzes`,
@@ -87,6 +87,25 @@ versions ([plan-upgrade-deps.md](plan-upgrade-deps.md)). Cocher au fil des commi
 - Doubles clics host : tous idempotents via guards de phase.
 - `buzz_state` null au retour sélecteur : émis et testé.
 - Joueurs sans téléphone : jamais buzzables, scorables, ajustements snapshotés.
+
+## État au 27/07/2026 (chantier upgrade-deps, phase 6)
+
+Corrigés et testés (`buzzer-fixes.test.ts`, 11 tests) : C1, H1, H2, M2 (test
+roundtrip), M3, M4, M5 (le serveur refuse + ✓ désactivé ; le test e2e « garde-fou »
+a été mis à jour vers ce nouveau contrat), M6, B1 (TTL/cleanup supprimés —
+`deleteSession` conservé, utilisé par les tests de restart), B2 (events-contract
++ deployment), B4. Bonus : CORS surchargeable via `CORS_ORIGIN` (défaut `*`
+inchangé pour la voie Vercel).
+
+Restent ouverts, à trancher/planifier :
+- **M1 mort subite** : feature du plan famille jamais implémentée — à décider
+  (implémenter ou dé-scoper le plan). Idem « option compte à rebours ».
+- **B3 duplication / B6 gros fichiers** : refactors cosmétiques, hors périmètre
+  du chantier upgrade.
+- **B5 validation serveur des routes admin** : protégé par ADMIN_PASSWORD,
+  à faire à l'occasion.
+- **Report non authentifié** : accepté (uuid de session = capability token),
+  cf. audit-2026-07.md.
 
 ## Ordre de traitement recommandé (phase 6)
 

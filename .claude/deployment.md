@@ -10,7 +10,7 @@ un seul service.
 
 - **Build** (`railway.json`) : `cd packages/shared && npm run build && cd ../client && npm run build && cd ../server && npm run build` (builder NIXPACKS).
 - **Start** : `node packages/server/dist/index.js`.
-- **Healthcheck** : `GET /health` (timeout 30s, restart `ON_FAILURE`, max 5).
+- **Healthcheck** : `GET /health` (timeout 30s, restart `ON_FAILURE`, max 10).
 - Le serveur résout le build client à `../../client/dist` relativement à
   `import.meta.url` (indépendant du cwd de lancement).
 - En single-service, `VITE_SERVER_URL` reste **vide** → le client tape en same-origin.
