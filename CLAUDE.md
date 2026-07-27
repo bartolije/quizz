@@ -34,11 +34,14 @@ jamais fragiliser ça. Détail du mécanisme : [`.claude/architecture.md`](.clau
 
 ## Stack
 
-- Node 20 · TypeScript strict · monorepo npm workspaces
-- **Serveur** : Fastify 4 + Socket.io 4 + Drizzle ORM / better-sqlite3
-- **Client** : React 18 · Vite 5 · Tailwind 3 · Zustand · react-router
+- Node 24 (épinglé : `engines` + `.nvmrc`) · TypeScript 7 strict · monorepo npm workspaces
+- **Serveur** : Fastify 5 + Socket.io 4 + Drizzle ORM 0.45 / better-sqlite3 13
+- **Client** : React 19 · Vite 8 · Tailwind 4 (config CSS, plus de tailwind.config.js) ·
+  Zustand 5 · react-router 8 (import depuis `react-router`, plus de `-dom`)
 - **Déploiement** : single-service Railway (Fastify sert aussi le build React),
   SQLite sur Volume Railway. (Une voie Vercel+Railway séparée existe aussi.)
+- Montée de versions 08/2026 : cf. [.claude/plan-upgrade-deps.md](.claude/plan-upgrade-deps.md)
+  (npm audit à zéro). ⚠️ ids aléatoires via `crypto.randomUUID()` natif (plus de dep uuid).
 
 ## Démarrage rapide
 

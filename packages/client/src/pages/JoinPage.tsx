@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router'
 import { socket } from '../socket'
 import { useQuizStore } from '../store/quiz-store'
 import { EVENTS } from '@lya-quiz/shared'

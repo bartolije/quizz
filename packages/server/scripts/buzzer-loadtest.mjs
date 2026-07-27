@@ -125,6 +125,7 @@ async function main() {
     }
   })
   host.on(EVENTS.BUZZ_STATE, async (st) => {
+    if (st === null) return // retour au sélecteur de thème (état null rediffusé)
     if (st.phase === 'steal' && st.armed && !st.lockedBy) {
       fireRace() // perso : buzzer ré-armé après l'échec de l'owner
     } else if (st.phase === 'locked' && st.lockedBy) {

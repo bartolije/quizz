@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import { useQuizStore } from '../store/quiz-store'
 import { TeamStandings } from '../components/TeamStandings'
 

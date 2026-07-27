@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router'
 import { JoinPage } from './pages/JoinPage'
 import { ParticipantApp } from './pages/ParticipantApp'
 import { HostControlPage } from './pages/HostControlPage'
