@@ -263,6 +263,47 @@ describe('M6 — joueur sans téléphone (host_add_manual_participant)', () => {
   })
 })
 
+describe('Antisèche admin (buzz_host_answer)', () => {
+  it('le host control reçoit la réponse pendant la question ; TV et téléphones JAMAIS', async () => {
+    const session = makeBuzzerSession(CULTURE_QS)
+    const { c: alice } = await joinAs('alice', session.pin)
+    const host = await hostJoin(session)
+    // TV : lecture seule via display_join (sessionId), pas de hostKey.
+    const tv = srv.connect()
+    tv.emit(EVENTS.DISPLAY_JOIN, { sessionId: session.id })
+    await waitFor<Joined>(tv, EVENTS.SESSION_JOINED)
+
+    let tvLeaks = 0
+    let phoneLeaks = 0
+    tv.on(EVENTS.BUZZ_HOST_ANSWER, () => { tvLeaks++ })
+    alice.on(EVENTS.BUZZ_HOST_ANSWER, () => { phoneLeaks++ })
+
+    const answerP = waitFor<{ correctAnswers: string[] }>(host, EVENTS.BUZZ_HOST_ANSWER)
+    host.emit(EVENTS.HOST_START_QUIZ, {})
+    host.emit(EVENTS.HOST_NEXT_QUESTION, {})
+    const answer = await answerP
+    expect(answer.correctAnswers).toEqual(['Rome'])
+
+    await tick()
+    expect(tvLeaks).toBe(0)     // la TV est visible de toute la salle
+    expect(phoneLeaks).toBe(0)  // anti-triche inchangé côté joueurs
+  })
+
+  it('un control qui se ré-attache en pleine question re-reçoit l\'antisèche', async () => {
+    const session = makeBuzzerSession(CULTURE_QS)
+    await joinAs('alice', session.pin)
+    const host = await hostJoin(session)
+    host.emit(EVENTS.HOST_START_QUIZ, {})
+    host.emit(EVENTS.HOST_NEXT_QUESTION, {})
+    await waitFor<{ correctAnswers: string[] }>(host, EVENTS.BUZZ_HOST_ANSWER)
+
+    const host2 = srv.connect()
+    const answerP = waitFor<{ correctAnswers: string[] }>(host2, EVENTS.BUZZ_HOST_ANSWER)
+    host2.emit(EVENTS.HOST_JOIN, { pin: session.pin, hostKey: session.hostKey })
+    expect((await answerP).correctAnswers).toEqual(['Rome'])
+  })
+})
+
 describe('M2 — snapshot : les champs buzzer survivent au roundtrip', () => {
   it('ownerBindings, currentTheme, playedQuestionIndices, manual+bonus sont restaurés', () => {
     const session = makeBuzzerSession(PERSO_QS)

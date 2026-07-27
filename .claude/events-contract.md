@@ -70,6 +70,7 @@ Serveur → client :
 | `BUZZ_STATE` | `buzz_state` | `BuzzState \| null` | room, rediffusé complet à chaque changement (`null` = retour sélecteur) |
 | `BUZZ_QUESTION_ENDED` | `buzz_question_ended` | `{ correctAnswers, difficulty, scorer, scores }` | room ; **rejoué** au host/TV qui se ré-attache en phase `revealed` (`lastBuzzReveal`) |
 | `BUZZ_THEMES` | `buzz_themes` | `BuzzThemesState` | room (progression + bindings des thèmes) |
+| `BUZZ_HOST_ANSWER` | `buzz_host_answer` | `{ correctAnswers }` | **sockets du control UNIQUEMENT** (antisèche admin) — jamais la room : ni TV ni téléphones. Rejoué au reattach du control |
 
 > `session_restored` embarque aussi `buzz` (état courant, `null` en classic) — et le
 > serveur fait suivre un `buzz_question_started` si une question buzzer est ouverte.

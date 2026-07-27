@@ -148,6 +148,11 @@ function startBuzzerQuestionAt(session: SessionState, io: QuizServer, index: num
     question: toPublicQuestion(q, index, questions.length),
     buzz: session.buzz,
   })
+  // Antisèche : la réponse part vers les seuls sockets du host CONTROL —
+  // jamais via la room (la TV y est, et elle est visible de toute la salle).
+  for (const sid of session.hostSocketIds) {
+    io.sockets.sockets.get(sid)?.emit(EVENTS.BUZZ_HOST_ANSWER, { correctAnswers: q.correctAnswers })
+  }
   logEvent('buzz_question_started', {
     sessionId: session.id,
     questionIndex: index,

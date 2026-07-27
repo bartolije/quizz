@@ -69,6 +69,8 @@ export interface HostSessionView {
   buzz: BuzzState | null
   buzzQuestion: QuestionPublic | null
   buzzReveal: BuzzReveal | null
+  // Antisèche admin (control uniquement — le serveur ne l'envoie jamais à la TV)
+  hostAnswer: string[] | null
   themes: BuzzThemesState | null
   start: () => void
   next: () => void
@@ -155,6 +157,7 @@ export function useHostSession(mode: HostMode): HostSessionView {
   const [buzz, setBuzz] = useState<BuzzState | null>(null)
   const [buzzQuestion, setBuzzQuestion] = useState<QuestionPublic | null>(null)
   const [buzzReveal, setBuzzReveal] = useState<BuzzReveal | null>(null)
+  const [hostAnswer, setHostAnswer] = useState<string[] | null>(null)
   const [themes, setThemes] = useState<BuzzThemesState | null>(null)
 
   const resolvedRef = useRef(false)
@@ -303,9 +306,11 @@ export function useHostSession(mode: HostMode): HostSessionView {
       setBuzzQuestion(p.question)
       setBuzz(p.buzz)
       setBuzzReveal(null)
+      setHostAnswer(null) // l'antisèche de la nouvelle question suit (control uniquement)
       setShowingLeaderboard(false)
       setLeaderboardFinal(false)
     }
+    const onHostAnswer = (p: { correctAnswers: string[] }) => setHostAnswer(p.correctAnswers)
     const onBuzzState = (p: BuzzStatePayload) => setBuzz(p)
     const onBuzzEnded = (p: BuzzEndedPayload) => {
       setBuzzReveal({ correctAnswers: p.correctAnswers, difficulty: p.difficulty, scorer: p.scorer })
@@ -327,6 +332,7 @@ export function useHostSession(mode: HostMode): HostSessionView {
     socket.on(EVENTS.BUZZ_QUESTION_STARTED, onBuzzStarted)
     socket.on(EVENTS.BUZZ_STATE, onBuzzState)
     socket.on(EVENTS.BUZZ_QUESTION_ENDED, onBuzzEnded)
+    socket.on(EVENTS.BUZZ_HOST_ANSWER, onHostAnswer)
     socket.on(EVENTS.BUZZ_THEMES, onThemes)
 
     // Session côté serveur introuvable / clé invalide (ex : snapshots purgés).
@@ -378,6 +384,7 @@ export function useHostSession(mode: HostMode): HostSessionView {
       socket.off(EVENTS.BUZZ_QUESTION_STARTED, onBuzzStarted)
       socket.off(EVENTS.BUZZ_STATE, onBuzzState)
       socket.off(EVENTS.BUZZ_QUESTION_ENDED, onBuzzEnded)
+      socket.off(EVENTS.BUZZ_HOST_ANSWER, onHostAnswer)
       socket.off(EVENTS.BUZZ_THEMES, onThemes)
       socket.off('connect', join)
     }
@@ -435,6 +442,7 @@ export function useHostSession(mode: HostMode): HostSessionView {
     buzz,
     buzzQuestion,
     buzzReveal,
+    hostAnswer,
     themes,
     start,
     next,

@@ -245,6 +245,12 @@ export interface ServerToClientEvents {
     scores: ParticipantScore[]               // classement cumulé après cette question
   }) => void
 
+  // ANTISÈCHE ADMIN — envoyé UNIQUEMENT aux sockets du host control
+  // (hostSocketIds), jamais à la room : ni la TV (visible de tous) ni les
+  // téléphones ne doivent voir la réponse avant la révélation. L'admin juge à
+  // l'oral, il lui faut la réponse de référence pendant la question.
+  buzz_host_answer: (payload: { correctAnswers: string[] }) => void
+
   // Round perso : état des thèmes (attribution owner↔joueur + progression),
   // rediffusé à chaque changement. Sert à l'écran de distribution + au sélecteur
   // de thème du host. (Les participants l'ignorent.)
@@ -369,6 +375,7 @@ export const EVENTS = {
   BUZZ_QUESTION_STARTED:  'buzz_question_started',
   BUZZ_STATE:             'buzz_state',
   BUZZ_QUESTION_ENDED:    'buzz_question_ended',
+  BUZZ_HOST_ANSWER:       'buzz_host_answer',
   BUZZ_THEMES:            'buzz_themes',
   PARTICIPANT_JOINED:     'participant_joined',
   PARTICIPANT_LEFT:   'participant_left',

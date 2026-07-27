@@ -272,6 +272,15 @@ export function BuzzerHostControl({ s }: { s: HostSessionView }) {
                 </p>
               </div>
             ) : (
+              <>
+              {/* Antisèche : la réponse de référence, visible de l'admin SEUL
+                  (jamais sur la TV ni les téléphones) — il juge à l'oral. */}
+              {s.hostAnswer && (
+                <div className="bg-gray-900 rounded-2xl p-4 border border-gray-800">
+                  <p className="text-xs uppercase tracking-wider text-gray-500 mb-1">Réponse attendue (visible de toi seul)</p>
+                  <p className="text-xl font-bold text-emerald-300">{s.hostAnswer.join(' · ')}</p>
+                </div>
+              )}
               <div className="flex items-center gap-3 text-lg">
                 {b.phase === 'owner_oral' && (
                   <span>
@@ -290,6 +299,7 @@ export function BuzzerHostControl({ s }: { s: HostSessionView }) {
                 {b.phase === 'steal' && !b.armed && <span className="text-amber-300">⏸️ Vol raté — rouvre le buzzer ou passe.</span>}
                 {b.phase === 'locked' && <span className="text-emerald-300">🎤 <b>{b.lockedBy?.pseudo}</b> a la parole</span>}
               </div>
+              </>
             )}
 
             {/* Classement live compact */}

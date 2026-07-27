@@ -20,7 +20,9 @@ type QuizServer = Server<ClientToServerEvents, ServerToClientEvents>
 // État courant + rejeu de la question ouverte — commun au host (control) et à
 // la TV (display). Le socket rejoint la room de session + la room host-only
 // (compteur answer_received, copie neutre de question_ended).
-function attachAndSendState(socket: QuizSocket, session: SessionState): void {
+// isControl : true UNIQUEMENT pour le host authentifié par hostKey — la TV ne
+// doit jamais recevoir l'antisèche (buzz_host_answer), elle est visible de tous.
+function attachAndSendState(socket: QuizSocket, session: SessionState, isControl: boolean): void {
   void socket.join(session.id)
   void socket.join(`host:${session.id}`)
 
@@ -67,6 +69,8 @@ function attachAndSendState(socket: QuizSocket, session: SessionState): void {
           question: toPublicQuestion(q, session.currentQuestionIndex, session.quiz.questions.length),
           buzz: session.buzz,
         })
+        // Reattach du control en pleine question : rejouer l'antisèche.
+        if (isControl) socket.emit(EVENTS.BUZZ_HOST_ANSWER, { correctAnswers: q.correctAnswers })
       }
       // Phase 'revealed' : BUZZ_QUESTION_STARTED vient d'effacer buzzReveal côté
       // client (host/TV) — rejouer la révélation, sinon une micro-coupure wifi
@@ -112,7 +116,7 @@ export function handleHostJoin(
 
   session.hostSocketIds.add(socket.id)
   logEvent('host_joined', { sessionId: session.id, pin: session.pin })
-  attachAndSendState(socket, session)
+  attachAndSendState(socket, session, true)
 }
 
 // TV / écran passif : lecture seule, capacité = connaître le sessionId (uuid
@@ -131,7 +135,7 @@ export function handleDisplayJoin(
     return
   }
   logEvent('display_joined', { sessionId: session.id })
-  attachAndSendState(socket, session)
+  attachAndSendState(socket, session, false)
 }
 
 export function handleHostDisconnect(
