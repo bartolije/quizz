@@ -208,10 +208,10 @@ void app.register(fastifyStatic, {
   // un nouveau déploiement est pris en compte au refresh suivant, sans hard-refresh.
   // Les assets /assets/* sont hashés par Vite → immuables, cache long (les 80
   // téléphones ne les re-téléchargent pas à chaque visite).
-  setHeaders: (res, path) => {
-    if (path.endsWith('.html')) res.setHeader('cache-control', 'no-store')
+  setHeaders: (reply, path) => {
+    if (path.endsWith('.html')) void reply.header('cache-control', 'no-store')
     else if (path.includes('/assets/'))
-      res.setHeader('cache-control', 'public, max-age=31536000, immutable')
+      void reply.header('cache-control', 'public, max-age=31536000, immutable')
   },
 })
 
