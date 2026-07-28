@@ -47,6 +47,7 @@ export function toPublicQuestion(
     ...(q.points || q.difficulty ? { points: questionPoints(q) } : {}),
     ...(q.section ? { section: q.section } : {}),
     ...(q.ownerName ? { ownerName: q.ownerName } : {}),
+    ...(q.themeName ? { themeName: q.themeName } : {}),
   }
 }
 

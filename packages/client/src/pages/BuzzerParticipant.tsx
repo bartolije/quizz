@@ -86,8 +86,15 @@ export function BuzzerParticipant() {
       <div className={`${shell} relative`}>
         {header}
         <div className="text-5xl">{iScored ? '🎉' : result?.scorer ? '👏' : '🤷'}</div>
-        <p className="text-gray-400 text-sm uppercase tracking-wider">Réponse</p>
-        <p className="text-2xl font-bold">{(result?.correctAnswers ?? []).join(' · ')}</p>
+        <p className="text-gray-400 text-sm uppercase tracking-wider">Réponses attendues / acceptées :</p>
+        <ul className="text-xl font-bold text-left space-y-1">
+          {(result?.correctAnswers ?? []).map((a) => (
+            <li key={a} className="flex items-start gap-2">
+              <span className="text-indigo-400">•</span>
+              <span>{a}</span>
+            </li>
+          ))}
+        </ul>
         {result?.scorer ? (
           <p className={iScored ? 'text-emerald-400 font-bold text-lg' : 'text-gray-300'}>
             {iScored ? `+${result.scorer.points} pour toi !` : `${result.scorer.pseudo} marque +${result.scorer.points}`}
@@ -104,12 +111,13 @@ export function BuzzerParticipant() {
     return (
       <div className={`${shell} relative`}>
         {header}
+        {/* Nom du THÈME (pas celui du propriétaire) : le thème reste anonyme */}
         {iAmOwner ? (
           <>
             <div className="text-6xl">🗣️</div>
             <h1 className="text-3xl font-black text-indigo-400">À toi !</h1>
             {/* Tour par tour : on peut répondre sur le thème d'un·e autre */}
-            <p className="text-gray-300">Thème « {buzz.ownerName} ». Réponds <span className="font-bold">à voix haute</span>.</p>
+            <p className="text-gray-300">Thème « {question.themeName ?? buzz.ownerName} ». Réponds <span className="font-bold">à voix haute</span>.</p>
           </>
         ) : (
           <>
@@ -118,7 +126,7 @@ export function BuzzerParticipant() {
               Au tour de <span className="font-bold text-indigo-400">
                 {(buzz.ownerParticipantId && participants.find((p) => p.id === buzz.ownerParticipantId)?.pseudo) ?? buzz.ownerName}
               </span>
-              <span className="text-gray-400"> — thème « {buzz.ownerName} »</span>
+              <span className="text-gray-400"> — thème « {question.themeName ?? buzz.ownerName} »</span>
             </p>
             <p className="text-gray-400">Prépare-toi à buzzer s'il·elle sèche…</p>
           </>

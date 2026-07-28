@@ -29,6 +29,7 @@ export interface QuestionInput {
   points?: number
   section?: QuestionSection
   ownerName?: string
+  themeName?: string
 }
 export interface QuizInput {
   title: string

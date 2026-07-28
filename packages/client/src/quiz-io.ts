@@ -21,6 +21,7 @@ export function toExport(quiz: Quiz): QuizInput {
       ...(typeof q.points === 'number' ? { points: q.points } : {}),
       ...(q.section ? { section: q.section } : {}),
       ...(q.ownerName ? { ownerName: q.ownerName } : {}),
+      ...(q.themeName ? { themeName: q.themeName } : {}),
     })),
   }
 }
@@ -91,6 +92,7 @@ export function parseQuizJson(text: string): { quiz: QuizInput | null; error: st
     const points = Number(q.points) > 0 ? Math.round(Number(q.points)) : undefined
     const section = ['perso', 'culture'].includes(q.section) ? q.section : undefined
     const ownerName = typeof q.ownerName === 'string' && q.ownerName.trim() ? q.ownerName.trim() : undefined
+    const themeName = typeof q.themeName === 'string' && q.themeName.trim() ? q.themeName.trim() : undefined
 
     questions.push({
       type,
@@ -103,6 +105,7 @@ export function parseQuizJson(text: string): { quiz: QuizInput | null; error: st
       ...(points ? { points } : {}),
       ...(section ? { section } : {}),
       ...(ownerName ? { ownerName } : {}),
+      ...(themeName ? { themeName } : {}),
     })
   }
 

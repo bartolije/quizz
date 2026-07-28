@@ -46,6 +46,8 @@ export const CULTURE_THEME = '__culture__'
 // État d'un thème perso pour l'écran de distribution / sélection (host)
 export interface BuzzThemeInfo {
   ownerName: string
+  themeName?: string           // nom d'affichage du thème (ex. « Disney ») — la TV
+                               // et les téléphones l'affichent SANS révéler l'owner
   participantId: string | null // joueur associé (binding), null = non attribué
   total: number                // nombre de questions du thème
   done: boolean                // toutes les questions du thème ont été jouées
@@ -129,6 +131,7 @@ export interface QuestionPublic {
   points?: number      // points de la question (nombre libre ; cf. questionPoints)
   section?: QuestionSection
   ownerName?: string   // section 'perso' : nom du propriétaire du thème (affichage)
+  themeName?: string   // section 'perso' : nom d'affichage du thème (masque l'owner)
 }
 
 // Question complète (côté serveur uniquement, jamais envoyée aux participants)
@@ -146,6 +149,7 @@ export interface Question {
   points?: number            // points de la question (nombre libre, ex. « ultra dur » = 5)
   section?: QuestionSection  // 'perso' | 'culture'
   ownerName?: string         // section 'perso' : le slot joueur propriétaire du thème
+  themeName?: string         // section 'perso' : nom d'affichage du thème (TV/téléphones)
 }
 
 // Quiz complet

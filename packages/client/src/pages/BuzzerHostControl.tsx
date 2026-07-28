@@ -142,7 +142,11 @@ export function BuzzerHostControl({ s }: { s: HostSessionView }) {
             <div className="grid sm:grid-cols-2 gap-2">
               {s.themes!.owners.map((o) => (
                 <div key={o.ownerName} className="flex items-center gap-3 bg-gray-900 rounded-xl px-4 py-2">
-                  <span className="font-medium flex-1">🎤 {o.ownerName} <span className="text-gray-500 text-sm">· {o.total} Q</span></span>
+                  <span className="font-medium flex-1">
+                    🎤 {o.ownerName}
+                    {o.themeName && <span className="text-indigo-300 text-sm"> · « {o.themeName} »</span>}
+                    <span className="text-gray-500 text-sm"> · {o.total} Q</span>
+                  </span>
                   <select
                     value={o.participantId ?? ''}
                     onChange={(e) => s.assignOwner(o.ownerName, e.target.value || null)}
@@ -232,7 +236,7 @@ export function BuzzerHostControl({ s }: { s: HostSessionView }) {
                       <button
                         onClick={() => {
                           const pick = available[Math.floor(Math.random() * available.length)]
-                          if (pick && window.confirm(`🎲 Le sort a choisi « ${pick.ownerName} » — on lance ?`)) s.startTheme(pick.ownerName)
+                          if (pick && window.confirm(`🎲 Le sort a choisi « ${pick.themeName ?? pick.ownerName} » — on lance ?`)) s.startTheme(pick.ownerName)
                         }}
                         className="self-start px-5 py-3 rounded-2xl bg-fuchsia-700 hover:bg-fuchsia-600 font-bold"
                       >🎲 Thème aléatoire</button>
@@ -256,9 +260,11 @@ export function BuzzerHostControl({ s }: { s: HostSessionView }) {
                         o.done ? 'bg-gray-800 text-gray-600 line-through' : blocked ? 'bg-gray-800 text-gray-500 cursor-not-allowed' : 'bg-indigo-700 hover:bg-indigo-600'
                       }`}
                     >
-                      🎤 {o.ownerName}
+                      {/* L'admin voit le thème ET son propriétaire (la TV ne montre
+                          que le thème — c'est ici qu'on sait à qui il est). */}
+                      🎤 {o.themeName ?? o.ownerName}
                       <span className="block text-sm font-normal opacity-80">
-                        {o.done ? 'déjà joué' : `${o.total} Q${pseudo && pseudo !== o.ownerName ? ` · tél : ${pseudo}` : ''}`}
+                        {o.done ? 'déjà joué' : `${o.total} Q · de ${o.ownerName}${pseudo && pseudo !== o.ownerName ? ` · tél : ${pseudo}` : ''}`}
                       </span>
                     </button>
                   )
@@ -289,7 +295,11 @@ export function BuzzerHostControl({ s }: { s: HostSessionView }) {
           <>
             <div className="flex items-center gap-3">
               {badge && <span className={`px-3 py-1 rounded-full text-sm font-bold ${badge.cls}`}>{badge.label}</span>}
-              {q.section === 'perso' && b.ownerName && <span className="px-3 py-1 rounded-full text-sm bg-indigo-800">Thème de {b.ownerName}</span>}
+              {q.section === 'perso' && b.ownerName && (
+                <span className="px-3 py-1 rounded-full text-sm bg-indigo-800">
+                  {q.themeName ? `Thème ${q.themeName} (de ${b.ownerName})` : `Thème de ${b.ownerName}`}
+                </span>
+              )}
               <span className="text-gray-500 text-sm ml-auto">Q{q.index + 1}/{q.total}</span>
             </div>
             <h2 className="text-3xl font-bold">{q.text}</h2>

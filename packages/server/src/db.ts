@@ -50,6 +50,7 @@ export const questions = sqliteTable('questions', {
   points: integer('points'),      // points de la question (nombre libre) | null
   section: text('section'),       // 'perso' | 'culture' | null
   ownerName: text('owner_name'),  // slot joueur propriétaire du thème (section perso)
+  themeName: text('theme_name'),  // nom d'affichage du thème (masque l'owner sur TV/tél)
 })
 
 // Création idempotente des tables (évite drizzle-kit en prod).
@@ -96,6 +97,7 @@ ensureColumn('questions', 'difficulty', 'TEXT')
 ensureColumn('questions', 'points', 'INTEGER')
 ensureColumn('questions', 'section', 'TEXT')
 ensureColumn('questions', 'owner_name', 'TEXT')
+ensureColumn('questions', 'theme_name', 'TEXT')
 
 export const db = drizzle(sqlite)
 // Accès brut pour les modules qui n'ont pas besoin de Drizzle (snapshots)

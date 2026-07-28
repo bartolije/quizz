@@ -128,10 +128,17 @@ export function initTurnOrder(session: SessionState): void {
 }
 
 export function buildThemes(session: SessionState): BuzzThemesState {
+  const questions = session.quiz?.questions ?? []
   const owners = distinctOwners(session).map((ownerName) => {
     const idxs = themeIndices(session, ownerName)
+    // Nom d'affichage du thème : première question du slot qui en porte un
+    // (la TV/les téléphones l'affichent à la place du prénom de l'owner).
+    const themeName = questions.find(
+      (q) => q.section === 'perso' && q.ownerName === ownerName && q.themeName,
+    )?.themeName
     return {
       ownerName,
+      ...(themeName ? { themeName } : {}),
       participantId: session.ownerBindings.get(ownerName) ?? null,
       total: idxs.length,
       done: idxs.length > 0 && idxs.every((i) => session.playedQuestionIndices.has(i)),

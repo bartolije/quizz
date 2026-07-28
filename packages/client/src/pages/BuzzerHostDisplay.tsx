@@ -83,12 +83,14 @@ export function BuzzerHostDisplay({ s }: { s: HostSessionView }) {
                 )}
                 {current && <p className="text-2xl text-gray-400">Choisis un thème pas encore joué — le tien ou celui d'un·e autre !</p>}
                 <div className="flex flex-wrap justify-center gap-3 max-w-5xl">
+                  {/* Le nom du THÈME, pas celui du joueur : on peut voler le thème
+                      d'un·e autre sans savoir à qui il appartient. */}
                   {owners.map((o) => (
                     <span
                       key={o.ownerName}
                       className={`px-6 py-3 rounded-2xl text-2xl font-bold ${o.done ? 'bg-gray-800 text-gray-600 line-through' : 'bg-indigo-700'}`}
                     >
-                      {o.ownerName}
+                      {o.themeName ?? o.ownerName}
                     </span>
                   ))}
                   {s.themes && s.themes.culture.total > 0 && (
@@ -109,7 +111,11 @@ export function BuzzerHostDisplay({ s }: { s: HostSessionView }) {
           <>
             <div className="flex items-center gap-4">
               {badge && <span className={`px-4 py-2 rounded-full text-xl font-bold ${badge.cls}`}>{badge.label}</span>}
-              {q.section === 'perso' && b.ownerName && <span className="px-4 py-2 rounded-full text-xl bg-indigo-700">Thème de {b.ownerName}</span>}
+              {q.section === 'perso' && (q.themeName || b.ownerName) && (
+                <span className="px-4 py-2 rounded-full text-xl bg-indigo-700">
+                  {q.themeName ? `Thème ${q.themeName}` : `Thème de ${b.ownerName}`}
+                </span>
+              )}
             </div>
             <h1 className="text-5xl font-black leading-tight max-w-4xl">{q.text}</h1>
             {q.mediaUrl && <QuestionImage key={q.mediaUrl} url={q.mediaUrl} className="max-h-[42vh] max-w-3xl rounded-2xl" />}

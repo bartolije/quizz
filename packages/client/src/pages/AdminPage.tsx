@@ -30,6 +30,7 @@ interface EQ {
   // Mode buzzer (partie famille)
   section: QuestionSection
   ownerName: string
+  themeName: string // nom d'affichage du thème (masque l'owner sur TV/téléphones)
   points: number
 }
 interface EditDraft {
@@ -51,6 +52,7 @@ const newEQ = (timeLimit: number): EQ => ({
   timeLimit,
   section: 'culture',
   ownerName: '',
+  themeName: '',
   points: 2,
 })
 
@@ -70,6 +72,7 @@ function fromQuestion(q: Question): EQ {
     timeLimit: q.timeLimit,
     section: q.section ?? 'culture',
     ownerName: q.ownerName ?? '',
+    themeName: q.themeName ?? '',
     points: q.points ?? (q.difficulty ? DIFFICULTY_POINTS[q.difficulty] : 2),
   }
 }
@@ -109,6 +112,7 @@ function toInput(d: EditDraft): { input: QuizInput; error: string | null } {
         points: Math.round(q.points),
         section: q.section,
         ...(q.section === 'perso' ? { ownerName: q.ownerName.trim() } : {}),
+        ...(q.section === 'perso' && q.themeName.trim() ? { themeName: q.themeName.trim() } : {}),
         ...media,
       })
       continue
@@ -348,12 +352,21 @@ export function AdminPage() {
                       <option value="culture">Culture G</option>
                     </select>
                     {q.section === 'perso' && (
-                      <input
-                        value={q.ownerName}
-                        onChange={(e) => patchQ(i, { ownerName: e.target.value })}
-                        placeholder="Joueur (thème)"
-                        className={`${input} w-36`}
-                      />
+                      <>
+                        <input
+                          value={q.ownerName}
+                          onChange={(e) => patchQ(i, { ownerName: e.target.value })}
+                          placeholder="Joueur (thème)"
+                          className={`${input} w-36`}
+                        />
+                        <input
+                          value={q.themeName}
+                          onChange={(e) => patchQ(i, { themeName: e.target.value })}
+                          placeholder="Nom du thème (ex. Disney)"
+                          title="Affiché sur la TV et les téléphones à la place du prénom — le thème reste anonyme"
+                          className={`${input} w-44`}
+                        />
+                      </>
                     )}
                     <label className="flex items-center gap-1 text-sm text-gray-400">
                       Points

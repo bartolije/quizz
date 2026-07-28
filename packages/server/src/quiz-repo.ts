@@ -16,6 +16,7 @@ export interface QuestionInput {
   points?: number
   section?: QuestionSection
   ownerName?: string
+  themeName?: string
 }
 export interface QuizInput {
   title: string
@@ -47,6 +48,7 @@ function rowToQuestion(r: QuestionRow): Question {
     ...(typeof r.points === 'number' ? { points: r.points } : {}),
     ...(r.section ? { section: r.section as QuestionSection } : {}),
     ...(r.ownerName ? { ownerName: r.ownerName } : {}),
+    ...(r.themeName ? { themeName: r.themeName } : {}),
   }
 }
 
@@ -67,6 +69,7 @@ function insertQuestions(quizId: string, items: QuestionInput[]): void {
         points: q.points ?? null,
         section: q.section ?? null,
         ownerName: q.ownerName ?? null,
+        themeName: q.themeName ?? null,
       })
       .run()
   })
@@ -173,10 +176,10 @@ export function seedBuzzerDemoIfMissing(): void {
     gameType: 'buzzer',
     questions: [
       // Round perso : 2 thèmes de démo (l'admin les attribue aux joueurs présents)
-      { type: 'free', text: 'Combien de titres de champion du monde pour Ayrton Senna ?', correctAnswers: ['3', 'trois'], timeLimit: 0, points: 2, section: 'perso', ownerName: 'Papa' },
-      { type: 'free', text: 'Chez quelle écurie court Alain Prost en 1990 ?', correctAnswers: ['Ferrari'], timeLimit: 0, points: 3, section: 'perso', ownerName: 'Papa' },
-      { type: 'free', text: 'Dans quelle maison de Poudlard est Harry Potter ?', correctAnswers: ['Gryffondor'], timeLimit: 0, points: 1, section: 'perso', ownerName: 'Léa' },
-      { type: 'free', text: 'Comment s’appelle le hibou de Harry Potter ?', correctAnswers: ['Hedwige', 'Hedwig'], timeLimit: 0, points: 2, section: 'perso', ownerName: 'Léa' },
+      { type: 'free', text: 'Combien de titres de champion du monde pour Ayrton Senna ?', correctAnswers: ['3', 'trois'], timeLimit: 0, points: 2, section: 'perso', ownerName: 'Papa', themeName: 'Formule 1' },
+      { type: 'free', text: 'Chez quelle écurie court Alain Prost en 1990 ?', correctAnswers: ['Ferrari'], timeLimit: 0, points: 3, section: 'perso', ownerName: 'Papa', themeName: 'Formule 1' },
+      { type: 'free', text: 'Dans quelle maison de Poudlard est Harry Potter ?', correctAnswers: ['Gryffondor'], timeLimit: 0, points: 1, section: 'perso', ownerName: 'Léa', themeName: 'Harry Potter' },
+      { type: 'free', text: 'Comment s’appelle le hibou de Harry Potter ?', correctAnswers: ['Hedwige', 'Hedwig'], timeLimit: 0, points: 2, section: 'perso', ownerName: 'Léa', themeName: 'Harry Potter' },
       // Round culture G (buzzer ouvert à tous)
       { type: 'free', text: 'Quel animal est-ce ?', correctAnswers: ['Renard', 'Fox'], timeLimit: 0, points: 1, section: 'culture', mediaUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/Vulpes_vulpes_ssp_fulvus.jpg/320px-Vulpes_vulpes_ssp_fulvus.jpg' },
       { type: 'free', text: "Quelle est la capitale de l'Australie ?", correctAnswers: ['Canberra'], timeLimit: 0, points: 2, section: 'culture' },
