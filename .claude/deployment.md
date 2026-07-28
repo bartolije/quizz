@@ -52,6 +52,11 @@ les sessions de jeu sont en mémoire.
 - **devDependencies au build** : `tsc` / `vite` / `tsx` sont en devDependencies. Les
   builds avec `NODE_ENV=production` les sauteraient → `.npmrc` force `include=dev`.
   Ne pas le retirer.
+- **better-sqlite3 13 compile au `npm ci`** : le paquet n'a plus de script `install`
+  mais garde son `binding.gyp` → npm déclenche sa compilation implicite
+  (`node-gyp rebuild`), qui exige Python + gcc + make. L'image nixpacks de Railway
+  ne les a pas → `nixpacks.toml` les ajoute à la phase setup
+  (`nixPkgs = ['...', 'python3', 'gcc', 'gnumake']`). Ne pas supprimer ce fichier.
 - **Ordre de build** : `shared` d'abord, toujours (les deux autres en dépendent).
 - **Admin verrouillé par défaut en prod** (anti-triche) : `ADMIN_PASSWORD` doit être
   défini dans Railway, sinon l'éditeur `/admin` est inaccessible (`503`). Aucun mot de
