@@ -218,7 +218,13 @@ export function AdminPage() {
 
   async function remove(id: string) {
     if (!confirm('Supprimer ce quiz ?')) return
-    await deleteQuiz(id)
+    try {
+      await deleteQuiz(id)
+    } catch {
+      // Sans ça l'échec est invisible : la promesse rejetée d'un onClick ne
+      // s'affiche nulle part et la liste reste simplement inchangée.
+      alert('Suppression impossible — réessaie (voir la console réseau).')
+    }
     void reload()
   }
 

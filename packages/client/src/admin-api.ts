@@ -5,8 +5,16 @@ const PW_KEY = 'lya_admin_pw'
 export const getPw = (): string => localStorage.getItem(PW_KEY) ?? ''
 export const setPw = (p: string): void => localStorage.setItem(PW_KEY, p)
 
+// Auth seule (GET/DELETE). Ne PAS mettre Content-Type sans body : Fastify 5
+// rejette une requête au content-type JSON dont le body est vide
+// (FST_ERR_CTP_EMPTY_JSON_BODY) — c'est ce qui cassait la suppression de quiz.
 function authHeaders(): Record<string, string> {
-  return { 'Content-Type': 'application/json', 'x-admin-password': getPw() }
+  return { 'x-admin-password': getPw() }
+}
+
+// Auth + JSON : pour les requêtes AVEC body (POST/PUT).
+function jsonHeaders(): Record<string, string> {
+  return { ...authHeaders(), 'Content-Type': 'application/json' }
 }
 
 export interface QuizSummary {
@@ -61,7 +69,7 @@ export async function fetchQuiz(id: string): Promise<Quiz> {
 export async function createQuiz(input: QuizInput): Promise<string> {
   const res = await fetch(apiUrl('/api/admin/quizzes'), {
     method: 'POST',
-    headers: authHeaders(),
+    headers: jsonHeaders(),
     body: JSON.stringify(input),
   })
   if (!res.ok) throw new Error('create_failed')
@@ -71,7 +79,7 @@ export async function createQuiz(input: QuizInput): Promise<string> {
 export async function updateQuiz(id: string, input: QuizInput): Promise<void> {
   const res = await fetch(apiUrl(`/api/admin/quizzes/${id}`), {
     method: 'PUT',
-    headers: authHeaders(),
+    headers: jsonHeaders(),
     body: JSON.stringify(input),
   })
   if (!res.ok) throw new Error('update_failed')
