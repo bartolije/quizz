@@ -36,18 +36,28 @@ export function questionPoints(q: { points?: number; difficulty?: Difficulty }):
 
 // Section d'une question dans une partie famille :
 // 'perso'   = thème d'un joueur (répondu d'abord par l'owner, puis volable)
+// 'libre'   = thème SANS propriétaire défini par l'admin — même flux que 'perso'
+//             (le joueur du tour le choisit et répond d'abord), indistinguable
+//             d'un thème perso sur la TV/les téléphones. Convention : le slot
+//             ownerName vaut le themeName (posé par l'éditeur/l'import).
 // 'culture' = culture générale, buzzer ouvert à tous dès le départ
-export type QuestionSection = 'perso' | 'culture'
+export type QuestionSection = 'perso' | 'culture' | 'libre'
+
+// Une section « à thème » suit le flux owner_oral → vol (perso ou libre)
+export const isThemedSection = (s: QuestionSection | undefined): boolean =>
+  s === 'perso' || s === 'libre'
 
 // « Thème » sélectionnable par l'admin : soit un nom de joueur (ownerName d'un
 // thème perso), soit cette sentinelle pour le round culture générale.
 export const CULTURE_THEME = '__culture__'
 
-// État d'un thème perso pour l'écran de distribution / sélection (host)
+// État d'un thème perso/libre pour l'écran de distribution / sélection (host)
 export interface BuzzThemeInfo {
   ownerName: string
   themeName?: string           // nom d'affichage du thème (ex. « Disney ») — la TV
                                // et les téléphones l'affichent SANS révéler l'owner
+  libre?: true                 // thème libre (sans propriétaire) : pas de binding à
+                               // distribuer — seul le host control voit la différence
   participantId: string | null // joueur associé (binding), null = non attribué
   total: number                // nombre de questions du thème
   done: boolean                // toutes les questions du thème ont été jouées
@@ -130,8 +140,8 @@ export interface QuestionPublic {
   difficulty?: Difficulty
   points?: number      // points de la question (nombre libre ; cf. questionPoints)
   section?: QuestionSection
-  ownerName?: string   // section 'perso' : nom du propriétaire du thème (affichage)
-  themeName?: string   // section 'perso' : nom d'affichage du thème (masque l'owner)
+  ownerName?: string   // perso : nom du propriétaire (affichage) · libre : = themeName
+  themeName?: string   // perso/libre : nom d'affichage du thème (masque l'owner)
 }
 
 // Question complète (côté serveur uniquement, jamais envoyée aux participants)
@@ -147,9 +157,9 @@ export interface Question {
   // ── Mode buzzer (optionnels, absents = question classique) ──
   difficulty?: Difficulty    // ancien palier (compat) ; points prime dessus
   points?: number            // points de la question (nombre libre, ex. « ultra dur » = 5)
-  section?: QuestionSection  // 'perso' | 'culture'
-  ownerName?: string         // section 'perso' : le slot joueur propriétaire du thème
-  themeName?: string         // section 'perso' : nom d'affichage du thème (TV/téléphones)
+  section?: QuestionSection  // 'perso' | 'culture' | 'libre'
+  ownerName?: string         // perso : le slot joueur propriétaire · libre : = themeName
+  themeName?: string         // perso/libre : nom d'affichage du thème (TV/téléphones)
 }
 
 // Quiz complet

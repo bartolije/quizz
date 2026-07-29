@@ -57,7 +57,7 @@ Client → serveur :
 | `HOST_ADJUDICATE` | `host_adjudicate` | `{ correct }` | juge l'owner (`owner_oral`) ou le buzzeur (`locked`). `correct:true` sur un thème **non attribué** est refusé |
 | `HOST_REOPEN_BUZZER` | `host_reopen_buzzer` | `{}` | après un vol raté : ré-arme pour les autres |
 | `HOST_PASS_QUESTION` | `host_pass_question` | `{}` | clôt la question à 0 point |
-| `HOST_START_THEME` | `host_start_theme` | `{ ownerName }` | choisit le thème à jouer (round perso ou culture) |
+| `HOST_START_THEME` | `host_start_theme` | `{ ownerName }` | choisit le thème à jouer (perso, libre — slot `ownerName = themeName` — ou culture) |
 | `HOST_ASSIGN_OWNER` | `host_assign_owner` | `{ ownerName, participantId\|null }` | binding thème→joueur ; `participantId` inconnu ignoré ; re-résout l'owner en `owner_oral` **et** `steal` |
 | `HOST_ADD_MANUAL_PARTICIPANT` | `host_add_manual_participant` | `{ pseudo }` | joueur « sans téléphone » ; mode buzzer uniquement, pseudo unique, 20 chars max |
 | `HOST_ADJUST_SCORE` | `host_adjust_score` | `{ participantId, delta }` | delta clampé ±1000 |
@@ -69,7 +69,7 @@ Serveur → client :
 | `BUZZ_QUESTION_STARTED` | `buzz_question_started` | `{ question: QuestionPublic, buzz: BuzzState }` | room ; **rejoué** au retardataire, au participant qui rejoint/reload en pleine question, et au host/TV qui se ré-attache. `question.themeName?` (section perso) = nom d'affichage du thème, jamais `correctAnswers` |
 | `BUZZ_STATE` | `buzz_state` | `BuzzState \| null` | room, rediffusé complet à chaque changement (`null` = retour sélecteur) |
 | `BUZZ_QUESTION_ENDED` | `buzz_question_ended` | `{ correctAnswers, difficulty, scorer, scores }` | room ; **rejoué** au host/TV qui se ré-attache en phase `revealed` (`lastBuzzReveal`) |
-| `BUZZ_THEMES` | `buzz_themes` | `BuzzThemesState` | room (progression + bindings des thèmes + `turn` : ordre de passage tiré au start et position courante — le joueur du tour est le répondeur du prochain thème perso). Chaque owner porte un `themeName?` optionnel (nom d'affichage, ex. « Disney ») : la TV et les téléphones l'affichent à la place du prénom pour garder le thème anonyme ; le control voit les deux |
+| `BUZZ_THEMES` | `buzz_themes` | `BuzzThemesState` | room (progression + bindings des thèmes + `turn` : ordre de passage tiré au start et position courante — le joueur du tour est le répondeur du prochain thème perso). Chaque owner porte un `themeName?` optionnel (nom d'affichage, ex. « Disney ») : la TV et les téléphones l'affichent à la place du prénom pour garder le thème anonyme ; le control voit les deux. `libre?: true` = thème SANS propriétaire (section 'libre', slot `ownerName = themeName`) : même flux que perso (le joueur du tour répond d'abord), indistinguable sur la TV, exclu de la distribution/attribution ; la culture G ne compte pas ses questions |
 | `BUZZ_HOST_ANSWER` | `buzz_host_answer` | `{ correctAnswers }` | **sockets du control UNIQUEMENT** (antisèche admin) — jamais la room : ni TV ni téléphones. Rejoué au reattach du control |
 
 > `session_restored` embarque aussi `buzz` (état courant, `null` en classic) — et le

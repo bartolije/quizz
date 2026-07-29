@@ -103,7 +103,10 @@ function toInput(d: EditDraft): { input: QuizInput; error: string | null } {
       const answers = q.freeAnswers.split('\n').map((s) => s.trim()).filter(Boolean)
       if (answers.length === 0) return { input: null as never, error: `Question ${n} : ajoute une réponse de référence.` }
       if (q.section === 'perso' && !q.ownerName.trim()) return { input: null as never, error: `Question ${n} : indique le joueur (thème perso).` }
+      if (q.section === 'libre' && !q.themeName.trim()) return { input: null as never, error: `Question ${n} : donne un nom au thème libre.` }
       if (!(q.points >= 1)) return { input: null as never, error: `Question ${n} : les points doivent être ≥ 1.` }
+      // Thème libre : le slot ownerName vaut le themeName (identifiant technique,
+      // aucun joueur à attribuer).
       questions.push({
         type: 'free',
         text: q.text.trim(),
@@ -112,7 +115,8 @@ function toInput(d: EditDraft): { input: QuizInput; error: string | null } {
         points: Math.round(q.points),
         section: q.section,
         ...(q.section === 'perso' ? { ownerName: q.ownerName.trim() } : {}),
-        ...(q.section === 'perso' && q.themeName.trim() ? { themeName: q.themeName.trim() } : {}),
+        ...(q.section === 'libre' ? { ownerName: q.themeName.trim() } : {}),
+        ...(q.section !== 'culture' && q.themeName.trim() ? { themeName: q.themeName.trim() } : {}),
         ...media,
       })
       continue
@@ -320,7 +324,8 @@ export function AdminPage() {
           <p className="text-gray-500 text-sm mb-6">
             Partie famille : tu arbitres à l'oral (bon/faux), pas de chrono. Chaque question a une
             <b> difficulté</b> (Facile 1 · Moyen 2 · Difficile 3) et une <b>section</b> : « perso »
-            (thème d'un joueur, répondu d'abord par lui puis volable) ou « culture » (ouvert à tous).
+            (thème d'un joueur, répondu d'abord par lui puis volable), « libre » (thème sans
+            propriétaire — même flux, indistinguable sur la TV) ou « culture » (ouvert à tous).
           </p>
         )}
         {draft.gameType === 'classic' && <div className="mb-6" />}
@@ -349,24 +354,25 @@ export function AdminPage() {
                       className={input}
                     >
                       <option value="perso">Thème perso</option>
+                      <option value="libre">Thème libre</option>
                       <option value="culture">Culture G</option>
                     </select>
                     {q.section === 'perso' && (
-                      <>
-                        <input
-                          value={q.ownerName}
-                          onChange={(e) => patchQ(i, { ownerName: e.target.value })}
-                          placeholder="Joueur (thème)"
-                          className={`${input} w-36`}
-                        />
-                        <input
-                          value={q.themeName}
-                          onChange={(e) => patchQ(i, { themeName: e.target.value })}
-                          placeholder="Nom du thème (ex. Disney)"
-                          title="Affiché sur la TV et les téléphones à la place du prénom — le thème reste anonyme"
-                          className={`${input} w-44`}
-                        />
-                      </>
+                      <input
+                        value={q.ownerName}
+                        onChange={(e) => patchQ(i, { ownerName: e.target.value })}
+                        placeholder="Joueur (thème)"
+                        className={`${input} w-36`}
+                      />
+                    )}
+                    {q.section !== 'culture' && (
+                      <input
+                        value={q.themeName}
+                        onChange={(e) => patchQ(i, { themeName: e.target.value })}
+                        placeholder="Nom du thème (ex. Disney)"
+                        title="Affiché sur la TV et les téléphones — le thème reste anonyme (libre = sans propriétaire, même flux qu'un thème perso)"
+                        className={`${input} w-44`}
+                      />
                     )}
                     <label className="flex items-center gap-1 text-sm text-gray-400">
                       Points

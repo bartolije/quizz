@@ -1,6 +1,6 @@
 import type { Server, Socket } from 'socket.io'
 import type { ClientToServerEvents, ServerToClientEvents, BuzzThemesState } from '@lya-quiz/shared'
-import { EVENTS, CULTURE_THEME, questionPoints } from '@lya-quiz/shared'
+import { EVENTS, CULTURE_THEME, questionPoints, isThemedSection } from '@lya-quiz/shared'
 import type { SessionState } from '../state.js'
 import {
   findSessionByHostSocket,
@@ -42,14 +42,16 @@ export function broadcastBuzzState(session: SessionState, io: QuizServer): void 
 // ─────────────────────────────────────────────────────────────
 
 // Index des questions du quiz appartenant à un thème (dans l'ordre du quiz).
-// CULTURE_THEME = toutes les questions non-'perso' (culture ou section absente).
+// Les thèmes perso ET libres sont adressés par leur slot ownerName (pour un
+// libre, ownerName = themeName). CULTURE_THEME = tout le reste (culture ou
+// section absente) — surtout PAS les questions 'libre'.
 function themeIndices(session: SessionState, theme: string): number[] {
   const qs = session.quiz?.questions ?? []
   const out: number[] = []
   qs.forEach((q, i) => {
     if (theme === CULTURE_THEME) {
-      if (q.section !== 'perso') out.push(i)
-    } else if (q.section === 'perso' && q.ownerName === theme) {
+      if (!isThemedSection(q.section)) out.push(i)
+    } else if (isThemedSection(q.section) && q.ownerName === theme) {
       out.push(i)
     }
   })
@@ -64,12 +66,12 @@ function nextUnplayedInTheme(session: SessionState, theme: string): number | nul
   return null
 }
 
-// Noms des thèmes perso, dans l'ordre de première apparition dans le quiz.
+// Slots des thèmes perso + libres, dans l'ordre de première apparition dans le quiz.
 function distinctOwners(session: SessionState): string[] {
   const seen = new Set<string>()
   const out: string[] = []
   for (const q of session.quiz?.questions ?? []) {
-    if (q.section === 'perso' && q.ownerName && !seen.has(q.ownerName)) {
+    if (isThemedSection(q.section) && q.ownerName && !seen.has(q.ownerName)) {
       seen.add(q.ownerName)
       out.push(q.ownerName)
     }
@@ -131,14 +133,15 @@ export function buildThemes(session: SessionState): BuzzThemesState {
   const questions = session.quiz?.questions ?? []
   const owners = distinctOwners(session).map((ownerName) => {
     const idxs = themeIndices(session, ownerName)
-    // Nom d'affichage du thème : première question du slot qui en porte un
-    // (la TV/les téléphones l'affichent à la place du prénom de l'owner).
-    const themeName = questions.find(
-      (q) => q.section === 'perso' && q.ownerName === ownerName && q.themeName,
-    )?.themeName
+    // Première question du slot : porte le nom d'affichage éventuel (la TV/les
+    // téléphones l'affichent à la place du prénom) et dit si le thème est libre.
+    const slotQuestions = questions.filter((q) => isThemedSection(q.section) && q.ownerName === ownerName)
+    const themeName = slotQuestions.find((q) => q.themeName)?.themeName
+    const libre = slotQuestions[0]?.section === 'libre'
     return {
       ownerName,
       ...(themeName ? { themeName } : {}),
+      ...(libre ? { libre: true as const } : {}),
       participantId: session.ownerBindings.get(ownerName) ?? null,
       total: idxs.length,
       done: idxs.length > 0 && idxs.every((i) => session.playedQuestionIndices.has(i)),
@@ -190,8 +193,9 @@ function finishQuiz(session: SessionState, io: QuizServer): void {
   logEvent('quiz_ended', { sessionId: session.id })
 }
 
-// Démarre la question à l'index donné : owner_oral si 'perso' (l'owner répond
-// d'abord à l'oral, buzzer désarmé), steal armé sinon (culture, ouvert à tous).
+// Démarre la question à l'index donné : owner_oral si thème perso/libre (le
+// répondeur parle d'abord à l'oral, buzzer désarmé), steal armé sinon (culture,
+// ouvert à tous).
 function startBuzzerQuestionAt(session: SessionState, io: QuizServer, index: number): void {
   const questions = session.quiz?.questions ?? []
   const q = questions[index]
@@ -202,7 +206,7 @@ function startBuzzerQuestionAt(session: SessionState, io: QuizServer, index: num
   session.lastCorrectAnswers = null
   session.lastBuzzReveal = null
 
-  const isPerso = q.section === 'perso'
+  const isPerso = isThemedSection(q.section)
   const ownerName = isPerso ? (q.ownerName ?? null) : null
   // Répondeur : en tour par tour, c'est le JOUEUR DU TOUR (qui a choisi ce
   // thème — le sien ou celui d'un autre), stable pour tout le thème (l'index

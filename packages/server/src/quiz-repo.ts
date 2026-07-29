@@ -180,6 +180,9 @@ export function seedBuzzerDemoIfMissing(): void {
       { type: 'free', text: 'Chez quelle écurie court Alain Prost en 1990 ?', correctAnswers: ['Ferrari'], timeLimit: 0, points: 3, section: 'perso', ownerName: 'Papa', themeName: 'Formule 1' },
       { type: 'free', text: 'Dans quelle maison de Poudlard est Harry Potter ?', correctAnswers: ['Gryffondor'], timeLimit: 0, points: 1, section: 'perso', ownerName: 'Léa', themeName: 'Harry Potter' },
       { type: 'free', text: 'Comment s’appelle le hibou de Harry Potter ?', correctAnswers: ['Hedwige', 'Hedwig'], timeLimit: 0, points: 2, section: 'perso', ownerName: 'Léa', themeName: 'Harry Potter' },
+      // Thème LIBRE (sans propriétaire) : même flux que perso, indistinguable sur la TV
+      { type: 'free', text: 'Quel studio a créé Mario ?', correctAnswers: ['Nintendo'], timeLimit: 0, points: 1, section: 'libre', ownerName: 'Jeux vidéo', themeName: 'Jeux vidéo' },
+      { type: 'free', text: 'En quelle année est sortie la première PlayStation (Japon) ?', correctAnswers: ['1994'], timeLimit: 0, points: 3, section: 'libre', ownerName: 'Jeux vidéo', themeName: 'Jeux vidéo' },
       // Round culture G (buzzer ouvert à tous)
       { type: 'free', text: 'Quel animal est-ce ?', correctAnswers: ['Renard', 'Fox'], timeLimit: 0, points: 1, section: 'culture', mediaUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/Vulpes_vulpes_ssp_fulvus.jpg/320px-Vulpes_vulpes_ssp_fulvus.jpg' },
       { type: 'free', text: "Quelle est la capitale de l'Australie ?", correctAnswers: ['Canberra'], timeLimit: 0, points: 2, section: 'culture' },

@@ -90,9 +90,14 @@ export function parseQuizJson(text: string): { quiz: QuizInput | null; error: st
     // Champs mode buzzer (optionnels, tolérants)
     const difficulty = ['facile', 'moyen', 'difficile'].includes(q.difficulty) ? q.difficulty : undefined
     const points = Number(q.points) > 0 ? Math.round(Number(q.points)) : undefined
-    const section = ['perso', 'culture'].includes(q.section) ? q.section : undefined
-    const ownerName = typeof q.ownerName === 'string' && q.ownerName.trim() ? q.ownerName.trim() : undefined
+    const section = ['perso', 'culture', 'libre'].includes(q.section) ? q.section : undefined
+    let ownerName = typeof q.ownerName === 'string' && q.ownerName.trim() ? q.ownerName.trim() : undefined
     const themeName = typeof q.themeName === 'string' && q.themeName.trim() ? q.themeName.trim() : undefined
+    // Thème libre : themeName obligatoire, et le slot ownerName vaut le themeName.
+    if (section === 'libre') {
+      if (!themeName) return err(`Question ${n} (libre) : "themeName" manquant.`)
+      ownerName = themeName
+    }
 
     questions.push({
       type,

@@ -111,7 +111,8 @@ export function BuzzerHostDisplay({ s }: { s: HostSessionView }) {
           <>
             <div className="flex items-center gap-4">
               {badge && <span className={`px-4 py-2 rounded-full text-xl font-bold ${badge.cls}`}>{badge.label}</span>}
-              {q.section === 'perso' && (q.themeName || b.ownerName) && (
+              {/* Perso ET libre : même badge, la salle ne peut pas les distinguer */}
+              {(q.section === 'perso' || q.section === 'libre') && (q.themeName || b.ownerName) && (
                 <span className="px-4 py-2 rounded-full text-xl bg-indigo-700">
                   {q.themeName ? `Thème ${q.themeName}` : `Thème de ${b.ownerName}`}
                 </span>

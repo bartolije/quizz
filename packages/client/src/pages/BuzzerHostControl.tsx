@@ -135,12 +135,13 @@ export function BuzzerHostControl({ s }: { s: HostSessionView }) {
           </section>
         </div>
 
-        {/* Distribution des thèmes : associer chaque thème perso à un joueur */}
-        {(s.themes?.owners.length ?? 0) > 0 && (
+        {/* Distribution des thèmes : associer chaque thème perso à un joueur.
+            Les thèmes LIBRES (sans propriétaire) n'ont rien à distribuer. */}
+        {(s.themes?.owners.filter((o) => !o.libre).length ?? 0) > 0 && (
           <section className="px-8 pb-6">
             <h2 className="text-lg font-bold text-gray-300 mb-3">Distribution des thèmes</h2>
             <div className="grid sm:grid-cols-2 gap-2">
-              {s.themes!.owners.map((o) => (
+              {s.themes!.owners.filter((o) => !o.libre).map((o) => (
                 <div key={o.ownerName} className="flex items-center gap-3 bg-gray-900 rounded-xl px-4 py-2">
                   <span className="font-medium flex-1">
                     🎤 {o.ownerName}
@@ -158,7 +159,7 @@ export function BuzzerHostControl({ s }: { s: HostSessionView }) {
                 </div>
               ))}
             </div>
-            {s.themes!.owners.some((o) => !o.participantId) && (
+            {s.themes!.owners.some((o) => !o.libre && !o.participantId) && (
               <p className="text-amber-400 text-sm mt-2">Attribue chaque thème à son joueur avant de le lancer (tu pourras aussi le faire en cours de partie).</p>
             )}
           </section>
@@ -261,10 +262,10 @@ export function BuzzerHostControl({ s }: { s: HostSessionView }) {
                       }`}
                     >
                       {/* L'admin voit le thème ET son propriétaire (la TV ne montre
-                          que le thème — c'est ici qu'on sait à qui il est). */}
+                          que le thème — c'est ici qu'on sait à qui il est / s'il est libre). */}
                       🎤 {o.themeName ?? o.ownerName}
                       <span className="block text-sm font-normal opacity-80">
-                        {o.done ? 'déjà joué' : `${o.total} Q · de ${o.ownerName}${pseudo && pseudo !== o.ownerName ? ` · tél : ${pseudo}` : ''}`}
+                        {o.done ? 'déjà joué' : `${o.total} Q · ${o.libre ? 'thème libre' : `de ${o.ownerName}`}${pseudo && pseudo !== o.ownerName ? ` · tél : ${pseudo}` : ''}`}
                       </span>
                     </button>
                   )
@@ -298,6 +299,11 @@ export function BuzzerHostControl({ s }: { s: HostSessionView }) {
               {q.section === 'perso' && b.ownerName && (
                 <span className="px-3 py-1 rounded-full text-sm bg-indigo-800">
                   {q.themeName ? `Thème ${q.themeName} (de ${b.ownerName})` : `Thème de ${b.ownerName}`}
+                </span>
+              )}
+              {q.section === 'libre' && (
+                <span className="px-3 py-1 rounded-full text-sm bg-indigo-800">
+                  Thème {q.themeName ?? b.ownerName} (libre)
                 </span>
               )}
               <span className="text-gray-500 text-sm ml-auto">Q{q.index + 1}/{q.total}</span>
