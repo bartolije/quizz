@@ -8,7 +8,9 @@ Le serveur Fastify sert **tout** : l'API REST, le WebSocket Socket.io, **et** le
 build statique du client React (`@fastify/static` + fallback SPA). Une seule URL,
 un seul service.
 
-- **Build** (`railway.json`) : `cd packages/shared && npm run build && cd ../client && npm run build && cd ../server && npm run build` (builder NIXPACKS).
+- **Build** (`railway.json`) : `npm run build` (= shared → server → client, l'ordre du
+  script racine), builder **RAILPACK**. Nixpacks est déprécié par Railway (maintenance
+  mode) : migré le 31/07/2026, `nixpacks.toml` supprimé.
 - **Start** : `node packages/server/dist/index.js`.
 - **Healthcheck** : `GET /health` (timeout 30s, restart `ON_FAILURE`, max 10).
 - Le serveur résout le build client à `../../client/dist` relativement à
@@ -45,6 +47,7 @@ les sessions de jeu sont en mémoire.
 | `DATABASE_PATH` | override du chemin SQLite | — |
 | `RAILWAY_VOLUME_MOUNT_PATH` | injectée par Railway si un Volume est attaché | — |
 | `RAILWAY_GIT_COMMIT_SHA` | exposée dans `/health.build` et le badge de version | `local` |
+| `RAILPACK_NODE_VERSION` | (build) épingle la version Node du builder Railpack — gagne sur `engines.node` et `.nvmrc`. Remplace l'ancienne `NIXPACKS_NODE_VERSION`, devenue inerte. | — |
 | `VITE_SERVER_URL` | (build client) URL absolue du serveur en déploiement séparé | `''` (same-origin) |
 
 ## Pièges
@@ -54,9 +57,17 @@ les sessions de jeu sont en mémoire.
   Ne pas le retirer.
 - **better-sqlite3 13 compile au `npm ci`** : le paquet n'a plus de script `install`
   mais garde son `binding.gyp` → npm déclenche sa compilation implicite
-  (`node-gyp rebuild`), qui exige Python + gcc + make. L'image nixpacks de Railway
-  ne les a pas → `nixpacks.toml` les ajoute à la phase setup
-  (`nixPkgs = ['...', 'python3', 'gcc', 'gnumake']`). Ne pas supprimer ce fichier.
+  (`node-gyp rebuild`), qui exige Python + gcc + make. L'image de build Railpack
+  (`buildpack-deps:bookworm-scm` + `build-essential`, `make`, `pkg-config`, et
+  `python3` tiré par `mercurial`) les a déjà — c'est pourquoi `nixpacks.toml`, qui
+  les ajoutait à la main pour Nixpacks, a pu être supprimé. Si un build casse un
+  jour sur `node-gyp`, créer un `railpack.json` à la racine :
+  `{ "buildAptPackages": ["python3", "build-essential"] }`.
+- **Version de Node sous Railpack** : la variable `NIXPACKS_NODE_VERSION` n'a plus
+  d'effet. Railpack résout dans l'ordre `RAILPACK_NODE_VERSION` (variable du service)
+  → `engines.node` → `.nvmrc`. Ici `engines.node` vaut `>=24 <25` (une plage, résolue
+  par mise) et `.nvmrc` vaut `24` ; en cas de doute ou d'erreur de résolution, poser
+  **`RAILPACK_NODE_VERSION=24`** dans les variables du service, elle gagne sur tout.
 - **Ordre de build** : `shared` d'abord, toujours (les deux autres en dépendent).
 - **Admin verrouillé par défaut en prod** (anti-triche) : `ADMIN_PASSWORD` doit être
   défini dans Railway, sinon l'éditeur `/admin` est inaccessible (`503`). Aucun mot de

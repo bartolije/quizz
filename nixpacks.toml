@@ -1,6 +1,0 @@
-# better-sqlite3 13 n'a plus de script install mais garde son binding.gyp →
-# npm lance sa compilation implicite (node-gyp rebuild) à chaque npm ci.
-# L'image nixpacks n'embarque pas Python/gcc/make : on les ajoute à la phase
-# setup ('...' = conserver les paquets auto-détectés nodejs/npm/openssl).
-[phases.setup]
-nixPkgs = ['...', 'python3', 'gcc', 'gnumake']
