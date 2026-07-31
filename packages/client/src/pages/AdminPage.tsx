@@ -339,7 +339,10 @@ export function AdminPage() {
         <div className="space-y-4">
           {draft.questions.map((q, i) => (
             <div key={i} className="bg-gray-900 rounded-2xl p-4 space-y-3">
-              <div className="flex items-center gap-2">
+              {/* `flex-wrap` : en mode buzzer la barre (section + joueur + thème +
+                  points + 1/2/3 + ↑↓🗑) dépasse la largeur du conteneur — sans
+                  retour à la ligne, elle débordait de la page. */}
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="font-bold text-indigo-400">Q{i + 1}</span>
                 {draft.gameType === 'classic' ? (
                   <select

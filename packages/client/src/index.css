@@ -16,4 +16,14 @@
   ::file-selector-button {
     border-color: var(--color-gray-200, currentcolor);
   }
+
+  /*
+    Toutes les vues sont sombres — le fond de PAGE doit l'être aussi. Sans ça,
+    dès qu'un contenu dépasse son shell (beaucoup de thèmes sur la TV, ligne
+    d'édition trop large en admin), le scroll découvre le blanc du navigateur
+    sous/à côté du `bg-gray-950` du div. Idem pour l'overscroll iOS.
+  */
+  html {
+    background-color: var(--color-gray-950);
+  }
 }

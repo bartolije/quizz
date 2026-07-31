@@ -15,7 +15,10 @@ export function BuzzerHostDisplay({ s }: { s: HostSessionView }) {
   const b = s.buzz
   const q = s.buzzQuestion
   const badge = q?.points ? ptsBadge(q.points) : null
-  const shell = 'h-dvh bg-gray-950 text-white flex flex-col'
+  // `min-h-dvh` et pas `h-dvh` : avec beaucoup de thèmes le contenu dépasse
+  // l'écran — la page doit grandir (fond compris) au lieu de déborder d'un
+  // shell figé, où `justify-center` rend en plus le haut inatteignable.
+  const shell = 'min-h-dvh bg-gray-950 text-white flex flex-col'
   const sound = useBuzzerSound(s.status, s.buzz)
 
   const soundCtl = (
