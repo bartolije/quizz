@@ -7,8 +7,14 @@ import {
   computeClosestScale,
   isCorrectFreeAnswer,
 } from '@lya-quiz/shared'
-import { getAllSessions, type SessionState } from '../state.js'
-import { getLeaderboard, getTeamLeaderboard, toPublicQuestion } from '../session-helpers.js'
+import type { SessionState } from '../state.js'
+import {
+  getLeaderboard,
+  getTeamLeaderboard,
+  toPublicQuestion,
+  findSessionByHostSocket,
+  findParticipantBySocket,
+} from '../session-helpers.js'
 import { logEvent } from '../logger.js'
 import { saveSessionSnapshot, deleteSessionSnapshot } from '../session-snapshot.js'
 import { startNextBuzzerQuestion } from './buzzer.js'
@@ -21,25 +27,6 @@ function teamScoresField(session: SessionState): { teamScores: ReturnType<typeof
 
 type QuizSocket = Socket<ClientToServerEvents, ServerToClientEvents>
 type QuizServer = Server<ClientToServerEvents, ServerToClientEvents>
-
-// ─────────────────────────────────────────────────────────────
-// Résolution de session à partir d'un socket
-// ─────────────────────────────────────────────────────────────
-
-function findSessionByHostSocket(socketId: string): SessionState | undefined {
-  return getAllSessions().find((s) => s.hostSocketIds.has(socketId))
-}
-
-function findParticipantContext(
-  socketId: string,
-): { session: SessionState; participantId: string } | undefined {
-  for (const session of getAllSessions()) {
-    for (const p of session.participants.values()) {
-      if (p.socketId === socketId) return { session, participantId: p.id }
-    }
-  }
-  return undefined
-}
 
 // Fenêtre de grâce pour la fermeture anticipée « tous ont répondu » : un joueur
 // déconnecté depuis moins de GRACE compte encore dans le dénominateur — sinon un
@@ -221,7 +208,7 @@ export function handleSubmitAnswer(
     if (typeof ack === 'function') ack(res)
   }
 
-  const ctx = findParticipantContext(socket.id)
+  const ctx = findParticipantBySocket(socket.id)
   if (!ctx) {
     // socket pas (encore) rattaché à un participant — ex. réponse rejouée par le
     // buffer Socket.io AVANT que rejoin_session ait réassocié le nouveau socket.
@@ -229,7 +216,8 @@ export function handleSubmitAnswer(
     respond({ ok: false, status: 'not_in_session' })
     return
   }
-  const { session, participantId } = ctx
+  const { session, participant } = ctx
+  const participantId = participant.id
 
   // Question fermée OU réponse retardée visant une autre question que l'actuelle
   // (buffer rejoué après le passage à la question suivante) → refus explicite.
@@ -256,13 +244,12 @@ export function handleSubmitAnswer(
   })
   respond({ ok: true, status: 'accepted' })
 
-  const participant = session.participants.get(participantId)
   const eligible = eligibleParticipants(session)
 
   // Compteur live pour le host
   io.to(`host:${session.id}`).emit(EVENTS.ANSWER_RECEIVED, {
     participantId,
-    pseudo: participant?.pseudo ?? '',
+    pseudo: participant.pseudo,
     answeredCount: session.answers.size,
     totalCount: eligible.length,
   })

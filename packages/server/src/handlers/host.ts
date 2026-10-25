@@ -1,7 +1,7 @@
 import type { Server, Socket } from 'socket.io'
 import type { ClientToServerEvents, ServerToClientEvents } from '@lya-quiz/shared'
 import { EVENTS } from '@lya-quiz/shared'
-import { getSessionByPin, getSessionById, getAllSessions, type SessionState } from '../state.js'
+import { getSessionByPin, getSessionById, type SessionState } from '../state.js'
 import {
   getParticipantList,
   toPublicQuestion,
@@ -9,6 +9,7 @@ import {
   getTeamLeaderboard,
   getTeamsPayload,
   isPseudoTaken,
+  findSessionByHostSocket,
 } from '../session-helpers.js'
 import { logEvent } from '../logger.js'
 import { saveSessionSnapshot, deleteSessionSnapshot } from '../session-snapshot.js'
@@ -138,17 +139,6 @@ export function handleDisplayJoin(
   attachAndSendState(socket, session, false)
 }
 
-export function handleHostDisconnect(
-  socketId: string,
-  sessionId: string,
-  sessions: Map<string, SessionState>,
-): void {
-  const session = sessions.get(sessionId)
-  if (session) {
-    session.hostSocketIds.delete(socketId)
-  }
-}
-
 // Éjecter un participant (troll, doublon de pseudo…). Retiré de la session
 // (score compris), token invalidé (il ne peut pas re-rentrer par reconnexion
 // automatique — il peut re-rejoindre par PIN + pseudo si c'était une erreur).
@@ -157,7 +147,7 @@ export function handleKickParticipant(
   payload: { participantId: string },
   io: QuizServer,
 ): void {
-  const session = getAllSessions().find((s) => s.hostSocketIds.has(socket.id))
+  const session = findSessionByHostSocket(socket.id)
   if (!session) return
   const participant = session.participants.get(String(payload?.participantId ?? ''))
   if (!participant) return
@@ -233,7 +223,7 @@ export function handleAddManualParticipant(
   payload: { pseudo: string },
   io: QuizServer,
 ): void {
-  const session = getAllSessions().find((s) => s.hostSocketIds.has(socket.id))
+  const session = findSessionByHostSocket(socket.id)
   if (!session) return
   if (session.quiz?.gameType !== 'buzzer') return // n'a de sens qu'en partie famille
   // Mêmes règles que le join téléphone : borne 20 chars + pseudo unique (un
@@ -270,7 +260,7 @@ export function handleAdjustScore(
   payload: { participantId: string; delta: number },
   io: QuizServer,
 ): void {
-  const session = getAllSessions().find((s) => s.hostSocketIds.has(socket.id))
+  const session = findSessionByHostSocket(socket.id)
   if (!session) return
   const p = session.participants.get(String(payload?.participantId ?? ''))
   if (!p) return
@@ -295,27 +285,24 @@ export function handleAdjustScore(
 // changement de statut à toute la room (les deux vues host se synchronisent).
 // (les questions arrivent en S4 — ici on ne fait que changer le statut)
 export function handleHostStartQuiz(socket: QuizSocket, io: QuizServer): void {
-  for (const session of getAllSessions()) {
-    if (session.hostSocketIds.has(socket.id)) {
-      session.status = 'running'
-      // Mode buzzer avec thèmes perso : tirage de l'ordre de passage (le joueur
-      // du tour choisira son thème — le sien ou celui d'un autre).
-      initTurnOrder(session)
-      saveSessionSnapshot(session)
-      io.to(session.id).emit(EVENTS.SESSION_STATUS_CHANGED, { status: session.status })
-      if (session.quiz?.gameType === 'buzzer') {
-        io.to(session.id).emit(EVENTS.BUZZ_THEMES, buildThemes(session)) // ordre visible partout
-      }
-      logEvent('quiz_started', { sessionId: session.id })
-      return
-    }
+  const session = findSessionByHostSocket(socket.id)
+  if (!session) return
+  session.status = 'running'
+  // Mode buzzer avec thèmes perso : tirage de l'ordre de passage (le joueur
+  // du tour choisira son thème — le sien ou celui d'un autre).
+  initTurnOrder(session)
+  saveSessionSnapshot(session)
+  io.to(session.id).emit(EVENTS.SESSION_STATUS_CHANGED, { status: session.status })
+  if (session.quiz?.gameType === 'buzzer') {
+    io.to(session.id).emit(EVENTS.BUZZ_THEMES, buildThemes(session)) // ordre visible partout
   }
+  logEvent('quiz_started', { sessionId: session.id })
 }
 
 // Le host termine le quiz manuellement (S7) : ferme toute question ouverte,
 // passe en 'ended' et diffuse le classement final.
 export function handleHostEndQuiz(socket: QuizSocket, io: QuizServer): void {
-  const session = getAllSessions().find((s) => s.hostSocketIds.has(socket.id))
+  const session = findSessionByHostSocket(socket.id)
   if (!session) return
 
   if (session.questionTimer) {

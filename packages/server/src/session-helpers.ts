@@ -142,8 +142,7 @@ export function getTeamsPayload(session: SessionState): {
   }
 }
 
-// Résolveurs socket → session/participant (mode équipe). NB: game.ts a ses propres
-// variantes ; ici on les expose pour les handlers d'équipe.
+// Résolveurs socket → session/participant, partagés par tous les handlers.
 export function findSessionByHostSocket(socketId: string): SessionState | undefined {
   return getAllSessions().find((s) => s.hostSocketIds.has(socketId))
 }
