@@ -122,6 +122,9 @@ function toInput(d: EditDraft): { input: QuizInput; error: string | null } {
       continue
     }
 
+    // Champ vidé = 0 s → la question se fermait à peine ouverte.
+    if (!(q.timeLimit > 0)) return { input: null as never, error: `Question ${n} : le temps doit être supérieur à 0 s.` }
+
     if (q.type === 'mcq') {
       const choices = q.choices.map((c) => c.trim())
       if (choices.some((c) => !c)) return { input: null as never, error: `Question ${n} : les 4 choix doivent être remplis.` }

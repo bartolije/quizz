@@ -79,8 +79,12 @@ export function parseQuizJson(text: string): { quiz: QuizInput | null; error: st
     const timeLimit = Number(q.timeLimit) > 0 ? Number(q.timeLimit) : defaultTimeLimit
 
     if (type === 'mcq') {
-      if (!Array.isArray(q.choices) || q.choices.length < 2)
-        return err(`Question ${n} (mcq) : "choices" (au moins 2) manquant.`)
+      // 4 max : l'éditeur et l'écran joueur n'en gèrent pas plus (l'éditeur tronquait).
+      if (!Array.isArray(q.choices) || q.choices.length < 2 || q.choices.length > 4)
+        return err(`Question ${n} (mcq) : "choices" doit contenir 2 à 4 choix.`)
+      // Comparaison exacte au scoring : une bonne réponse hors des choix = personne ne marque.
+      if (!(q.choices as unknown[]).map((c) => String(c)).includes(correctAnswers[0]))
+        return err(`Question ${n} (mcq) : "correctAnswers[0]" doit être exactement l'un des "choices".`)
     }
     if (type === 'ordering' && correctAnswers.length < 2)
       return err(`Question ${n} (ordering) : au moins 2 éléments dans "correctAnswers".`)
