@@ -144,6 +144,20 @@ describe('au plus proche', () => {
   })
 })
 
+describe('remettre dans l’ordre', () => {
+  it('les items arrivent mélangés (jamais dans le bon ordre), tous présents', async () => {
+    const order = ['un', 'deux', 'trois']
+    const session = makeSession([{ type: 'ordering', text: 'Range', correctAnswers: order, timeLimit: 30 }])
+    const { c: alice } = await joinAs('alice', session.pin)
+    const host = await hostJoin(session)
+    host.emit(EVENTS.HOST_START_QUIZ, {})
+    host.emit(EVENTS.HOST_NEXT_QUESTION, {})
+    const { question } = await waitFor<QStarted>(alice, EVENTS.QUESTION_STARTED)
+    expect(question.choices).not.toEqual(order)
+    expect([...(question.choices ?? [])].sort()).toEqual([...order].sort())
+  })
+})
+
 describe('reconnexion participant', () => {
   it('rejoin en pleine question : état restauré, réponse conservée, scores reçus sur le nouveau socket', async () => {
     const session = makeSession()

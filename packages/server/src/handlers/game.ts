@@ -18,7 +18,7 @@ import {
 } from '../session-helpers.js'
 import { logEvent } from '../logger.js'
 import { saveSessionSnapshot } from '../session-snapshot.js'
-import { startNextBuzzerQuestion } from './buzzer.js'
+import { startNextBuzzerQuestion, shuffle } from './buzzer.js'
 
 type QuizSocket = Socket<ClientToServerEvents, ServerToClientEvents>
 type QuizServer = Server<ClientToServerEvents, ServerToClientEvents>
@@ -36,19 +36,13 @@ function eligibleParticipants(session: SessionState) {
   )
 }
 
-// Mélange (Fisher-Yates) en garantissant un ordre différent de l'original.
+// Mélange en garantissant un ordre différent de l'original (6 essais).
 function shuffleDistinct(items: string[]): string[] {
-  if (items.length < 2) return [...items]
-  let out = [...items]
   for (let attempt = 0; attempt < 6; attempt++) {
-    for (let i = out.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1))
-      ;[out[i], out[j]] = [out[j]!, out[i]!]
-    }
+    const out = shuffle(items)
     if (out.some((v, i) => v !== items[i])) return out // au moins un item déplacé
-    out = [...items]
   }
-  return out
+  return [...items]
 }
 
 // ─────────────────────────────────────────────────────────────
