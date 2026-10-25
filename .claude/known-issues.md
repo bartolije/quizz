@@ -58,7 +58,11 @@ Points clés de robustesse (priorité « stabilité ») :
   révélation (`question_started` n'expose qu'une `QuestionPublic` sans `correctAnswers` ;
   elles ne partent qu'à `question_ended`). L'éditeur `/admin` (qui, lui, expose les
   réponses) est **verrouillé par défaut en prod** : `ADMIN_PASSWORD` est obligatoire,
-  plus aucun mot de passe par défaut shippé. Résiduel mineur : `GET /api/sessions/:id/report`
+  plus aucun mot de passe par défaut shippé. **Depuis 10/2026, la création de session
+  (`POST /api/sessions`) exige aussi ce mot de passe** : avant, n'importe qui ouvrant
+  `/host/control` pilotait sa propre partie du quiz par défaut (antisèche, révélations)
+  et pouvait épuiser les 9000 PIN. Le Mac animateur doit donc s'être connecté une fois
+  sur `/admin`. Résiduel mineur : `GET /api/sessions/:id/report`
   expose les `correctAnswers` des questions **déjà révélées** (pas les suivantes) sans
   auth — pas un vecteur de triche en direct, mais à gater si besoin.
 - **CORS `*` par défaut**, surchargeable depuis 08/2026 : poser `CORS_ORIGIN=https://…`

@@ -89,7 +89,10 @@ attachSocketHandlers(io)
 
 // Création d'une session (host au chargement de /host/control, ou "Lancer" depuis
 // l'éditeur avec un quizId). Sans quizId → quiz par défaut.
-app.post<{ Body: { quizId?: string } }>('/api/sessions', async (req) => {
+// Réservée à l'animateur (mot de passe admin) : la session donne la main sur un
+// quiz entier (antisèche, révélations) — ouverte, un joueur pouvait lire les
+// réponses du quiz par défaut, ou épuiser les 9000 PIN (boucle de generatePin).
+app.post<{ Body: { quizId?: string } }>('/api/sessions', { preHandler: requireAdmin }, async (req) => {
   const session = createSession(req.body?.quizId)
   saveSessionSnapshot(session)
   // hostKey : secret du host — seul canal où il transite (jamais en broadcast)

@@ -1,5 +1,6 @@
 import type { Participant, SessionStatus, GameReport } from '@lya-quiz/shared'
 import { apiUrl } from './config'
+import { getPw } from './admin-api'
 
 // Identité de la session host, persistée pour survivre à un refresh (cf. S3 spec).
 const HOST_KEY = 'lya_host_session'
@@ -38,10 +39,15 @@ export function clearHostSession(): void {
   localStorage.removeItem(HOST_KEY)
 }
 
-// POST /api/sessions → crée une nouvelle session.
+// Erreur levée quand le serveur refuse la création (mot de passe admin absent/faux).
+export const ADMIN_REQUIRED = 'admin_required'
+
+// POST /api/sessions → crée une nouvelle session. Réservé à l'animateur : on
+// envoie le mot de passe admin mémorisé par /admin sur ce navigateur.
 // apiUrl() : relatif en dev (proxy Vite), absolu vers Railway en prod.
 export async function createHostSession(): Promise<HostSession> {
-  const res = await fetch(apiUrl('/api/sessions'), { method: 'POST' })
+  const res = await fetch(apiUrl('/api/sessions'), { method: 'POST', headers: { 'x-admin-password': getPw() } })
+  if (res.status === 401 || res.status === 503) throw new Error(ADMIN_REQUIRED)
   if (!res.ok) throw new Error('Création de session impossible')
   const data = (await res.json()) as { pin: string; sessionId: string; hostKey: string }
   return { sessionId: data.sessionId, pin: data.pin, hostKey: data.hostKey }

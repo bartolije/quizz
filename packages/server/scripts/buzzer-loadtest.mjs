@@ -43,7 +43,7 @@ async function findBuzzerQuizId() {
 async function main() {
   const quizId = await findBuzzerQuizId()
   const { pin, hostKey } = await (await fetch(`${URL}/api/sessions`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ quizId }),
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-password': ADMIN_PW }, body: JSON.stringify({ quizId }),
   })).json()
   console.log(`▶ Session ${pin} · quiz ${quizId} · ${N} bots`)
 

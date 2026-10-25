@@ -21,6 +21,7 @@ import {
   clearHostSession,
   createHostSession,
   fetchSessionInfo,
+  ADMIN_REQUIRED,
 } from '../host-session'
 
 type HostMode = 'control' | 'display'
@@ -220,8 +221,12 @@ export function useHostSession(mode: HostMode): HostSessionView {
         setStatus(info.status)
         setPin(info.pin)
         setSessionId(info.sessionId)
-      } catch {
-        setError('Erreur de connexion au serveur.')
+      } catch (e) {
+        setError(
+          e instanceof Error && e.message === ADMIN_REQUIRED
+            ? 'Session réservée à l’animateur : connecte-toi sur /admin, puis lance le quiz.'
+            : 'Erreur de connexion au serveur.',
+        )
       }
     })()
   }, [mode])
@@ -343,12 +348,14 @@ export function useHostSession(mode: HostMode): HostSessionView {
       if (mode === 'control' && !recoveredRef.current) {
         recoveredRef.current = true
         clearHostSession()
-        void createHostSession().then((created) => {
-          writeHostSession(created)
-          hostKeyRef.current = created.hostKey ?? null
-          setSessionId(created.sessionId)
-          setPin(created.pin) // → re-déclenche cet effet → host_join sur la nouvelle session
-        })
+        void createHostSession()
+          .then((created) => {
+            writeHostSession(created)
+            hostKeyRef.current = created.hostKey ?? null
+            setSessionId(created.sessionId)
+            setPin(created.pin) // → re-déclenche cet effet → host_join sur la nouvelle session
+          })
+          .catch(() => setError('Session introuvable : relance le quiz depuis /admin.'))
         return
       }
       setError(e.message ?? 'Session introuvable.')

@@ -86,7 +86,7 @@ vers `:3001`) : ouvrir `http://<ip-du-mac>:5173` sur le téléphone.
 
 | Route                          | Usage                                            |
 | ------------------------------ | ------------------------------------------------ |
-| `POST /api/sessions`           | crée une session → `{ pin, sessionId }`          |
+| `POST /api/sessions`           | crée une session → `{ pin, sessionId, hostKey }` (mot de passe admin) |
 | `GET /api/sessions/:id`        | résout une session (bootstrap de la TV)          |
 | `GET /api/sessions/:id/report` | rapport de fin (stats + classement)              |
 | `GET /health`                  | healthcheck `{ status, sessions, build }`        |

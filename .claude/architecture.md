@@ -108,7 +108,7 @@ React + Vite, routing react-router. Store global **Zustand** (`store/quiz-store.
 ## Flux temps réel
 
 ### Join & lobby
-1. `POST /api/sessions { quizId? }` → `{ pin, sessionId }` (host).
+1. `POST /api/sessions { quizId? }` → `{ pin, sessionId, hostKey }` (host, header `x-admin-password`).
 2. Participant : `join_session { pin, pseudo, sessionToken:null }` →
    `session_joined { sessionToken, participant, participants, … }`. Le client
    stocke le token dans `localStorage` (`lya_quiz_token`).
@@ -155,7 +155,7 @@ React + Vite, routing react-router. Store global **Zustand** (`store/quiz-store.
 
 | Route | Usage |
 |---|---|
-| `POST /api/sessions { quizId? }` | crée une session → `{ pin, sessionId }` |
+| `POST /api/sessions { quizId? }` | crée une session → `{ pin, sessionId, hostKey }` — protégé par `ADMIN_PASSWORD` |
 | `GET /api/sessions/:id` | résout une session (bootstrap `/host/display?session=XXXX`) |
 | `GET /api/sessions/:id/report` | rapport de fin (stats par question + classement) |
 | `POST /api/client-log` | remontée des erreurs JS des téléphones → logs serveur (S10) |

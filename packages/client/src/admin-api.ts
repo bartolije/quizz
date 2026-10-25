@@ -99,7 +99,7 @@ export async function deleteQuiz(id: string): Promise<void> {
 export async function launchQuiz(quizId: string): Promise<{ pin: string; sessionId: string; hostKey: string }> {
   const res = await fetch(apiUrl('/api/sessions'), {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: jsonHeaders(),
     body: JSON.stringify({ quizId }),
   })
   if (!res.ok) throw new Error('launch_failed')
