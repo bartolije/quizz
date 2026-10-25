@@ -4,7 +4,7 @@ import type {
   ServerToClientEvents,
   SessionMode,
 } from '@lya-quiz/shared'
-import { EVENTS, TEAM_PALETTE } from '@lya-quiz/shared'
+import { EVENTS, TEAM_PALETTE, TEAM_DRAW_NAMES } from '@lya-quiz/shared'
 import type { SessionState } from '../state.js'
 import {
   findSessionByHostSocket,
@@ -13,6 +13,7 @@ import {
 } from '../session-helpers.js'
 import { logEvent } from '../logger.js'
 import { saveSessionSnapshot } from '../session-snapshot.js'
+import { shuffle } from './buzzer.js'
 
 type QuizSocket = Socket<ClientToServerEvents, ServerToClientEvents>
 type QuizServer = Server<ClientToServerEvents, ServerToClientEvents>
@@ -102,26 +103,54 @@ export function handleAssignParticipant(
   broadcastTeams(session, io)
 }
 
+// Équipe la moins remplie (la première en cas d'égalité) — undefined si aucune équipe.
+export function smallestTeamId(session: SessionState): string | undefined {
+  let best: string | undefined
+  let bestSize = Infinity
+  for (const id of session.teams.keys()) {
+    let size = 0
+    for (const p of session.participants.values()) if (p.teamId === id) size++
+    if (size < bestSize) {
+      best = id
+      bestSize = size
+    }
+  }
+  return best
+}
+
 // Répartit les joueurs sans équipe : chacun va dans l'équipe la moins remplie.
 export function handleAutobalance(socket: QuizSocket, io: QuizServer): void {
   const session = findSessionByHostSocket(socket.id)
-  if (!session) return
-  const teamIds = [...session.teams.keys()]
-  if (teamIds.length === 0) return
+  if (!session || session.teams.size === 0) return
+  for (const p of session.participants.values()) {
+    if (!p.teamId) p.teamId = smallestTeamId(session)!
+  }
+  broadcastTeams(session, io)
+}
 
-  const sizes = new Map<string, number>(teamIds.map((id) => [id, 0]))
-  for (const p of session.participants.values()) {
-    if (p.teamId && sizes.has(p.teamId)) sizes.set(p.teamId, (sizes.get(p.teamId) ?? 0) + 1)
+// Tirage au sort (avant le démarrage) : remplace les équipes par `count` équipes
+// aux noms/couleurs auto, y répartit TOUS les joueurs au hasard (tailles à ±1,
+// déconnectés compris : un téléphone en veille revient) et verrouille.
+export function handleDrawTeams(
+  socket: QuizSocket,
+  payload: { count: number },
+  io: QuizServer,
+): void {
+  const session = findSessionByHostSocket(socket.id)
+  if (!session || session.status !== 'waiting') return
+  const count = Math.min(MAX_TEAMS, Math.max(2, Math.round(Number(payload?.count)) || 2))
+  session.mode = 'team'
+  session.teams.clear()
+  for (let i = 0; i < count; i++) {
+    const id = crypto.randomUUID()
+    session.teams.set(id, { id, name: TEAM_DRAW_NAMES[i]!, color: TEAM_PALETTE[i]! })
   }
-  for (const p of session.participants.values()) {
-    if (p.teamId) continue
-    let best = teamIds[0]!
-    for (const id of teamIds) {
-      if ((sizes.get(id) ?? 0) < (sizes.get(best) ?? 0)) best = id
-    }
-    p.teamId = best
-    sizes.set(best, (sizes.get(best) ?? 0) + 1)
-  }
+  const ids = [...session.teams.keys()]
+  shuffle([...session.participants.values()]).forEach((p, i) => {
+    p.teamId = ids[i % count]!
+  })
+  session.teamsLocked = true
+  logEvent('teams_drawn', { sessionId: session.id, count, players: session.participants.size })
   broadcastTeams(session, io)
 }
 

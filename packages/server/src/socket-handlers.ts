@@ -33,6 +33,7 @@ import {
   handleLockTeams,
   handleAssignParticipant,
   handleAutobalance,
+  handleDrawTeams,
   handleJoinTeam,
 } from './handlers/team.js'
 import { getAllSessions } from './state.js'
@@ -75,6 +76,7 @@ export function attachSocketHandlers(io: QuizServer): void {
     socket.on(EVENTS.HOST_LOCK_TEAMS, (p) => safe('host_lock_teams', () => handleLockTeams(socket, p, io)))
     socket.on(EVENTS.HOST_ASSIGN_PARTICIPANT, (p) => safe('host_assign_participant', () => handleAssignParticipant(socket, p, io)))
     socket.on(EVENTS.HOST_AUTOBALANCE_TEAMS, () => safe('host_autobalance_teams', () => handleAutobalance(socket, io)))
+    socket.on(EVENTS.HOST_DRAW_TEAMS, (p) => safe('host_draw_teams', () => handleDrawTeams(socket, p, io)))
     socket.on(EVENTS.JOIN_TEAM, (p) => safe('join_team', () => handleJoinTeam(socket, p, io)))
 
     // Mode buzzer (partie famille)

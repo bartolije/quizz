@@ -106,6 +106,7 @@ export function HostTeamPanel({
   lockTeams,
   assign,
   autobalance,
+  drawTeams,
   onKick,
 }: {
   mode: SessionMode
@@ -118,6 +119,7 @@ export function HostTeamPanel({
   lockTeams: (locked: boolean) => void
   assign: (participantId: string, teamId: string | null) => void
   autobalance: () => void
+  drawTeams: (count: number) => void
   onKick?: (participantId: string) => void
 }) {
   const [name, setName] = useState('')
@@ -134,6 +136,11 @@ export function HostTeamPanel({
     if (!n) return
     addTeam(n)
     setName('')
+  }
+
+  function draw(count: number) {
+    if (teams.length > 0 && !window.confirm(`Tirer au sort ${count} équipes ? Les équipes actuelles seront remplacées.`)) return
+    drawTeams(count)
   }
 
   function onDragStart(e: DragStartEvent) {
@@ -204,6 +211,22 @@ export function HostTeamPanel({
         )
       ) : (
         <>
+          {/* Tirage au sort : équipes auto + joueurs mélangés + verrou */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm font-bold text-gray-300">🎲 Tirage au sort :</span>
+            {[2, 3, 4, 5, 6].map((n) => (
+              <button
+                key={n}
+                type="button"
+                onClick={() => draw(n)}
+                aria-label={`Tirer au sort ${n} équipes`}
+                className="w-11 h-11 rounded-xl bg-indigo-600 hover:bg-indigo-500 font-bold"
+              >
+                {n}
+              </button>
+            ))}
+          </div>
+
           {/* Création d'équipe */}
           <div className="flex items-center gap-2">
             <input
@@ -248,7 +271,7 @@ export function HostTeamPanel({
 
           {teams.length === 0 ? (
             <p className="text-gray-500 text-sm text-center py-6">
-              Crée au moins une équipe, puis glisse les joueurs dedans.
+              Tire les équipes au sort, ou crée-les et glisse les joueurs dedans.
             </p>
           ) : (
             <>

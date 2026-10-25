@@ -94,6 +94,7 @@ export interface HostSessionView {
   lockTeams: (locked: boolean) => void
   assign: (participantId: string, teamId: string | null) => void
   autobalance: () => void
+  drawTeams: (count: number) => void
 }
 
 const ranksOf = (lb: ParticipantScore[]): Record<string, number> =>
@@ -423,6 +424,7 @@ export function useHostSession(mode: HostMode): HostSessionView {
   const assign = (participantId: string, teamId: string | null) =>
     socket.emit(EVENTS.HOST_ASSIGN_PARTICIPANT, { participantId, teamId })
   const autobalance = () => socket.emit(EVENTS.HOST_AUTOBALANCE_TEAMS, {})
+  const drawTeams = (count: number) => socket.emit(EVENTS.HOST_DRAW_TEAMS, { count })
 
   return {
     pin,
@@ -470,5 +472,6 @@ export function useHostSession(mode: HostMode): HostSessionView {
     lockTeams,
     assign,
     autobalance,
+    drawTeams,
   }
 }

@@ -91,6 +91,9 @@ export const TEAM_PALETTE = [
   '#ec4899', // rose
 ] as const
 
+// Noms des équipes tirées au sort, alignés sur TEAM_PALETTE (même index).
+export const TEAM_DRAW_NAMES = ['Rouges', 'Bleus', 'Verts', 'Jaunes', 'Violets', 'Roses'] as const
+
 export interface Team {
   id: string
   name: string

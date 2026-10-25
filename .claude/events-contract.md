@@ -25,6 +25,7 @@
 | `HOST_LOCK_TEAMS` | `host_lock_teams` | `{ locked }` | host |
 | `HOST_ASSIGN_PARTICIPANT` | `host_assign_participant` | `{ participantId, teamId: string\|null }` | host |
 | `HOST_AUTOBALANCE_TEAMS` | `host_autobalance_teams` | `{}` | host |
+| `HOST_DRAW_TEAMS` | `host_draw_teams` | `{ count }` | host. Avant le démarrage : remplace les équipes par `count` (2–6) équipes auto (`TEAM_DRAW_NAMES` + `TEAM_PALETTE`), répartit tous les joueurs au hasard (±1), verrouille. Rediffuse `teams_updated` |
 | `JOIN_TEAM` | `join_team` | `{ teamId: string\|null }` | participant (waiting, non verrouillé) |
 
 ## Serveur → Client (`ServerToClientEvents`)

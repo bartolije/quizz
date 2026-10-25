@@ -99,6 +99,7 @@ export function HostControlPage() {
               lockTeams={s.lockTeams}
               assign={s.assign}
               autobalance={s.autobalance}
+              drawTeams={s.drawTeams}
               onKick={s.kick}
             />
           </div>

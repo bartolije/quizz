@@ -117,6 +117,11 @@ export interface ClientToServerEvents {
   // HOST ONLY — répartir automatiquement les joueurs sans équipe
   host_autobalance_teams: (payload: Record<string, never>) => void
 
+  // HOST ONLY — tirage au sort : remplace les équipes par `count` équipes
+  // (2 à 6, noms/couleurs auto), y répartit tous les joueurs au hasard et
+  // verrouille. Les retardataires rejoignent ensuite l'équipe la plus petite.
+  host_draw_teams: (payload: { count: number }) => void
+
   // PARTICIPANT — rejoindre / quitter une équipe (avant le démarrage, si non verrouillé)
   join_team: (payload: { teamId: string | null }) => void
 
@@ -355,6 +360,7 @@ export const EVENTS = {
   HOST_LOCK_TEAMS:          'host_lock_teams',
   HOST_ASSIGN_PARTICIPANT:  'host_assign_participant',
   HOST_AUTOBALANCE_TEAMS:   'host_autobalance_teams',
+  HOST_DRAW_TEAMS:          'host_draw_teams',
   JOIN_TEAM:                'join_team',
 
   // Mode buzzer

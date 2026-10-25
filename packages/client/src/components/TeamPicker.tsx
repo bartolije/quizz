@@ -38,8 +38,8 @@ export function TeamPicker({
                 type="button"
                 onClick={() => pick(t.id)}
                 disabled={locked}
-                className={`flex items-center gap-3 rounded-2xl px-4 py-4 font-bold text-white transition-all disabled:opacity-60 ${
-                  mine ? 'ring-2 ring-white' : ''
+                className={`flex items-center gap-3 rounded-2xl px-4 py-4 font-bold text-white transition-all ${
+                  mine ? 'ring-2 ring-white' : 'disabled:opacity-60' // verrouillé : SON équipe reste vive
                 }`}
                 style={{ backgroundColor: mine ? t.color : 'rgba(255,255,255,0.06)' }}
               >

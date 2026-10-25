@@ -16,6 +16,7 @@ import {
 } from '../session-helpers.js'
 import { logEvent } from '../logger.js'
 import { saveSessionSnapshot } from '../session-snapshot.js'
+import { smallestTeamId } from './team.js'
 
 type QuizSocket = Socket<ClientToServerEvents, ServerToClientEvents>
 type QuizServer = Server<ClientToServerEvents, ServerToClientEvents>
@@ -80,6 +81,13 @@ export function handleJoinSession(
     score: 0,
     lastDelta: 0,
     correctTotal: 0,
+  }
+
+  // Mode équipe : s'il ne peut plus choisir lui-même (équipes verrouillées, ex.
+  // après un tirage, ou partie lancée), il rejoint l'équipe la plus petite.
+  if (session.mode === 'team' && (session.teamsLocked || session.status !== 'waiting')) {
+    const teamId = smallestTeamId(session)
+    if (teamId) participant.teamId = teamId
   }
 
   session.participants.set(participant.id, participant)

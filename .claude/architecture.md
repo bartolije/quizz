@@ -190,8 +190,15 @@ sont **éphémères, par session, en mémoire** — aucune persistance DB.
 - **État serveur** (`state.ts`) : `mode`, `teams: Map`, `teamsLocked` sur la session ;
   `teamId?` sur le participant.
 - **Handlers** (`handlers/team.ts`) : `host_set_mode`, `host_add_team`, `host_remove_team`,
-  `host_lock_teams`, `host_assign_participant`, `host_autobalance_teams`, `join_team`.
+  `host_lock_teams`, `host_assign_participant`, `host_autobalance_teams`,
+  `host_draw_teams` (tirage au sort, 10/2026), `join_team`.
   Chaque mutation rediffuse `teams_updated` (état complet) à toute la room.
+- **Tirage au sort + retardataires** : `host_draw_teams` crée N équipes nommées
+  (Rouges, Bleus…), mélange TOUS les joueurs (déconnectés compris : un téléphone
+  en veille revient) et verrouille. Un joueur qui rejoint alors que le choix lui
+  est fermé (équipes verrouillées OU partie lancée) va dans l'équipe la plus
+  petite (`smallestTeamId`, join.ts) — sinon il restait sans équipe et ne
+  marquait pour personne.
 - **Scoring** (`session-helpers.getTeamLeaderboard`) : score d'équipe = MOYENNE des
   scores des membres (10/2026, avant : somme → l'équipe la plus nombreuse gagnait
   d'office) ; delta d'équipe sur une question = moyenne des deltas des membres.
