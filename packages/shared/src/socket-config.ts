@@ -25,8 +25,6 @@ export const SOCKET_CLIENT_CONFIG: Partial<ManagerOptions & SocketOptions> = {
 }
 
 // Configuration serveur Socket.io
-// NB: pas de `as const` ici — il transformerait `cors.methods` en tuple readonly,
-// que les types de socket.io (CorsOptions.methods: string | string[]) refusent.
 export const SOCKET_SERVER_CONFIG = {
   // Heartbeat : détecte les connexions zombies (téléphone en veille, réseau coupé).
   // pingTimeout 10s (au lieu de 5s) : sur un wifi d'entreprise saturé, un pong
@@ -35,10 +33,4 @@ export const SOCKET_SERVER_CONFIG = {
   // en 10+10 = 20s max, largement assez pour la soirée.
   pingInterval: 10_000,   // ping toutes les 10 secondes
   pingTimeout: 10_000,    // considéré mort si pas de réponse en 10 secondes
-
-  // CORS : '*' par défaut, surchargé par CORS_ORIGIN côté serveur (cf. index.ts)
-  cors: {
-    origin: '*',
-    methods: ['GET', 'POST'],
-  },
 }

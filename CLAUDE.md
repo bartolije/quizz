@@ -39,7 +39,7 @@ jamais fragiliser ça. Détail du mécanisme : [`.claude/architecture.md`](.clau
 - **Client** : React 19 · Vite 8 · Tailwind 4 (config CSS, plus de tailwind.config.js) ·
   Zustand 5 · react-router 8 (import depuis `react-router`, plus de `-dom`)
 - **Déploiement** : single-service Railway (Fastify sert aussi le build React),
-  SQLite sur Volume Railway. (Une voie Vercel+Railway séparée existe aussi.)
+  SQLite sur Volume Railway. Tout est same-origin (pas de CORS).
 - Montée de versions 08/2026 : cf. [.claude/plan-upgrade-deps.md](.claude/plan-upgrade-deps.md)
   (npm audit à zéro). ⚠️ ids aléatoires via `crypto.randomUUID()` natif (plus de dep uuid).
 
@@ -73,6 +73,6 @@ hardcoder l'IP).
 
 - [`architecture.md`](.claude/architecture.md) — packages, modèle de données, flux temps réel, reconnexion, scoring
 - [`events-contract.md`](.claude/events-contract.md) — référence event par event
-- [`deployment.md`](.claude/deployment.md) — Railway / Vercel, variables d'env, persistance
+- [`deployment.md`](.claude/deployment.md) — Railway, variables d'env, persistance
 - [`history.md`](.claude/history.md) — historique des étapes S1→S13 et features
 - [`known-issues.md`](.claude/known-issues.md) — limitations connues + retours de test

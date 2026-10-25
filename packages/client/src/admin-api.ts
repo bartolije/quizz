@@ -1,5 +1,4 @@
 import type { Quiz, QuestionType, Difficulty, QuestionSection, GameType } from '@lya-quiz/shared'
-import { apiUrl } from './config'
 
 const PW_KEY = 'lya_admin_pw'
 export const getPw = (): string => localStorage.getItem(PW_KEY) ?? ''
@@ -47,7 +46,7 @@ export interface QuizInput {
 }
 
 export async function checkPw(password: string): Promise<boolean> {
-  const res = await fetch(apiUrl('/api/admin/check'), {
+  const res = await fetch('/api/admin/check', {
     method: 'POST',
     headers: { 'x-admin-password': password },
   })
@@ -55,19 +54,19 @@ export async function checkPw(password: string): Promise<boolean> {
 }
 
 export async function listQuizzes(): Promise<QuizSummary[]> {
-  const res = await fetch(apiUrl('/api/admin/quizzes'), { headers: authHeaders() })
+  const res = await fetch('/api/admin/quizzes', { headers: authHeaders() })
   if (!res.ok) throw new Error('unauthorized')
   return (await res.json()) as QuizSummary[]
 }
 
 export async function fetchQuiz(id: string): Promise<Quiz> {
-  const res = await fetch(apiUrl(`/api/admin/quizzes/${id}`), { headers: authHeaders() })
+  const res = await fetch(`/api/admin/quizzes/${id}`, { headers: authHeaders() })
   if (!res.ok) throw new Error('not_found')
   return (await res.json()) as Quiz
 }
 
 export async function createQuiz(input: QuizInput): Promise<string> {
-  const res = await fetch(apiUrl('/api/admin/quizzes'), {
+  const res = await fetch('/api/admin/quizzes', {
     method: 'POST',
     headers: jsonHeaders(),
     body: JSON.stringify(input),
@@ -77,7 +76,7 @@ export async function createQuiz(input: QuizInput): Promise<string> {
 }
 
 export async function updateQuiz(id: string, input: QuizInput): Promise<void> {
-  const res = await fetch(apiUrl(`/api/admin/quizzes/${id}`), {
+  const res = await fetch(`/api/admin/quizzes/${id}`, {
     method: 'PUT',
     headers: jsonHeaders(),
     body: JSON.stringify(input),
@@ -86,7 +85,7 @@ export async function updateQuiz(id: string, input: QuizInput): Promise<void> {
 }
 
 export async function deleteQuiz(id: string): Promise<void> {
-  const res = await fetch(apiUrl(`/api/admin/quizzes/${id}`), {
+  const res = await fetch(`/api/admin/quizzes/${id}`, {
     method: 'DELETE',
     headers: authHeaders(),
   })
@@ -97,7 +96,7 @@ export async function deleteQuiz(id: string): Promise<void> {
 // Le hostKey est INDISPENSABLE : sans lui, /host/control ne peut pas reprendre
 // cette session et en recrée une (avec le quiz par défaut) → mauvais quiz lancé.
 export async function launchQuiz(quizId: string): Promise<{ pin: string; sessionId: string; hostKey: string }> {
-  const res = await fetch(apiUrl('/api/sessions'), {
+  const res = await fetch('/api/sessions', {
     method: 'POST',
     headers: jsonHeaders(),
     body: JSON.stringify({ quizId }),

@@ -98,7 +98,6 @@ React + Vite, routing react-router. Store global **Zustand** (`store/quiz-store.
 | Fichier | Rôle |
 |---|---|
 | `socket.ts` | instance Socket.io (autoConnect off) + ré-émission auto de `rejoin_session` sur chaque `connect` |
-| `config.ts` | `SERVER_URL` : vide en dev (same-origin + proxy Vite), URL absolue en prod via `VITE_SERVER_URL` |
 | `store/quiz-store.ts` | état du jeu + actions (`onQuestionStarted`, `onQuestionEnded`, `onSessionRestored`…) |
 | `hooks/useParticipantEvents.ts` | abonnement aux events serveur → mise à jour du store |
 | `hooks/useRemaining.ts` | timer dérivé de `questionStartedAt` (ancré sur l'horloge **client**, anti-skew) |

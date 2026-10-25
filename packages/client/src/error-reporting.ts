@@ -1,5 +1,3 @@
-import { apiUrl } from './config'
-
 // Remonte les erreurs JS du client (téléphone/host) vers le serveur (S10).
 // Throttle simple pour éviter le spam si un écran boucle sur une erreur.
 const MAX_PER_MIN = 10
@@ -15,7 +13,7 @@ function post(level: string, message: string, stack?: string, extra?: Record<str
   if (sent >= MAX_PER_MIN || !message) return
   sent++
 
-  void fetch(apiUrl('/api/client-log'), {
+  void fetch('/api/client-log', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     keepalive: true,

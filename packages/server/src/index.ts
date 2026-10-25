@@ -74,16 +74,8 @@ const app = Fastify({ logger: { level: 'warn' } })
 
 // Socket.io partage le serveur HTTP sous-jacent de Fastify (app.server).
 // app.listen() démarre les deux : routes HTTP + WebSocket sur le même port.
-// CORS : '*' par défaut (déploiement single-service = same-origin de toute façon,
-// et la voie Vercel+Railway séparée a besoin du cross-origin). CORS_ORIGIN permet
-// de verrouiller sur un domaine précis en prod : CORS_ORIGIN=https://quiz.exemple.fr
-const io = new Server<ClientToServerEvents, ServerToClientEvents>(app.server, {
-  ...SOCKET_SERVER_CONFIG,
-  cors: {
-    ...SOCKET_SERVER_CONFIG.cors,
-    origin: process.env['CORS_ORIGIN'] ?? SOCKET_SERVER_CONFIG.cors.origin,
-  },
-})
+// Pas de CORS : client, API et WebSocket sont servis sur la même origine.
+const io = new Server<ClientToServerEvents, ServerToClientEvents>(app.server, SOCKET_SERVER_CONFIG)
 
 attachSocketHandlers(io)
 

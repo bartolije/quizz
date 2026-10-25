@@ -1,18 +1,14 @@
 import { io, type Socket } from 'socket.io-client'
 import type { ClientToServerEvents, ServerToClientEvents } from '@lya-quiz/shared'
 import { SOCKET_CLIENT_CONFIG, EVENTS } from '@lya-quiz/shared'
-import { SERVER_URL } from './config'
 
-// Connexion same-origin en dev (SERVER_URL vide → proxy Vite /socket.io vers
-// :3001, pratique pour tester depuis un téléphone sans hardcoder l'IP du Mac).
-// En prod, SERVER_URL est l'URL absolue du serveur Railway (cf. config.ts).
-const options = {
+// Toujours same-origin : en prod Fastify sert client + API + WebSocket (Railway),
+// en dev le proxy Vite route /socket.io vers :3001 (testable depuis un téléphone
+// sans hardcoder l'IP du Mac).
+export const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io({
   ...SOCKET_CLIENT_CONFIG,
   autoConnect: false,   // connexion manuelle au moment du join
-}
-
-export const socket: Socket<ServerToClientEvents, ClientToServerEvents> =
-  SERVER_URL ? io(SERVER_URL, options) : io(options)
+})
 
 // Ré-identification automatique à chaque reconnexion Socket.io.
 // 'connect' est un event de cycle de vie Socket.io (pas un event métier).

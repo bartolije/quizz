@@ -1,8 +1,8 @@
 # Déploiement — LYA QUIZ
 
-Deux voies coexistent. La voie **single-service Railway** est la cible de référence.
+Une seule voie : **single-service Railway** (la voie Vercel a été supprimée en 10/2026).
 
-## Voie 1 — Single-service Railway (référence)
+## Single-service Railway
 
 Le serveur Fastify sert **tout** : l'API REST, le WebSocket Socket.io, **et** le
 build statique du client React (`@fastify/static` + fallback SPA). Une seule URL,
@@ -15,7 +15,7 @@ un seul service.
 - **Healthcheck** : `GET /health` (timeout 30s, restart `ON_FAILURE`, max 10).
 - Le serveur résout le build client à `../../client/dist` relativement à
   `import.meta.url` (indépendant du cwd de lancement).
-- En single-service, `VITE_SERVER_URL` reste **vide** → le client tape en same-origin.
+- Le client tape toujours en same-origin (chemins relatifs `/api`, `/socket.io`).
 
 ### Persistance SQLite sur Railway
 
@@ -30,14 +30,6 @@ Mode WAL activé. Tables créées de façon **idempotente** (`CREATE TABLE IF NO
 au démarrage — pas de `drizzle-kit` en prod. Seul le **contenu des quiz** est persisté ;
 les sessions de jeu sont en mémoire.
 
-## Voie 2 — Vercel (client) + Railway (serveur), domaines séparés
-
-- `vercel.json` : build du client uniquement (`outputDirectory: packages/client/dist`),
-  rewrite SPA `/(.*) → /index.html`.
-- Le client étant sur un domaine différent du serveur, il faut une **URL absolue** :
-  définir `VITE_SERVER_URL` (ex. `https://lya-quiz-server.up.railway.app`) dans les
-  variables d'env Vercel. Vite l'inline au build (`config.ts`).
-
 ## Variables d'environnement
 
 | Variable | Effet | Défaut |
@@ -48,7 +40,6 @@ les sessions de jeu sont en mémoire.
 | `RAILWAY_VOLUME_MOUNT_PATH` | injectée par Railway si un Volume est attaché | — |
 | `RAILWAY_GIT_COMMIT_SHA` | exposée dans `/health.build` et le badge de version | `local` |
 | `RAILPACK_NODE_VERSION` | (build) épingle la version Node du builder Railpack — gagne sur `engines.node` et `.nvmrc`. Remplace l'ancienne `NIXPACKS_NODE_VERSION`, devenue inerte. | — |
-| `VITE_SERVER_URL` | (build client) URL absolue du serveur en déploiement séparé | `''` (same-origin) |
 
 ## Pièges
 
@@ -73,8 +64,7 @@ les sessions de jeu sont en mémoire.
   défini dans Railway, sinon l'éditeur `/admin` est inaccessible (`503`). Aucun mot de
   passe par défaut n'est shippé (le repo est public). Détecté via `NODE_ENV=production`
   ou les variables `RAILWAY_*`.
-- **CORS** : `SOCKET_SERVER_CONFIG.cors.origin` est `'*'` — à restreindre si le
-  service devient public. (Note : le CORS ne protège pas des appels directs type
-  `curl`/devtools ; il ne limite que le JS cross-origin.)
+- **Pas de CORS** : tout est same-origin, Socket.io n'a plus d'option `cors`. Un
+  client servi depuis un autre domaine ne marcherait pas (voulu).
 - **Cache** : `index.html` est servi `no-cache` (déploiement pris en compte sans
   hard-refresh) ; les assets hashés sont immuables.
