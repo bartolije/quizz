@@ -10,20 +10,15 @@ import {
 import type { SessionState } from '../state.js'
 import {
   getLeaderboard,
-  getTeamLeaderboard,
   toPublicQuestion,
   findSessionByHostSocket,
   findParticipantBySocket,
+  teamScoresField,
+  endSession,
 } from '../session-helpers.js'
 import { logEvent } from '../logger.js'
-import { saveSessionSnapshot, deleteSessionSnapshot } from '../session-snapshot.js'
+import { saveSessionSnapshot } from '../session-snapshot.js'
 import { startNextBuzzerQuestion } from './buzzer.js'
-
-// Champ teamScores des payloads (présent uniquement en mode équipe).
-// exactOptionalPropertyTypes : on spread {} en solo plutôt que teamScores:undefined.
-function teamScoresField(session: SessionState): { teamScores: ReturnType<typeof getTeamLeaderboard> } | Record<string, never> {
-  return session.mode === 'team' ? { teamScores: getTeamLeaderboard(session) } : {}
-}
 
 type QuizSocket = Socket<ClientToServerEvents, ServerToClientEvents>
 type QuizServer = Server<ClientToServerEvents, ServerToClientEvents>
@@ -82,15 +77,7 @@ function startNextQuestion(session: SessionState, io: QuizServer): void {
 
   // Plus de questions → fin du quiz
   if (nextIndex >= questions.length) {
-    session.status = 'ended'
-    deleteSessionSnapshot(session.id) // partie finie : plus rien à restaurer
-    io.to(session.id).emit(EVENTS.SESSION_STATUS_CHANGED, { status: 'ended' })
-    io.to(session.id).emit(EVENTS.LEADERBOARD_UPDATE, {
-      scores: getLeaderboard(session),
-      final: true,
-      ...teamScoresField(session),
-    })
-    logEvent('quiz_ended', { sessionId: session.id, questions: questions.length })
+    endSession(session, io)
     return
   }
 

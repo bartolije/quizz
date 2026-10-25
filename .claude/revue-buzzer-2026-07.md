@@ -73,6 +73,8 @@ versions ([plan-upgrade-deps.md](plan-upgrade-deps.md)). Cocher au fil des commi
 - [ ] **B3 — Duplication** : `ptsBadge` ×3 (nuances divergentes `*-700`/`*-600`),
   `ranksOf` ×2 (quiz-store, useHostSession), `findSessionByHostSocket` ×2
   (game.ts, session-helpers.ts), 3 variantes de « fin de quiz » — à factoriser.
+  **10/2026 : côté serveur fait** (recherches socket et `endSession` uniques) ;
+  restent `ptsBadge` et `ranksOf` côté client.
 - [x] **B4 — `myScore` périmé sur le tél après `host_adjust_score`** :
   `onTeamsUpdated`/`onLeaderboard` ne recalculent pas `myScore` → header faux
   jusqu'à la fin de question suivante.

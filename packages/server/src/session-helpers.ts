@@ -1,4 +1,7 @@
+import type { Server } from 'socket.io'
 import type {
+  ClientToServerEvents,
+  ServerToClientEvents,
   Participant,
   ParticipantScore,
   Question,
@@ -7,9 +10,11 @@ import type {
   Team,
   TeamScore,
 } from '@lya-quiz/shared'
-import { questionPoints } from '@lya-quiz/shared'
+import { EVENTS, questionPoints } from '@lya-quiz/shared'
 import type { SessionState, ParticipantState } from './state.js'
 import { getAllSessions } from './state.js'
+import { logEvent } from './logger.js'
+import { deleteSessionSnapshot } from './session-snapshot.js'
 
 export function toParticipant(p: ParticipantState): Participant {
   return {
@@ -156,4 +161,35 @@ export function findParticipantBySocket(
     }
   }
   return undefined
+}
+
+// Champ teamScores des payloads (présent uniquement en mode équipe).
+// exactOptionalPropertyTypes : on spread {} en solo plutôt que teamScores:undefined.
+export function teamScoresField(session: SessionState): { teamScores: TeamScore[] } | Record<string, never> {
+  return session.mode === 'team' ? { teamScores: getTeamLeaderboard(session) } : {}
+}
+
+// Fin de partie — unique pour les 3 chemins (dernière question classique, tous
+// les thèmes buzzer joués, « Terminer » du host) : ferme toute question ouverte,
+// passe en 'ended' et diffuse le podium final.
+export function endSession(
+  session: SessionState,
+  io: Server<ClientToServerEvents, ServerToClientEvents>,
+): void {
+  if (session.questionTimer) {
+    clearTimeout(session.questionTimer)
+    session.questionTimer = null
+  }
+  session.questionStartedAt = null
+  session.buzz = null
+  session.currentTheme = null
+  session.status = 'ended'
+  deleteSessionSnapshot(session.id) // partie finie : plus rien à restaurer
+  io.to(session.id).emit(EVENTS.SESSION_STATUS_CHANGED, { status: 'ended' })
+  io.to(session.id).emit(EVENTS.LEADERBOARD_UPDATE, {
+    scores: getLeaderboard(session),
+    final: true,
+    ...teamScoresField(session),
+  })
+  logEvent('quiz_ended', { sessionId: session.id })
 }

@@ -7,9 +7,10 @@ import {
   findParticipantBySocket,
   getLeaderboard,
   toPublicQuestion,
+  endSession,
 } from '../session-helpers.js'
 import { logEvent } from '../logger.js'
-import { saveSessionSnapshot, deleteSessionSnapshot } from '../session-snapshot.js'
+import { saveSessionSnapshot } from '../session-snapshot.js'
 
 // ─────────────────────────────────────────────────────────────
 // MODE BUZZER (partie famille arbitrée) — cf. .claude/plan-quiz-famille.md
@@ -183,16 +184,6 @@ export function broadcastThemes(session: SessionState, io: QuizServer): void {
 // HOST : lancer la question buzzer suivante (routé depuis handleNextQuestion)
 // ─────────────────────────────────────────────────────────────
 
-function finishQuiz(session: SessionState, io: QuizServer): void {
-  session.status = 'ended'
-  session.buzz = null
-  session.currentTheme = null
-  deleteSessionSnapshot(session.id)
-  io.to(session.id).emit(EVENTS.SESSION_STATUS_CHANGED, { status: 'ended' })
-  io.to(session.id).emit(EVENTS.LEADERBOARD_UPDATE, { scores: getLeaderboard(session), final: true })
-  logEvent('quiz_ended', { sessionId: session.id })
-}
-
 // Démarre la question à l'index donné : owner_oral si thème perso/libre (le
 // répondeur parle d'abord à l'oral, buzzer désarmé), steal armé sinon (culture,
 // ouvert à tous).
@@ -269,7 +260,7 @@ export function startNextBuzzerQuestion(session: SessionState, io: QuizServer): 
   // → fin de partie si tout est joué, sinon retour au sélecteur.
   session.buzz = null
   if (allPlayed(session)) {
-    finishQuiz(session, io)
+    endSession(session, io)
     return
   }
   session.currentTheme = null

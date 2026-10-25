@@ -6,13 +6,13 @@ import {
   getParticipantList,
   toPublicQuestion,
   getLeaderboard,
-  getTeamLeaderboard,
   getTeamsPayload,
   isPseudoTaken,
   findSessionByHostSocket,
+  endSession,
 } from '../session-helpers.js'
 import { logEvent } from '../logger.js'
-import { saveSessionSnapshot, deleteSessionSnapshot } from '../session-snapshot.js'
+import { saveSessionSnapshot } from '../session-snapshot.js'
 import { buildThemes, broadcastBuzzState, initTurnOrder } from './buzzer.js'
 
 type QuizSocket = Socket<ClientToServerEvents, ServerToClientEvents>
@@ -304,20 +304,5 @@ export function handleHostStartQuiz(socket: QuizSocket, io: QuizServer): void {
 export function handleHostEndQuiz(socket: QuizSocket, io: QuizServer): void {
   const session = findSessionByHostSocket(socket.id)
   if (!session) return
-
-  if (session.questionTimer) {
-    clearTimeout(session.questionTimer)
-    session.questionTimer = null
-  }
-  session.questionStartedAt = null
-  session.buzz = null               // mode buzzer : plus de question active
-  session.status = 'ended'
-  deleteSessionSnapshot(session.id) // partie finie : plus rien à restaurer
-
-  io.to(session.id).emit(EVENTS.SESSION_STATUS_CHANGED, { status: 'ended' })
-  io.to(session.id).emit(EVENTS.LEADERBOARD_UPDATE, {
-    scores: getLeaderboard(session),
-    final: true,
-    ...(session.mode === 'team' ? { teamScores: getTeamLeaderboard(session) } : {}),
-  })
+  endSession(session, io)
 }
