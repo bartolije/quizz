@@ -312,6 +312,7 @@ export function closeQuestion(
   // écarts — une réponse absurde n'écrase plus le barème, cf. computeClosestScale).
   let correctNum = 0
   let maxDeviation = 0
+  let minDeviation = Infinity
   if (q.type === 'closest') {
     correctNum = Number(q.correctAnswers[0])
     const deviations: number[] = []
@@ -320,6 +321,7 @@ export function closeQuestion(
       if (n !== null) deviations.push(Math.abs(correctNum - n))
     }
     maxDeviation = computeClosestScale(deviations)
+    minDeviation = Math.min(...deviations)
   }
 
   // Scoring par type → { gained, correct } par participant
@@ -346,9 +348,14 @@ export function closeQuestion(
       gained = Math.round(calculateScore(q.timeLimit, elapsed) * ratio)
       correct = ratio === 1
     } else {
-      // closest : tout le monde marque selon la distance (pas de bonus vitesse)
+      // closest : tout le monde marque selon la distance (pas de bonus vitesse) ;
+      // le plus proche (ex æquo compris) prend toujours 1000 — sinon un joueur
+      // seul à répondre 999 pour 1000 repartait avec 0 (l'échelle = son écart).
       const n = toNum(ans.value)
-      gained = n === null ? 0 : calculateClosestScore(correctNum, n, maxDeviation)
+      gained =
+        n === null ? 0
+        : Math.abs(correctNum - n) === minDeviation ? 1000
+        : calculateClosestScore(correctNum, n, maxDeviation)
     }
 
     p.lastDelta = gained

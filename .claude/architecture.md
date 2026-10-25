@@ -31,7 +31,7 @@ serveur vit ici.
 
 - `mcq` — choix multiples (énoncé sur la TV, boutons couleur sur le tél)
 - `free` — saisie libre (normalisation + Levenshtein ≤ 2 pour tolérer les fautes)
-- `closest` — numérique « au plus proche » (scoring dégressif vs l'écart max observé)
+- `closest` — numérique « au plus proche » (le plus proche prend 1000, puis dégressif — échelle au ~80ᵉ percentile des écarts)
 - `ordering` — remettre des items dans le bon ordre (`choices` = items **mélangés** ;
   réponse = `string[]` réordonné ; `myCorrect` = ordre parfait)
 
