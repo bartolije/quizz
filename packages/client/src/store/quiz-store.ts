@@ -151,7 +151,7 @@ interface QuizStore {
   reset: () => void
 }
 
-const ranksOf = (lb: ParticipantScore[]): Record<string, number> =>
+export const ranksOf = (lb: ParticipantScore[]): Record<string, number> =>
   Object.fromEntries(lb.map((s) => [s.participantId, s.rank]))
 
 const initialState = {

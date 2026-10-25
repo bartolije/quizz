@@ -2,12 +2,7 @@ import { EVENTS } from '@lya-quiz/shared'
 import { socket } from '../socket'
 import { useQuizStore } from '../store/quiz-store'
 import { vibrate } from '../haptics'
-
-// Badge de points (couleur selon la valeur — les « ultra dur » ressortent)
-const ptsBadge = (pts: number): { label: string; cls: string } => ({
-  label: `${pts} pt${pts > 1 ? 's' : ''}`,
-  cls: pts >= 4 ? 'bg-fuchsia-700' : pts === 3 ? 'bg-rose-700' : pts === 2 ? 'bg-amber-700' : 'bg-emerald-700',
-})
+import { ptsBadge } from '../points-badge'
 
 // Vue participant en mode buzzer (partie famille). Le téléphone n'est qu'un
 // BUZZER : pas de saisie, l'admin arbitre tout à l'oral. La vue est pilotée par

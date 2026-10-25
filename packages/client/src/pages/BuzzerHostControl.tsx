@@ -7,11 +7,7 @@ import { QrCode } from '../components/QrCode'
 import { ConnectionBanner } from '../components/ConnectionBanner'
 import { ReportView } from '../components/ReportView'
 import { QuestionImage } from '../components/QuestionImage'
-
-const ptsBadge = (pts: number): { label: string; cls: string } => ({
-  label: `${pts} pt${pts > 1 ? 's' : ''}`,
-  cls: pts >= 4 ? 'bg-fuchsia-700' : pts === 3 ? 'bg-rose-700' : pts === 2 ? 'bg-amber-700' : 'bg-emerald-700',
-})
+import { ptsBadge } from '../points-badge'
 
 // Écran de contrôle host en mode buzzer (partie famille). L'admin arbitre tout :
 // 3 gros boutons Correct / Faux / Passer (+ Rouvrir). Le serveur sait QUI est
@@ -200,8 +196,6 @@ export function BuzzerHostControl({ s }: { s: HostSessionView }) {
   }
 
   // ── Running : entre deux questions (aucune question active) ──
-  const speaker = b?.phase === 'owner_oral' ? b.ownerName : b?.lockedBy?.pseudo ?? null
-
   return (
     <div className="min-h-screen bg-gray-950 text-white flex flex-col">
       <ConnectionBanner connected={s.socketConnected} />

@@ -15,6 +15,7 @@ import type {
 } from '@lya-quiz/shared'
 import { EVENTS } from '@lya-quiz/shared'
 import { socket } from '../socket'
+import { ranksOf } from '../store/quiz-store'
 import {
   readHostSession,
   writeHostSession,
@@ -97,8 +98,6 @@ export interface HostSessionView {
   drawTeams: (count: number) => void
 }
 
-const ranksOf = (lb: ParticipantScore[]): Record<string, number> =>
-  Object.fromEntries(lb.map((s) => [s.participantId, s.rank]))
 
 // Types de payload dérivés du contrat → garantit l'alignement avec events.ts
 type JoinedPayload = Parameters<ServerToClientEvents['session_joined']>[0]

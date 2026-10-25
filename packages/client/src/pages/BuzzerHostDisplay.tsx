@@ -3,11 +3,7 @@ import { useBuzzerSound } from '../hooks/useBuzzerSound'
 import { QrCode } from '../components/QrCode'
 import { ConnectionBanner } from '../components/ConnectionBanner'
 import { QuestionImage } from '../components/QuestionImage'
-
-const ptsBadge = (pts: number): { label: string; cls: string } => ({
-  label: `${pts} pt${pts > 1 ? 's' : ''}`,
-  cls: pts >= 4 ? 'bg-fuchsia-600' : pts === 3 ? 'bg-rose-600' : pts === 2 ? 'bg-amber-600' : 'bg-emerald-600',
-})
+import { ptsBadge } from '../points-badge'
 
 // Écran TV (passif) en mode buzzer : grand, lisible à distance. Ne pilote rien.
 export function BuzzerHostDisplay({ s }: { s: HostSessionView }) {
