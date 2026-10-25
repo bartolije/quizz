@@ -13,6 +13,11 @@ un seul service.
   mode) : migré le 31/07/2026, `nixpacks.toml` supprimé.
 - **Start** : `node packages/server/dist/index.js`.
 - **Healthcheck** : `GET /health` (timeout 30s, restart `ON_FAILURE`, max 10).
+- **Chemins surveillés** (`watchPatterns` dans `railway.json`, prioritaire sur le
+  tableau de bord) : `packages/**` + fichiers racine de build. Avant 10/2026, le
+  tableau de bord ne surveillait que `/packages/server/**` → un commit client,
+  shared ou lockfile seul était SKIPPED. Les commits de doc (`.claude/`, README)
+  ne déclenchent toujours pas de déploiement (voulu).
 - Le serveur résout le build client à `../../client/dist` relativement à
   `import.meta.url` (indépendant du cwd de lancement).
 - Le client tape toujours en same-origin (chemins relatifs `/api`, `/socket.io`).
