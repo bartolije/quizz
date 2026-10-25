@@ -16,38 +16,21 @@ export function calculateScore(timeLimit: number, elapsed: number): number {
 }
 
 /**
- * Échelle de notation du « au plus proche » : écart au ~80ᵉ percentile des
- * écarts observés. L'ancien barème (écart MAX) devenait binaire dès qu'une
- * seule réponse absurde arrivait (ex : 999 999 999) : tous les écarts
- * raisonnables représentaient ≈ 0 % de l'échelle → ~1000 pts pour tout le
- * monde, plus aucune discrimination. Le percentile ignore les aberrants,
- * qui sortent de l'échelle et prennent 0.
- */
-export function computeClosestScale(deviations: number[]): number {
-  if (deviations.length === 0) return 0
-  const sorted = [...deviations].sort((a, b) => a - b)
-  const idx = Math.min(sorted.length - 1, Math.max(0, Math.round(0.8 * sorted.length) - 1))
-  return sorted[idx] ?? 0
-}
-
-/**
- * Score pour le mode "au plus proche" (numérique).
- * Le plus proche de la bonne réponse reçoit 1000 pts.
- * Les autres reçoivent un score relatif décroissant.
+ * Points du « au plus proche », SELON LA PLACE : le plus proche prend 1000, le
+ * plus loin 100, linéaire entre les deux selon le classement des écarts. Les
+ * ex æquo (même écart) partagent la même place. Tout le monde marque, et une
+ * réponse absurde (ex : 999 999 999) finit juste dernière, sans écraser le
+ * barème des autres.
  *
- * @param correctValue  - la bonne valeur numérique
- * @param submitted     - la valeur soumise par le participant
- * @param maxDeviation  - l'écart au-delà duquel on reçoit 0 pts
- *                        (échelle robuste : cf. computeClosestScale)
+ * @param deviations - écarts |bonne valeur − réponse|, un par réponse valide
+ * @returns les points, dans le même ordre que `deviations`
  */
-export function calculateClosestScore(
-  correctValue: number,
-  submitted: number,
-  maxDeviation: number,
-): number {
-  if (maxDeviation === 0) return 1000
-  const deviation = Math.abs(correctValue - submitted)
-  return Math.round(1000 * Math.max(0, 1 - deviation / maxDeviation))
+export function closestPointsByPlace(deviations: number[]): number[] {
+  const n = deviations.length
+  if (n < 2) return deviations.map(() => 1000)
+  const sorted = [...deviations].sort((a, b) => a - b)
+  // indexOf = première occurrence → les ex æquo ont la même place (0 = le plus proche)
+  return deviations.map((d) => Math.round(1000 - (900 * sorted.indexOf(d)) / (n - 1)))
 }
 
 // ─────────────────────────────────────────────────────────────

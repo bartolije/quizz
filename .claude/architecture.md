@@ -24,14 +24,14 @@ serveur vit ici.
 |---|---|
 | `events.ts` | `EVENTS` (strings d'events — **seule source autorisée**), interfaces `ClientToServerEvents` / `ServerToClientEvents` typant chaque payload |
 | `models.ts` | `Participant`, `ParticipantScore`, `QuestionPublic` (sans réponses), `Question`/`Quiz`/`Session` (serveur), types de rapport (`GameReport`…) |
-| `scoring.ts` | `calculateScore` (vitesse, 0–1000 linéaire), `calculateClosestScore` (numérique dégressif), `normalizeAnswer` + `levenshtein` + `isCorrectFreeAnswer` (saisie libre tolérante) |
+| `scoring.ts` | `calculateScore` (vitesse, 0–1000 linéaire), `closestPointsByPlace` (au plus proche, selon la place), `normalizeAnswer` + `levenshtein` + `isCorrectFreeAnswer` (saisie libre tolérante) |
 | `socket-config.ts` | `SOCKET_CLIENT_CONFIG`, `SOCKET_SERVER_CONFIG`, `SESSION_TOKEN_TTL_MS` |
 
 ### Types de questions (`QuestionType`)
 
 - `mcq` — choix multiples (énoncé sur la TV, boutons couleur sur le tél)
 - `free` — saisie libre (normalisation + Levenshtein ≤ 2 pour tolérer les fautes)
-- `closest` — numérique « au plus proche » (le plus proche prend 1000, puis dégressif — échelle au ~80ᵉ percentile des écarts)
+- `closest` — numérique « au plus proche » (points selon la place : le plus proche 1000, le plus loin 100)
 - `ordering` — remettre des items dans le bon ordre (`choices` = items **mélangés** ;
   réponse = `string[]` réordonné ; `myCorrect` = ordre parfait)
 
@@ -169,9 +169,11 @@ en compte sans hard-refresh (les assets JS/CSS sont hashés donc immuables).
 
 - **Vitesse** (mcq/free/ordering) : `1000 * (timeLimit - elapsed) / timeLimit`,
   arrondi, borné 0–1000. Répondre vite = plus de points.
-- **closest** : le plus proche reçoit 1000 ; les autres `1000 * (1 - écart/échelle)`,
-  où `échelle` = écart au ~80ᵉ percentile (`computeClosestScale`) — une réponse
-  absurde n'écrase plus le barème, elle sort de l'échelle et prend 0.
+- **closest** : selon la PLACE (`closestPointsByPlace`, 10/2026) — le plus proche
+  1000, le plus loin 100, linéaire entre les deux selon le classement des écarts ;
+  ex æquo = même place ; pas de bonus vitesse. Tout le monde marque, une réponse
+  absurde finit juste dernière. Réponse non numérique = 0. (Avant : échelle au
+  80ᵉ percentile des écarts, les ~20 % les plus loin prenaient 0.)
 - **free** : `normalizeAnswer` (trim, lowercase, sans accents/tirets/apostrophes/espaces)
   puis égalité exacte OU Levenshtein ≤ tolérance PROPORTIONNELLE
   (`freeAnswerTolerance` : 0 faute ≤ 4 chars, 1 faute ≤ 7, 2 au-delà —

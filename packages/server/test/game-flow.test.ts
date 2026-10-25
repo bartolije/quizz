@@ -125,7 +125,7 @@ describe('boucle de jeu', () => {
 })
 
 describe('au plus proche', () => {
-  it('le plus proche prend 1000 même sans réponse exacte', async () => {
+  it('points selon la place : le plus proche 1000, le plus loin 100', async () => {
     const session = makeSession([
       { type: 'closest', text: 'Combien ?', correctAnswers: ['1000'], timeLimit: 30 },
     ])
@@ -137,10 +137,11 @@ describe('au plus proche', () => {
     await waitFor<QStarted>(alice, EVENTS.QUESTION_STARTED)
 
     const endedAlice = waitFor<QEnded>(alice, EVENTS.QUESTION_ENDED)
+    const endedBob = waitFor<QEnded>(bob, EVENTS.QUESTION_ENDED)
     alice.emit(EVENTS.SUBMIT_ANSWER, { answer: 999, questionIndex: 0 }, () => {})
-    bob.emit(EVENTS.SUBMIT_ANSWER, { answer: 1002, questionIndex: 0 }, () => {})
-    // AVANT : alice 500 (écart 1 sur une échelle de 2), bob 0
+    bob.emit(EVENTS.SUBMIT_ANSWER, { answer: '1002', questionIndex: 0 }, () => {})
     expect((await endedAlice).myDelta).toBe(1000)
+    expect((await endedBob).myDelta).toBe(100) // avant : 0 (hors échelle)
   })
 })
 

@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   calculateScore,
-  calculateClosestScore,
-  computeClosestScale,
+  closestPointsByPlace,
   freeAnswerTolerance,
   normalizeAnswer,
   levenshtein,
@@ -22,39 +21,23 @@ describe('calculateScore (linéaire à la vitesse)', () => {
   })
 })
 
-describe('calculateClosestScore', () => {
-  it('réponse exacte → 1000', () => {
-    expect(calculateClosestScore(100, 100, 50)).toBe(1000)
+describe('closestPointsByPlace (au plus proche, selon la place)', () => {
+  it('le plus proche 1000, le plus loin 100, linéaire selon la place', () => {
+    // pour 1000 : 999 / 1002 / 1100 / 5000
+    expect(closestPointsByPlace([1, 2, 100, 4000])).toEqual([1000, 700, 400, 100])
   })
-  it('maxDeviation 0 (tout le monde juste) → 1000', () => {
-    expect(calculateClosestScore(100, 100, 0)).toBe(1000)
+  it('ordre des réponses conservé', () => {
+    expect(closestPointsByPlace([100, 1, 4000, 2])).toEqual([400, 1000, 100, 700])
   })
-  it("à la moitié de l'écart max → 500", () => {
-    expect(calculateClosestScore(100, 125, 50)).toBe(500)
+  it("une réponse absurde finit dernière sans écraser l'écart entre les autres", () => {
+    expect(closestPointsByPlace([5, 10, 999_999_999])).toEqual([1000, 550, 100])
   })
-  it("à l'écart max → 0", () => {
-    expect(calculateClosestScore(100, 150, 50)).toBe(0)
-  })
-})
-
-describe('computeClosestScale (échelle robuste aux aberrants)', () => {
-  it("une réponse absurde n'écrase plus le barème", () => {
-    // écarts sains 1..3, un troll à 1 000 000 → l'échelle reste dans le raisonnable
-    expect(computeClosestScale([1, 2, 3, 1_000_000])).toBe(3)
-  })
-  it('discrimine à nouveau les réponses saines malgré un aberrant', () => {
-    const scale = computeClosestScale([5, 10, 20, 999_999_999])
-    const good = calculateClosestScore(100, 105, scale) // écart 5
-    const ok = calculateClosestScore(100, 110, scale)   // écart 10
-    const troll = calculateClosestScore(100, 999_999_999 + 100, scale)
-    expect(good).toBeGreaterThan(ok)   // avant : good ≈ ok ≈ 1000
-    expect(troll).toBe(0)
-    expect(good).toBeGreaterThan(600)
+  it('ex æquo = même place', () => {
+    expect(closestPointsByPlace([3, 1, 1])).toEqual([100, 1000, 1000])
   })
   it('cas limites', () => {
-    expect(computeClosestScale([])).toBe(0)
-    expect(computeClosestScale([7])).toBe(7)
-    expect(computeClosestScale([0, 0])).toBe(0)
+    expect(closestPointsByPlace([])).toEqual([])
+    expect(closestPointsByPlace([7])).toEqual([1000])
   })
 })
 

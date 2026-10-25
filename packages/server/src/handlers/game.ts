@@ -3,8 +3,7 @@ import type { ClientToServerEvents, ServerToClientEvents, SubmitAnswerAck } from
 import {
   EVENTS,
   calculateScore,
-  calculateClosestScore,
-  computeClosestScale,
+  closestPointsByPlace,
   isCorrectFreeAnswer,
 } from '@lya-quiz/shared'
 import type { SessionState } from '../state.js'
@@ -276,20 +275,18 @@ export function closeQuestion(
     return Number.isFinite(n) ? n : null
   }
 
-  // 'closest' : pré-calcul de la valeur cible + échelle ROBUSTE (percentile des
-  // écarts — une réponse absurde n'écrase plus le barème, cf. computeClosestScale).
-  let correctNum = 0
-  let maxDeviation = 0
-  let minDeviation = Infinity
-  if (q.type === 'closest') {
-    correctNum = Number(q.correctAnswers[0])
-    const deviations: number[] = []
-    for (const ans of session.answers.values()) {
+  // 'closest' : points selon la place parmi les réponses numériques valides
+  // (cf. closestPointsByPlace) — calculés d'un coup, ils dépendent de tous les écarts.
+  const closestPoints = new Map<string, number>()
+  const correctNum = Number(q.correctAnswers[0])
+  if (q.type === 'closest' && Number.isFinite(correctNum)) {
+    const valid: [string, number][] = []
+    for (const [pid, ans] of session.answers) {
       const n = toNum(ans.value)
-      if (n !== null) deviations.push(Math.abs(correctNum - n))
+      if (n !== null) valid.push([pid, Math.abs(correctNum - n)])
     }
-    maxDeviation = computeClosestScale(deviations)
-    minDeviation = Math.min(...deviations)
+    const points = closestPointsByPlace(valid.map(([, d]) => d))
+    valid.forEach(([pid], i) => closestPoints.set(pid, points[i] ?? 0))
   }
 
   // Scoring par type → { gained, correct } par participant
@@ -316,14 +313,8 @@ export function closeQuestion(
       gained = Math.round(calculateScore(q.timeLimit, elapsed) * ratio)
       correct = ratio === 1
     } else {
-      // closest : tout le monde marque selon la distance (pas de bonus vitesse) ;
-      // le plus proche (ex æquo compris) prend toujours 1000 — sinon un joueur
-      // seul à répondre 999 pour 1000 repartait avec 0 (l'échelle = son écart).
-      const n = toNum(ans.value)
-      gained =
-        n === null ? 0
-        : Math.abs(correctNum - n) === minDeviation ? 1000
-        : calculateClosestScore(correctNum, n, maxDeviation)
+      // closest : points selon la place (pas de bonus vitesse) ; réponse non numérique = 0
+      gained = closestPoints.get(pid) ?? 0
     }
 
     p.lastDelta = gained
