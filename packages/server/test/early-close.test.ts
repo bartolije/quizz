@@ -75,6 +75,35 @@ describe('fermeture anticipée — fenêtre de grâce des déconnectés', () => 
   })
 })
 
+describe('fermeture anticipée — réponse d’un joueur sorti de la grâce', () => {
+  it('ne ferme pas la question tant qu’un joueur présent n’a pas répondu', async () => {
+    const session = makeSession()
+    const { c: alice } = await joinAs('alice', session.pin)
+    const { c: bob, joined: bobJoined } = await joinAs('bob', session.pin)
+    const { c: carol } = await joinAs('carol', session.pin)
+    await hostStart(session, alice)
+
+    // bob répond puis décroche, et sa fenêtre de grâce (30 s) expire
+    await bob.timeout(2000).emitWithAck(EVENTS.SUBMIT_ANSWER, { answer: '4', questionIndex: 0 })
+    await new Promise<void>((resolve) => {
+      bob.once('disconnect', () => resolve())
+      bob.disconnect()
+    })
+    await tick()
+    session.participants.get(bobJoined.participant.id)!.disconnectedAt = Date.now() - 31_000
+
+    // alice répond : 2 réponses (bob + alice) pour 2 présents — AVANT le fix,
+    // la question fermait ici alors que carol n'avait pas répondu
+    await alice.timeout(2000).emitWithAck(EVENTS.SUBMIT_ANSWER, { answer: '4', questionIndex: 0 })
+    await tick()
+    expect(session.questionStartedAt).not.toBeNull()
+
+    const ended = waitFor<QEnded>(alice, EVENTS.QUESTION_ENDED)
+    carol.emit(EVENTS.SUBMIT_ANSWER, { answer: '3', questionIndex: 0 }, () => {})
+    expect((await ended).answeredCount).toBe(3)
+  })
+})
+
 describe('retardataire en pleine question', () => {
   it('reçoit la question en cours avec le temps déjà écoulé, et peut répondre', async () => {
     const session = makeSession()

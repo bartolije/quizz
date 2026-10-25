@@ -268,8 +268,10 @@ export function handleSubmitAnswer(
   })
 
   // Fin anticipée : tous les participants « éligibles » ont répondu (connectés
-  // + déconnectés récents en fenêtre de grâce, cf. eligibleParticipants)
-  if (eligible.length > 0 && session.answers.size >= eligible.length) {
+  // + déconnectés récents en fenêtre de grâce, cf. eligibleParticipants). On
+  // vérifie CHACUN : compter les réponses incluait celles des joueurs sortis de
+  // la grâce, et fermait la question avant que le dernier présent ait répondu.
+  if (eligible.length > 0 && eligible.every((p) => session.answers.has(p.id))) {
     closeQuestion(session, io, 'all_answered')
   }
 }
