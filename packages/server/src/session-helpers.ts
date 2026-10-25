@@ -96,22 +96,29 @@ export function isPseudoTaken(session: SessionState, pseudo: string): boolean {
 // Mode équipe
 // ─────────────────────────────────────────────────────────────
 
-// Classement des équipes : somme des scores (et deltas de la dernière question)
-// des membres. Les joueurs sans équipe ne comptent pour personne. Rang
-// "standard competition" (ex æquo partagés) comme le classement individuel.
+// Classement des équipes : MOYENNE des scores (et deltas de la dernière question)
+// des membres — une équipe de 5 n'est pas désavantagée face à une de 6. Les
+// joueurs sans équipe ne comptent pour personne. Rang "standard competition"
+// (ex æquo partagés) comme le classement individuel.
 export function getTeamLeaderboard(session: SessionState): TeamScore[] {
-  const agg = new Map<string, { score: number; delta: number }>()
-  for (const team of session.teams.values()) agg.set(team.id, { score: 0, delta: 0 })
+  const agg = new Map<string, { score: number; delta: number; members: number }>()
+  for (const team of session.teams.values()) agg.set(team.id, { score: 0, delta: 0, members: 0 })
   for (const p of session.participants.values()) {
     if (!p.teamId) continue
     const a = agg.get(p.teamId)
     if (!a) continue
     a.score += p.score
     a.delta += p.lastDelta
+    a.members++
+  }
+  for (const a of agg.values()) {
+    if (a.members === 0) continue
+    a.score = Math.round(a.score / a.members)
+    a.delta = Math.round(a.delta / a.members)
   }
 
   const sorted = [...session.teams.values()]
-    .map((t) => ({ team: t, agg: agg.get(t.id) ?? { score: 0, delta: 0 } }))
+    .map((t) => ({ team: t, agg: agg.get(t.id) ?? { score: 0, delta: 0, members: 0 } }))
     .sort((a, b) => b.agg.score - a.agg.score || a.team.name.localeCompare(b.team.name))
 
   let rank = 0

@@ -192,8 +192,10 @@ sont **éphémères, par session, en mémoire** — aucune persistance DB.
 - **Handlers** (`handlers/team.ts`) : `host_set_mode`, `host_add_team`, `host_remove_team`,
   `host_lock_teams`, `host_assign_participant`, `host_autobalance_teams`, `join_team`.
   Chaque mutation rediffuse `teams_updated` (état complet) à toute la room.
-- **Scoring** (`session-helpers.getTeamLeaderboard`) : score d'équipe = somme des
-  scores des membres ; delta d'équipe sur une question = somme des deltas des membres.
+- **Scoring** (`session-helpers.getTeamLeaderboard`) : score d'équipe = MOYENNE des
+  scores des membres (10/2026, avant : somme → l'équipe la plus nombreuse gagnait
+  d'office) ; delta d'équipe sur une question = moyenne des deltas des membres.
+  Un membre déconnecté reste compté (son score figé tire la moyenne).
   Les joueurs sans équipe ne comptent pour personne. `teamScores` est injecté dans
   `question_ended` et `leaderboard_update` quand `mode === 'team'`.
 - **Garde-fous** : changement de mode / création d'équipe / `join_team` uniquement en
