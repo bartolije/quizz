@@ -51,14 +51,16 @@ les sessions de jeu sont en mémoire.
 - **devDependencies au build** : `tsc` / `vite` / `tsx` sont en devDependencies. Les
   builds avec `NODE_ENV=production` les sauteraient → `.npmrc` force `include=dev`.
   Ne pas le retirer.
-- **better-sqlite3 13 compile au `npm ci`** : le paquet n'a plus de script `install`
-  mais garde son `binding.gyp` → npm déclenche sa compilation implicite
-  (`node-gyp rebuild`), qui exige Python + gcc + make. L'image de build Railpack
-  (`buildpack-deps:bookworm-scm` + `build-essential`, `make`, `pkg-config`, et
-  `python3` tiré par `mercurial`) les a déjà — c'est pourquoi `nixpacks.toml`, qui
-  les ajoutait à la main pour Nixpacks, a pu être supprimé. Si un build casse un
-  jour sur `node-gyp`, créer un `railpack.json` à la racine :
+- **better-sqlite3 : binaires précompilés depuis 13.0.3** (dossier `prebuilds/` du
+  paquet : linux-x64/arm64, musl, darwin, win32, chargés par `lib/binding.js`).
+  `allowScripts` le marque **`false`** exprès : npm y voit un `node-gyp rebuild`
+  implicite (binding.gyp) — refusé, donc aucune compilation au `npm ci`. À
+  ré-épingler à chaque montée de version. Jusqu'à 13.0.1, npm compilait le module
+  (`node-gyp rebuild` → Python + gcc + make, présents dans l'image Railpack) ; si
+  une version future recompile et casse sur `node-gyp`, créer un `railpack.json` :
   `{ "buildAptPackages": ["python3", "build-essential"] }`.
+- **`allowScripts` (package.json) est épinglé par version** : après une montée
+  d'esbuild, `npm approve-scripts esbuild` sinon son postinstall est bloqué.
 - **Version de Node sous Railpack** : la variable `NIXPACKS_NODE_VERSION` n'a plus
   d'effet. Railpack résout dans l'ordre `RAILPACK_NODE_VERSION` (variable du service)
   → `engines.node` → `.nvmrc`. Ici `engines.node` vaut `>=24 <25` (une plage, résolue
