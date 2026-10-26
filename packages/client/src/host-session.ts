@@ -56,6 +56,7 @@ export interface SessionInfo {
   sessionId: string
   status: SessionStatus
   participants: Participant[]
+  quizTitle?: string
 }
 
 // GET /api/sessions/:id → résout pin + état initial (bootstrap one-shot pour

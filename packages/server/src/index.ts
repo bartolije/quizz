@@ -150,6 +150,7 @@ app.get<{ Params: { id: string } }>('/api/sessions/:id', async (req, reply) => {
     sessionId: session.id,
     status: session.status,
     participants: getParticipantList(session),
+    ...(session.quiz ? { quizTitle: session.quiz.title } : {}),
   }
 })
 

@@ -67,7 +67,8 @@ vers `:3001`) : ouvrir `http://<ip-du-mac>:5173` sur le téléphone.
   joueurs rejoignent par tap (le host (ré)assigne / verrouille / auto-répartit) ;
   le score d'équipe est la moyenne de ses membres (équitable si tailles inégales).
 - **Rapport de fin de partie** (stats par question + export CSV).
-- **Éditeur `/admin`** (CRUD des quiz, import/export JSON, protégé par mot de passe).
+- **Éditeur `/admin`** (CRUD des quiz, import/export JSON, protégé par mot de passe), avec
+  un encadré « Liens de la partie » : écran de contrôle, écran TV, lien joueurs (ouvrir / copier).
 - **Observabilité** : logs serveur structurés (pino) + remontée des erreurs client.
 - **Déploiement single-service** (Fastify sert le client + l'API + le WebSocket).
 

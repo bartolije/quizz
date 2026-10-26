@@ -16,6 +16,7 @@ import {
   type QuizSummary,
   type QuizInput,
 } from '../admin-api'
+import { SessionLinks } from '../components/SessionLinks'
 
 // ── Modèle d'édition (formulaire) ────────────────────────────
 interface EQ {
@@ -601,6 +602,8 @@ export function AdminPage() {
           </button>
         </div>
       </div>
+
+      <SessionLinks />
 
       {quizzes.length === 0 ? (
         <p className="text-gray-500">Aucun quiz. Crée le premier !</p>
